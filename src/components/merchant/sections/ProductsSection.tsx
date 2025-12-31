@@ -668,7 +668,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
       )}
 
       {/* Products Grid/List - Now full width */}
-      <div className="w-full overflow-hidden">
+      <div className="w-full overflow-hidden pt-6">
           {!initialLoadComplete ? (
             viewMode === 'grid' ? (
               <ProductGridSkeleton count={8} />
