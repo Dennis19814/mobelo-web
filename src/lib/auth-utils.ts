@@ -22,6 +22,25 @@ export function clearAllAuthData(): void {
   localStorage.removeItem('staff_refresh_token');
   localStorage.removeItem('staff_user');
   localStorage.removeItem('staff_app');
+  
+  // Merchant panel data
+  clearMerchantPanelData();
+}
+
+/**
+ * Clear merchant panel related localStorage items
+ * Removes all merchant-panel-section-{appId} keys
+ */
+export function clearMerchantPanelData(): void {
+  // Clear all merchant panel section keys (we don't know all app IDs)
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('merchant-panel-section-')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
 }
 
 /**
@@ -33,6 +52,7 @@ export function clearOwnerAuthData(): void {
   localStorage.removeItem('user');
   localStorage.removeItem('userApiKey');
   localStorage.removeItem('appSecretKey');
+  clearMerchantPanelData();
 }
 
 /**
