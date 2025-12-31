@@ -1,0 +1,23 @@
+{
+  "name": "Mobelo - AI-Powered Mobile App Builder",
+  "short_name": "Mobelo",
+  "description": "Build professional e-commerce mobile apps for iOS and Android without coding. AI-powered platform with integrated Stripe payments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#fb923c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business", "developer"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "scope": "/",
+  "screenshots": []
+}

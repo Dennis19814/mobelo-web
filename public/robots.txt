@@ -1,0 +1,22 @@
+# Allow search engines to index public pages
+User-agent: *
+Allow: /$
+Allow: /features$
+Allow: /app-builder$
+Allow: /app-spec$
+Allow: /terms$
+Allow: /privacy$
+# Block authenticated/admin areas
+Disallow: /pricing
+Disallow: /my-apps
+Disallow: /merchant-panel/
+Disallow: /merchant-staff-login
+Disallow: /account/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /diagnostics
+Disallow: /iframe-test
+Disallow: /checkout/
+
+# Sitemap location
+Sitemap: https://mobelo.dev/sitemap.xml

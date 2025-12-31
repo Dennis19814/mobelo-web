@@ -1,0 +1,152 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
+import { logger } from '@/lib/logger'
+
+export interface Product {
+  id: number
+  name: string
+  description: string
+  basePrice: number
+  compareAtPrice?: number
+  status: 'draft' | 'active' | 'archived'
+  categoryIds: number[]
+  appId: number
+  metadata?: Record<string, any>
+  variants?: any[]
+  media?: any[]
+  reviews?: any[]
+  inventory?: any
+}
+
+export interface CreateProductInput {
+  name: string
+  description: string
+  basePrice: number
+  compareAtPrice?: number
+  status?: 'draft' | 'active' | 'archived'
+  categoryIds?: number[]
+}
+
+export interface UpdateProductInput extends Partial<CreateProductInput> {
+  id: number
+}
+
+// Fetch all products
+export function useProducts(
+  filters?: Record<string, any>,
+  headers?: Record<string, string>,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['products', filters, headers],
+    queryFn: async () => {
+      const response = await apiClient.getProducts(filters, headers)
+      // Handle both paginated and simple array responses
+      if (response.data?.data) {
+        return {
+          products: response.data.data as Product[],
+          meta: response.data.meta
+        }
+      }
+      return {
+        products: (Array.isArray(response.data) ? response.data : []) as Product[],
+        meta: null
+      }
+    },
+    enabled,
+  })
+}
+
+// Fetch single product
+export function useProduct(productId: number, headers?: Record<string, string>) {
+  return useQuery({
+    queryKey: ['products', productId, headers],
+    queryFn: async () => {
+      const response = await apiClient.getProduct(productId, headers)
+      return response.data as Product
+    },
+    enabled: !!productId,
+  })
+}
+
+// Create product
+export function useCreateProduct(headers?: Record<string, string>) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: CreateProductInput) => {
+      const response = await apiClient.createProduct(input, headers)
+      return response.data as Product
+    },
+    onSuccess: (newProduct) => {
+      // Invalidate products list to refetch
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      logger.info('Product created successfully', { id: newProduct.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to create product', { error })
+    },
+  })
+}
+
+// Update product
+export function useUpdateProduct(headers?: Record<string, string>) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateProductInput) => {
+      const response = await apiClient.updateProduct(id, input, headers)
+      return response.data as Product
+    },
+    onSuccess: (updatedProduct) => {
+      // Invalidate both list and single product queries
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.setQueryData(['products', updatedProduct.id], updatedProduct)
+      logger.info('Product updated successfully', { id: updatedProduct.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to update product', { error })
+    },
+  })
+}
+
+// Delete product
+export function useDeleteProduct(headers?: Record<string, string>) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (productId: number) => {
+      await apiClient.deleteProduct(productId, headers)
+      return productId
+    },
+    onSuccess: (productId) => {
+      // Invalidate products list and remove deleted product from cache
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.removeQueries({ queryKey: ['products', productId] })
+      logger.info('Product deleted successfully', { id: productId })
+    },
+    onError: (error) => {
+      logger.error('Failed to delete product', { error })
+    },
+  })
+}
+
+// Upload product media
+export function useUploadProductMedia() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ productId, formData }: { productId: number; formData: FormData }) => {
+      const response = await apiClient.post(`/products/${productId}/media`, formData)
+      return response.data
+    },
+    onSuccess: (_, { productId }) => {
+      // Invalidate product to refetch with new media
+      queryClient.invalidateQueries({ queryKey: ['products', productId] })
+      logger.info('Product media uploaded successfully', { productId })
+    },
+    onError: (error) => {
+      logger.error('Failed to upload product media', { error })
+    },
+  })
+}

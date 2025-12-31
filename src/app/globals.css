@@ -1,0 +1,468 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure consistent styling across browsers */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-manrope), var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global button radius to match hero pills */
+button,
+input[type="submit"],
+input[type="button"] {
+  border-radius: 14px;
+}
+
+/* Custom brand font: Turquoise BC */
+@font-face {
+  font-family: 'Turquoise BC';
+  src: url('/fonts/TurquoiseBC.woff2') format('woff2'),
+       url('/fonts/TurquoiseBC.woff') format('woff'),
+       url('/fonts/TurquoiseBC.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-logo {
+  font-family: 'Turquoise BC', var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fixed scrollbar for color dropdown */
+.color-dropdown-scroll::-webkit-scrollbar {
+  width: 10px;
+  background: transparent;
+}
+
+.color-dropdown-scroll::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 5px;
+  border: 1px solid #E5E7EB;
+}
+
+.color-dropdown-scroll::-webkit-scrollbar-thumb {
+  background: #3B82F6;
+  border-radius: 5px;
+  border: 1px solid #2563EB;
+  min-height: 20px;
+}
+
+.color-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background: #2563EB;
+  border-color: #1D4ED8;
+}
+
+/* Fixed scrollbar for fonts dropdown */
+.fonts-dropdown-scroll::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.fonts-dropdown-scroll::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 6px;
+  border: 1px solid #D1D5DB;
+  margin: 2px;
+}
+
+.fonts-dropdown-scroll::-webkit-scrollbar-thumb {
+  background: #22C55E;
+  border-radius: 6px;
+  border: 2px solid #16A34A;
+  min-height: 30px;
+}
+
+.fonts-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background: #16A34A;
+  border-color: #15803D;
+}
+
+.fonts-dropdown-scroll::-webkit-scrollbar-corner {
+  background: #F3F4F6;
+}
+
+/* Fixed scrollbar for style dropdown */
+.style-dropdown-scroll::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.style-dropdown-scroll::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 6px;
+  border: 1px solid #D1D5DB;
+  margin: 2px;
+}
+
+.style-dropdown-scroll::-webkit-scrollbar-thumb {
+  background: #8B5CF6;
+  border-radius: 6px;
+  border: 2px solid #7C3AED;
+  min-height: 30px;
+}
+
+.style-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background: #7C3AED;
+  border-color: #6D28D9;
+}
+
+.style-dropdown-scroll::-webkit-scrollbar-corner {
+  background: #F3F4F6;
+}
+
+/* Fixed scrollbar for images dropdown */
+.images-dropdown-scroll::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.images-dropdown-scroll::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 6px;
+  border: 1px solid #D1D5DB;
+  margin: 2px;
+}
+
+.images-dropdown-scroll::-webkit-scrollbar-thumb {
+  background: #F97316;
+  border-radius: 6px;
+  border: 2px solid #EA580C;
+  min-height: 30px;
+}
+
+.images-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background: #EA580C;
+  border-color: #C2410C;
+}
+
+.images-dropdown-scroll::-webkit-scrollbar-corner {
+  background: #F3F4F6;
+}
+
+/* Fixed scrollbar for screens section */
+.screens-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB #F9FAFB;
+}
+
+.screens-scroll::-webkit-scrollbar {
+  width: 8px;
+  background: #F9FAFB;
+}
+
+.screens-scroll::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 4px;
+}
+
+.screens-scroll::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+  border: 1px solid #E5E7EB;
+}
+
+.screens-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Lighter scrollbar for chat section */
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #E5E7EB #F9FAFB;
+}
+
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+  background: #F9FAFB;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 3px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 3px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* Line clamp utility for text truncation */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Modern glassmorphism effects */
+.glass-effect {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Smooth focus ring for accessibility */
+.focus-ring {
+  @apply focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 focus:outline-none;
+}
+
+/* Enhanced button hover effects */
+.btn-hover-lift {
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Loading skeleton animation */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* React Native Renderer Loading Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* CSS Custom Properties for consistent theming */
+:root {
+  --color-primary: #8055f3;
+  --color-primary-hover: #6d43e8;
+  --color-text-primary: #1e1e1e;
+  --color-text-secondary: #6e6e6e;
+  --color-highlight-blue: #eef2ff;
+  --color-highlight-green: #e9f9f1;
+  --color-highlight-purple: #f3ebfd;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+}
+
+/* Error boundary and fallback styles */
+.error-fallback {
+  @apply min-h-screen bg-gray-50 flex items-center justify-center p-4;
+}
+
+.error-card {
+  @apply max-w-md w-full bg-white rounded-lg shadow-lg p-6;
+}
+
+/* Loading state styles */
+.loading-container {
+  @apply flex items-center justify-center min-h-screen;
+}
+
+.spinner {
+  @apply animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600;
+}
+
+/* Safe image loading */
+img[src=""], img:not([src]), img[src*="undefined"] {
+  @apply hidden;
+}
+
+/* Fix for potential layout shifts */
+.layout-stable {
+  contain: layout style;
+}
+
+/* Merchant Panel - Force product images to never stretch */
+[class*="merchant"] img,
+[data-merchant-panel] img,
+table img {
+  object-fit: contain !important;
+}
+
+/* Product Grid/List - Ensure images maintain aspect ratio */
+.product-grid img,
+.product-list img,
+.product-table img {
+  object-fit: contain !important;
+}
+
+/* Form validation styles */
+.form-error {
+  @apply text-red-600 text-sm mt-1;
+}
+
+.form-success {
+  @apply text-green-600 text-sm mt-1;
+}
+
+/* Safe overflow handling */
+.safe-overflow {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Prevent text selection on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Focus-visible for better accessibility */
+.focus-visible-only:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* React Native Web Enhanced Compatibility */
+.react-native-renderer {
+  /* Ensure React Native Web components render properly */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent text selection in React Native components */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Prevent tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.react-native-renderer * {
+  /* Consistent box model */
+  box-sizing: border-box;
+}
+
+/* React Native Web View component defaults */
+.react-native-renderer [data-focusable="true"]:focus {
+  outline: none;
+}
+
+/* React Native Web Text components */
+.react-native-renderer div[role="text"] {
+  /* Ensure text renders correctly on web */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* React Native Web ScrollView enhancements */
+.react-native-renderer [data-testid] {
+  /* Better scrolling performance */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* React Native Web Image components */
+.react-native-renderer img {
+  /* Prevent image dragging */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  /* Ensure images fit properly */
+  object-fit: cover;
+}
+
+/* React Native Web Pressable/TouchableOpacity styling */
+.react-native-renderer [role="button"] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+/* Platform-specific font improvements */
+@media (max-width: 768px) {
+  .react-native-renderer {
+    /* Better mobile font rendering */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  }
+}
+
+/* Android-like font for Android device previews */
+.react-native-renderer.android-preview {
+  font-family: Roboto, "Droid Sans", sans-serif;
+}
+
+/* iOS-like font for iOS device previews */
+.react-native-renderer.ios-preview {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+}
+
+/* Merchant Panel - Uniform 10% Reduction */
+/* Applies to entire merchant panel: header, sidebar, and content */
+.merchant-panel-compact {
+  font-size: 90%; /* Reduces all fonts and rem/em-based spacing by 10% */
+}

@@ -1,0 +1,102 @@
+{
+  "emotions-reactions": {
+    "totalEmojis": 2059,
+    "chunks": 11,
+    "files": [
+      "emotions-reactions-0.json",
+      "emotions-reactions-1.json",
+      "emotions-reactions-2.json",
+      "emotions-reactions-3.json",
+      "emotions-reactions-4.json",
+      "emotions-reactions-5.json",
+      "emotions-reactions-6.json",
+      "emotions-reactions-7.json",
+      "emotions-reactions-8.json",
+      "emotions-reactions-9.json",
+      "emotions-reactions-10.json"
+    ]
+  },
+  "food-beverages": {
+    "totalEmojis": 142,
+    "chunks": 1,
+    "files": [
+      "food-beverages-0.json"
+    ]
+  },
+  "shopping-commerce": {
+    "totalEmojis": 53,
+    "chunks": 1,
+    "files": [
+      "shopping-commerce-0.json"
+    ]
+  },
+  "technology-electronics": {
+    "totalEmojis": 212,
+    "chunks": 2,
+    "files": [
+      "technology-electronics-0.json",
+      "technology-electronics-1.json"
+    ]
+  },
+  "transportation-delivery": {
+    "totalEmojis": 97,
+    "chunks": 1,
+    "files": [
+      "transportation-delivery-0.json"
+    ]
+  },
+  "home-living": {
+    "totalEmojis": 108,
+    "chunks": 1,
+    "files": [
+      "home-living-0.json"
+    ]
+  },
+  "fashion-accessories": {
+    "totalEmojis": 44,
+    "chunks": 1,
+    "files": [
+      "fashion-accessories-0.json"
+    ]
+  },
+  "sports-fitness": {
+    "totalEmojis": 248,
+    "chunks": 2,
+    "files": [
+      "sports-fitness-0.json",
+      "sports-fitness-1.json"
+    ]
+  },
+  "animals-nature": {
+    "totalEmojis": 106,
+    "chunks": 1,
+    "files": [
+      "animals-nature-0.json"
+    ]
+  },
+  "business-professional": {
+    "totalEmojis": 98,
+    "chunks": 1,
+    "files": [
+      "business-professional-0.json"
+    ]
+  },
+  "travel-leisure": {
+    "totalEmojis": 148,
+    "chunks": 1,
+    "files": [
+      "travel-leisure-0.json"
+    ]
+  },
+  "symbols-signs": {
+    "totalEmojis": 980,
+    "chunks": 5,
+    "files": [
+      "symbols-signs-0.json",
+      "symbols-signs-1.json",
+      "symbols-signs-2.json",
+      "symbols-signs-3.json",
+      "symbols-signs-4.json"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Microsoft Fluent Emoji",
+  "key": "fluent",
+  "count": 0,
+  "emojis": [],
+  "license": "MIT",
+  "website": "https://github.com/microsoft/fluentui-emoji",
+  "description": "A collection of familiar, friendly, and modern emoji from Microsoft",
+  "categories": []
+}

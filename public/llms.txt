@@ -1,0 +1,122 @@
+# Mobelo - No-Code Mobile App Builder
+# AI-powered platform for creating iOS and Android e-commerce apps
+
+# Site Information
+> Name: Mobelo
+> Description: Build professional e-commerce mobile apps for iOS and Android without coding. AI-powered platform with integrated Stripe payments, merchant panel, and unlimited products.
+> URL: https://mobelo.dev
+> Contact: support@mobelo.com
+> Category: Mobile App Development Platform
+
+# Key Features
+- No-code mobile app builder for e-commerce
+- AI-powered app generation (4-8 minutes)
+- iOS and Android app publishing
+- Integrated Stripe payments
+- Full merchant dashboard with RBAC
+- Unlimited products and orders
+- React Native + Expo 54 apps
+- Source code export available
+
+# Main Pages
+## Home
+https://mobelo.dev
+The main landing page showcasing Mobelo's AI-powered mobile app builder for e-commerce.
+
+## Pricing
+https://mobelo.dev/pricing
+Pricing plans: Starter ($49/mo), Growth ($99/mo), Custom ($199/mo). All plans include unlimited products, merchant panel, and Stripe integration.
+
+## Features
+https://mobelo.dev/features
+Detailed feature list including AI generation, custom theming, payment processing, and analytics.
+
+## App Builder
+https://mobelo.dev/app-builder
+Main app creation interface where users design and generate their mobile apps using AI.
+
+## Dashboard
+https://mobelo.dev/dashboard
+User dashboard for managing created apps, products, orders, and settings.
+
+# Technical Stack
+- Frontend: Next.js 14, React 19, TypeScript, Tailwind CSS
+- Backend: NestJS, PostgreSQL, TypeORM
+- Mobile: React Native, Expo 54, Zustand
+- Payments: Stripe (native SDK)
+- AI: OpenAI GPT for content generation
+- Infrastructure: AWS S3, CloudFront, Redis
+
+# Product Information
+## Starter Plan
+Price: $49/month + 1% sales commission
+- Production-ready mobile app
+- Full merchant dashboard
+- Unlimited products and orders
+- iOS & Android publishing
+- Stripe payment integration
+- Basic support
+
+## Growth Plan
+Price: $99/month + 0.7% sales commission
+- Everything in Starter
+- Advanced analytics
+- Custom integrations
+- Source code export
+- Priority support
+
+## Custom Plan
+Price: $199/month + 0.4% sales commission
+- Everything in Growth
+- Production website included
+- Custom features
+- Dedicated support
+- White-label option
+
+# Use Cases
+1. Small businesses wanting mobile presence without hiring developers
+2. E-commerce stores expanding to mobile apps
+3. Entrepreneurs testing mobile commerce ideas
+4. Agencies building apps for multiple clients
+5. Retail businesses modernizing with mobile apps
+
+# FAQ
+Q: How long does it take to launch?
+A: Mobelo generates your complete mobile app in 4-8 minutes. App Store and Play Store approval may take additional time.
+
+Q: Do I need coding skills?
+A: No. Mobelo is completely no-code. AI handles design and development.
+
+Q: Can I publish to both iOS and Android?
+A: Yes. One app works on both platforms.
+
+Q: Who owns the app and code?
+A: You own everything. Source code export available.
+
+Q: Are there hidden costs?
+A: No. Only monthly fee plus sales commission (0.4% to 1% based on plan).
+
+# Authentication Types
+1. Platform Owner: Email OTP authentication for dashboard access
+2. Staff Members: RBAC system with role-based permissions
+3. Mobile Users: OTP/Password/Social login for customer accounts
+4. Guest Users: Session-based for browsing and cart management
+
+# API Documentation
+Base URL: https://api.mobelo.dev/api
+Namespaces:
+- /v1/platform/* - Platform user management
+- /v1/merchant/* - Product/order management (staff + RBAC)
+- /v1/mobile/* - Mobile app endpoints (customers)
+
+# Keywords
+mobile app builder, e-commerce app creator, no-code app builder, iOS app builder, Android app builder, AI app generator, mobile shopping app, create mobile app without coding, ecommerce app builder, Stripe mobile app, mobile commerce platform, react native app builder, expo app creator
+
+# Schema.org Data
+Organization Type: SoftwareApplication
+Application Category: DeveloperApplication
+Operating System: Web, iOS, Android
+Aggregate Rating: 4.9/5 (5000 reviews)
+
+# Last Updated
+2025-12-27

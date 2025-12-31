@@ -1,0 +1,126 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
+import { logger } from '@/lib/logger'
+
+export interface Brand {
+  id: number
+  name: string
+  description?: string
+  logoUrl?: string
+  appId: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateBrandInput {
+  name: string
+  description?: string
+  logoUrl?: string
+}
+
+export interface UpdateBrandInput extends Partial<CreateBrandInput> {
+  id: number
+}
+
+// Fetch all brands
+export function useBrands(appId?: number) {
+  return useQuery({
+    queryKey: ['brands', appId],
+    queryFn: async () => {
+      const url = appId ? `/brands?appId=${appId}` : '/brands'
+      const response = await apiClient.get(url)
+      return response.data as Brand[]
+    },
+    enabled: !!appId,
+  })
+}
+
+// Fetch single brand
+export function useBrand(brandId: number) {
+  return useQuery({
+    queryKey: ['brands', brandId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/brands/${brandId}`)
+      return response.data as Brand
+    },
+    enabled: !!brandId,
+  })
+}
+
+// Create brand
+export function useCreateBrand() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: CreateBrandInput) => {
+      const response = await apiClient.createBrand(input)
+      return response.data as Brand
+    },
+    onSuccess: (newBrand) => {
+      queryClient.invalidateQueries({ queryKey: ['brands'] })
+      logger.info('Brand created successfully', { id: newBrand.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to create brand', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+    },
+  })
+}
+
+// Update brand
+export function useUpdateBrand() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateBrandInput) => {
+      const response = await apiClient.put(`/brands/${id}`, input)
+      return response.data as Brand
+    },
+    onSuccess: (updatedBrand) => {
+      queryClient.invalidateQueries({ queryKey: ['brands'] })
+      queryClient.setQueryData(['brands', updatedBrand.id], updatedBrand)
+      logger.info('Brand updated successfully', { id: updatedBrand.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to update brand', { error })
+    },
+  })
+}
+
+// Delete brand
+export function useDeleteBrand() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (brandId: number) => {
+      await apiClient.delete(`/brands/${brandId}`)
+      return brandId
+    },
+    onSuccess: (brandId) => {
+      queryClient.invalidateQueries({ queryKey: ['brands'] })
+      queryClient.removeQueries({ queryKey: ['brands', brandId] })
+      logger.info('Brand deleted successfully', { id: brandId })
+    },
+    onError: (error) => {
+      logger.error('Failed to delete brand', { error })
+    },
+  })
+}
+
+// Upload brand logo
+export function useUploadBrandLogo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ brandId, formData }: { brandId: number; formData: FormData }) => {
+      const response = await apiClient.post(`/brands/${brandId}/logo`, formData)
+      return response.data
+    },
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: ['brands', brandId] })
+      logger.info('Brand logo uploaded successfully', { brandId })
+    },
+    onError: (error) => {
+      logger.error('Failed to upload brand logo', { error })
+    },
+  })
+}

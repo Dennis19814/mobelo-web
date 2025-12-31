@@ -1,0 +1,227 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-09-27T04:17:49.372Z",
+  "totalEmojis": 4295,
+  "sources": 1,
+  "categories": [
+    "emotions-reactions",
+    "food-beverages",
+    "shopping-commerce",
+    "technology-electronics",
+    "transportation-delivery",
+    "home-living",
+    "fashion-accessories",
+    "sports-fitness",
+    "animals-nature",
+    "business-professional",
+    "travel-leisure",
+    "symbols-signs"
+  ],
+  "categoryInfo": {
+    "emotions-reactions": {
+      "name": "Emotions & Reactions",
+      "description": "Customer satisfaction, reviews, feedback",
+      "keywords": [
+        "happy",
+        "sad",
+        "love",
+        "angry",
+        "surprised",
+        "thinking",
+        "wink",
+        "smile",
+        "heart",
+        "thumbs"
+      ]
+    },
+    "food-beverages": {
+      "name": "Food & Beverages",
+      "description": "Restaurants, cafes, food delivery, cooking",
+      "keywords": [
+        "food",
+        "drink",
+        "coffee",
+        "pizza",
+        "burger",
+        "fruit",
+        "vegetable",
+        "cake",
+        "wine",
+        "beer",
+        "restaurant"
+      ]
+    },
+    "shopping-commerce": {
+      "name": "Shopping & Commerce",
+      "description": "E-commerce, payments, shopping, sales",
+      "keywords": [
+        "cart",
+        "bag",
+        "money",
+        "credit",
+        "dollar",
+        "euro",
+        "sale",
+        "shop",
+        "store",
+        "payment",
+        "receipt"
+      ]
+    },
+    "technology-electronics": {
+      "name": "Technology & Electronics",
+      "description": "Gadgets, devices, tech products",
+      "keywords": [
+        "phone",
+        "computer",
+        "laptop",
+        "tablet",
+        "camera",
+        "headphone",
+        "watch",
+        "tv",
+        "speaker",
+        "keyboard"
+      ]
+    },
+    "transportation-delivery": {
+      "name": "Transportation & Delivery",
+      "description": "Shipping, logistics, travel, vehicles",
+      "keywords": [
+        "car",
+        "truck",
+        "plane",
+        "ship",
+        "train",
+        "bike",
+        "delivery",
+        "package",
+        "mail",
+        "logistics"
+      ]
+    },
+    "home-living": {
+      "name": "Home & Living",
+      "description": "Furniture, home goods, lifestyle",
+      "keywords": [
+        "house",
+        "home",
+        "furniture",
+        "bed",
+        "chair",
+        "table",
+        "lamp",
+        "kitchen",
+        "bathroom",
+        "garden"
+      ]
+    },
+    "fashion-accessories": {
+      "name": "Fashion & Accessories",
+      "description": "Clothing, jewelry, beauty, style",
+      "keywords": [
+        "shirt",
+        "dress",
+        "shoe",
+        "hat",
+        "jewelry",
+        "watch",
+        "glasses",
+        "makeup",
+        "lipstick",
+        "perfume"
+      ]
+    },
+    "sports-fitness": {
+      "name": "Sports & Fitness",
+      "description": "Exercise, sports, health, wellness",
+      "keywords": [
+        "sport",
+        "ball",
+        "fitness",
+        "gym",
+        "run",
+        "bike",
+        "swim",
+        "yoga",
+        "weight",
+        "health"
+      ]
+    },
+    "animals-nature": {
+      "name": "Animals & Nature",
+      "description": "Pets, plants, outdoor, environment",
+      "keywords": [
+        "dog",
+        "cat",
+        "bird",
+        "fish",
+        "plant",
+        "tree",
+        "flower",
+        "nature",
+        "pet",
+        "garden"
+      ]
+    },
+    "business-professional": {
+      "name": "Business & Professional",
+      "description": "Office, work, corporate, services",
+      "keywords": [
+        "office",
+        "business",
+        "work",
+        "meeting",
+        "document",
+        "chart",
+        "calendar",
+        "briefcase",
+        "professional"
+      ]
+    },
+    "travel-leisure": {
+      "name": "Travel & Leisure",
+      "description": "Tourism, vacation, entertainment",
+      "keywords": [
+        "travel",
+        "vacation",
+        "hotel",
+        "beach",
+        "mountain",
+        "camera",
+        "passport",
+        "luggage",
+        "map"
+      ]
+    },
+    "symbols-signs": {
+      "name": "Symbols & Signs",
+      "description": "Icons, arrows, symbols, indicators",
+      "keywords": [
+        "arrow",
+        "star",
+        "heart",
+        "check",
+        "cross",
+        "warning",
+        "info",
+        "question",
+        "exclamation"
+      ]
+    }
+  },
+  "sourceStats": [
+    {
+      "key": "openmoji",
+      "name": "OpenMoji",
+      "count": 4295,
+      "license": "CC BY-SA 4.0",
+      "website": "https://openmoji.org"
+    }
+  ],
+  "chunksInfo": {
+    "totalChunks": 22,
+    "emojisPerChunk": 200,
+    "chunkSize": 196
+  }
+}

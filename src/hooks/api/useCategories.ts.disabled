@@ -1,0 +1,104 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
+import { logger } from '@/lib/logger'
+
+export interface Category {
+  id: number
+  name: string
+  description?: string
+  appId: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCategoryInput {
+  name: string
+  description?: string
+}
+
+export interface UpdateCategoryInput extends Partial<CreateCategoryInput> {
+  id: number
+}
+
+// Fetch all categories
+export function useCategories(appId?: number, headers?: Record<string, string>) {
+  return useQuery({
+    queryKey: ['categories', appId, headers],
+    queryFn: async () => {
+      const response = await apiClient.getCategories(appId!, { headers })
+      return response.data as Category[]
+    },
+    enabled: !!appId,
+  })
+}
+
+// Fetch single category
+export function useCategory(categoryId: number) {
+  return useQuery({
+    queryKey: ['categories', categoryId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/categories/${categoryId}`)
+      return response.data as Category
+    },
+    enabled: !!categoryId,
+  })
+}
+
+// Create category
+export function useCreateCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: CreateCategoryInput) => {
+      const response = await apiClient.createCategory(input)
+      return response.data as Category
+    },
+    onSuccess: (newCategory) => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      logger.info('Category created successfully', { id: newCategory.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to create category', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+    },
+  })
+}
+
+// Update category
+export function useUpdateCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateCategoryInput) => {
+      const response = await apiClient.updateCategory(id, input)
+      return response.data as Category
+    },
+    onSuccess: (updatedCategory) => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.setQueryData(['categories', updatedCategory.id], updatedCategory)
+      logger.info('Category updated successfully', { id: updatedCategory.id })
+    },
+    onError: (error) => {
+      logger.error('Failed to update category', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+    },
+  })
+}
+
+// Delete category
+export function useDeleteCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (categoryId: number) => {
+      await apiClient.deleteCategory(categoryId)
+      return categoryId
+    },
+    onSuccess: (categoryId) => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.removeQueries({ queryKey: ['categories', categoryId] })
+      logger.info('Category deleted successfully', { id: categoryId })
+    },
+    onError: (error) => {
+      logger.error('Failed to delete category', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+    },
+  })
+}
