@@ -501,7 +501,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   }
 
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className=" overflow-hidden">
       {/* Success Message */}
       {successMessage && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center justify-between">

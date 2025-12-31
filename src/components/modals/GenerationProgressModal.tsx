@@ -49,13 +49,13 @@ export default function GenerationProgressModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       {/* Soft gradient backdrop */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-95" />
       <div className="absolute inset-0 bg-black/10" />
 
       {/* Modal card */}
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white/90 shadow-2xl border border-gray-200 backdrop-blur-sm mt-16 md:mt-24">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white/90 shadow-2xl border border-gray-200 backdrop-blur-sm max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 pt-6">
           <h3 className="text-xl font-semibold text-gray-900">Generating your mobile app</h3>

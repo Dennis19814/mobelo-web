@@ -52,10 +52,10 @@ export default function VideoModal({
       ref={modalRef}
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-6 pt-4 sm:pt-8 md:pt-12 bg-black/80 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/80 overflow-y-auto"
       onClick={handleBackdropClick}
     >
-      <div className="relative bg-black rounded-2xl w-full max-w-4xl shadow-xl overflow-hidden mt-0">
+      <div className="relative bg-black rounded-2xl w-full max-w-4xl shadow-xl overflow-hidden">
         {/* Close Button */}
         <button
           ref={closeButtonRef}
