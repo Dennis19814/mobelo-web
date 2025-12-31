@@ -168,138 +168,274 @@ export default function ReviewModal({
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={handleClose} />
-      <div
-        ref={modalRef}
-        className={`bg-white rounded-lg flex flex-col ${!position ? 'fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-2xl w-full max-h-[80vh] z-50' : ''}`}
-        style={position ? modalStyle : {}}
-      >
-        <div className="p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Review Details</h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 mt-1">Product: {productName}</p>
-        </div>
-
-        <div className="p-6 overflow-y-auto flex-1">
-          {/* Review Content */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="font-medium text-gray-900">
-                    {review.mobileUser?.firstName} {review.mobileUser?.lastName}
-                  </span>
-                  {review.isVerifiedPurchase && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                      Verified Purchase
-                    </span>
-                  )}
-                </div>
-                <StarRating rating={review.rating} size="sm" showNumber={false} showCount={false} />
+      {!position ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg flex flex-col max-w-2xl w-full max-h-[80vh] z-50"
+          >
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Review Details</h2>
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-              <span className="text-sm text-gray-500">
-                {new Date(review.createdAt).toLocaleDateString()}
-              </span>
+              <p className="text-sm text-gray-600 mt-1">Product: {productName}</p>
             </div>
-            
-            {review.title && (
-              <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
-            )}
-            
-            {review.description && (
-              <p className="text-gray-600 mb-4">{review.description}</p>
-            )}
-            
-            {review.helpfulCount > 0 && (
-              <div className="text-sm text-gray-500">
-                {review.helpfulCount} {review.helpfulCount === 1 ? 'person found' : 'people found'} this helpful
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Review Content */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="font-medium text-gray-900">
+                        {review.mobileUser?.firstName} {review.mobileUser?.lastName}
+                      </span>
+                      {review.isVerifiedPurchase && (
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          Verified Purchase
+                        </span>
+                      )}
+                    </div>
+                    <StarRating rating={review.rating} size="sm" showNumber={false} showCount={false} />
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                
+                {review.title && (
+                  <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
+                )}
+                
+                {review.description && (
+                  <p className="text-gray-600 mb-4">{review.description}</p>
+                )}
+                
+                {review.helpfulCount > 0 && (
+                  <div className="text-sm text-gray-500">
+                    {review.helpfulCount} {review.helpfulCount === 1 ? 'person found' : 'people found'} this helpful
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Existing Merchant Response */}
+              {review.merchantResponse && (
+                <div className="bg-orange-50 p-4 rounded-lg mb-6">
+                  <div className="flex items-center mb-2">
+                    <span className="font-medium text-slate-900">Your Response</span>
+                    <span className="text-sm text-orange-600 ml-2">
+                      {review.merchantResponseAt && new Date(review.merchantResponseAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-blue-800">{review.merchantResponse}</p>
+                </div>
+              )}
+
+              {/* Add/Update Response Form */}
+              {!review.merchantResponse && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Add Merchant Response
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      ref={textareaRef}
+                      value={merchantResponse}
+                      onChange={(e) => setMerchantResponse(e.target.value)}
+                      placeholder="Write a professional response to this review..."
+                      rows={4}
+                      className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      disabled={submitting}
+                    />
+                    <div className="flex justify-between items-end mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={`p-2 transition-colors rounded-lg ${
+                          showEmojiPicker
+                            ? 'text-orange-600 bg-orange-50'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        disabled={submitting}
+                        title="Add emoji"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {error && (
+                    <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                      {error}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button
+                      onClick={handleClose}
+                      className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitResponse}
+                      disabled={!merchantResponse.trim() || submitting}
+                      className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {submitting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Submit Response
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={modalRef}
+          className="bg-white rounded-lg flex flex-col max-w-2xl w-full max-h-[80vh] z-50"
+          style={modalStyle}
+        >
+          <div className="p-6 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Review Details</h2>
+              <button
+                onClick={handleClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">Product: {productName}</p>
           </div>
 
-          {/* Existing Merchant Response */}
-          {review.merchantResponse && (
-            <div className="bg-orange-50 p-4 rounded-lg mb-6">
-              <div className="flex items-center mb-2">
-                <span className="font-medium text-slate-900">Your Response</span>
-                <span className="text-sm text-orange-600 ml-2">
-                  {review.merchantResponseAt && new Date(review.merchantResponseAt).toLocaleDateString()}
+          <div className="p-6 overflow-y-auto flex-1">
+            {/* Review Content */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="font-medium text-gray-900">
+                      {review.mobileUser?.firstName} {review.mobileUser?.lastName}
+                    </span>
+                    {review.isVerifiedPurchase && (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                        Verified Purchase
+                      </span>
+                    )}
+                  </div>
+                  <StarRating rating={review.rating} size="sm" showNumber={false} showCount={false} />
+                </div>
+                <span className="text-sm text-gray-500">
+                  {new Date(review.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <p className="text-blue-800">{review.merchantResponse}</p>
+              
+              {review.title && (
+                <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
+              )}
+              
+              {review.description && (
+                <p className="text-gray-600 mb-4">{review.description}</p>
+              )}
+              
+              {review.helpfulCount > 0 && (
+                <div className="text-sm text-gray-500">
+                  {review.helpfulCount} {review.helpfulCount === 1 ? 'person found' : 'people found'} this helpful
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Add/Update Response Form */}
-          {!review.merchantResponse && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Add Merchant Response
-              </label>
-              <div className="relative">
-                <textarea
-                  ref={textareaRef}
-                  value={merchantResponse}
-                  onChange={(e) => setMerchantResponse(e.target.value)}
-                  placeholder="Write a professional response to this review..."
-                  rows={4}
-                  className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  disabled={submitting}
-                />
-                <div className="flex justify-between items-end mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className={`p-2 transition-colors rounded-lg ${
-                      showEmojiPicker
-                        ? 'text-orange-600 bg-orange-50'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                    }`}
+            {/* Existing Merchant Response */}
+            {review.merchantResponse && (
+              <div className="bg-orange-50 p-4 rounded-lg mb-6">
+                <div className="flex items-center mb-2">
+                  <span className="font-medium text-slate-900">Your Response</span>
+                  <span className="text-sm text-orange-600 ml-2">
+                    {review.merchantResponseAt && new Date(review.merchantResponseAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-blue-800">{review.merchantResponse}</p>
+              </div>
+            )}
+
+            {/* Add/Update Response Form */}
+            {!review.merchantResponse && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Add Merchant Response
+                </label>
+                <div className="relative">
+                  <textarea
+                    ref={textareaRef}
+                    value={merchantResponse}
+                    onChange={(e) => setMerchantResponse(e.target.value)}
+                    placeholder="Write a professional response to this review..."
+                    rows={4}
+                    className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     disabled={submitting}
-                    title="Add emoji"
+                  />
+                  <div className="flex justify-between items-end mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`p-2 transition-colors rounded-lg ${
+                        showEmojiPicker
+                          ? 'text-orange-600 bg-orange-50'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                      }`}
+                      disabled={submitting}
+                      title="Add emoji"
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                
+                {error && (
+                  <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {error}
+                  </div>
+                )}
+                
+                <div className="flex justify-end gap-3 mt-4">
+                  <button
+                    onClick={handleClose}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={submitting}
                   >
-                    <Smile className="w-5 h-5" />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitResponse}
+                    disabled={!merchantResponse.trim() || submitting}
+                    className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Submit Response
                   </button>
                 </div>
               </div>
-              
-              {error && (
-                <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                  {error}
-                </div>
-              )}
-              
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  onClick={handleClose}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitResponse}
-                  disabled={!merchantResponse.trim() || submitting}
-                  className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : (
-                    <Send className="w-4 h-4 mr-2" />
-                  )}
-                  Submit Response
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Emoji Picker Modal */}
       <SimpleEmojiPicker
