@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, UserPlus, Loader2 } from 'lucide-react';
+import { X, UserPlus, Loader2, Percent, User } from 'lucide-react';
 import { apiService } from '@/lib/api-service';
 
 interface InviteStaffModalProps {
@@ -115,17 +115,25 @@ export default function InviteStaffModal({ appId, onClose, onSuccess }: InviteSt
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <UserPlus className="w-6 h-6 text-orange-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Invite Staff Member</h2>
+      <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <User className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+         Invite Staff Member
+ 
+
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition duration-200"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
+          </div>
         </div>
 
         {/* Form */}

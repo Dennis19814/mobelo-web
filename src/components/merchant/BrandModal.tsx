@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger'
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Upload, Loader2 } from 'lucide-react';
+import { X, Upload, Loader2, Tags, Award } from 'lucide-react';
 import { Brand, CreateBrandDto, UpdateBrandDto } from '@/types/brand.types';
 import { ApiDataModalProps } from '@/types/shared-props';
 
@@ -235,21 +235,30 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {brand ? 'Edit Brand' : 'Create New Brand'}
+            <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Award className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+                            {brand ? 'Edit Brand' : 'Create New Brand'}
+
             </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+          </button>
           </div>
         </div>
+
+
+              {/* {brand ? 'Edit Brand' : 'Create New Brand'} */}
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {errors.submit && (

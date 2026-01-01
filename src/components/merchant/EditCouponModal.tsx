@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { apiService } from '@/lib/api-service';
 import { DiscountType, ApplicationType, CustomerEligibility, CouponStatus, Coupon, UpdateCouponData } from '@/types/coupon';
+import { TagsIcon, X } from 'lucide-react';
 
 interface EditCouponModalProps {
   coupon: Coupon;
@@ -148,15 +149,26 @@ export default function EditCouponModal({ coupon, onClose, onSuccess }: EditCoup
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 my-4 max-h-[85vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Edit Coupon</h2>
+      <div className="bg-white rounded-lg  max-w-4xl w-full mx-4 my-4 max-h-[85vh] overflow-y-auto">
+  {/* Header */}
+           <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <TagsIcon className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+         Edit Coupon 
+
+            </h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
           >
-            ×
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
+          </div>
         </div>
 
         {error && (
@@ -165,7 +177,7 @@ export default function EditCouponModal({ coupon, onClose, onSuccess }: EditCoup
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-2 p-4">
           {/* Basic Information */}
           <div className="border-b pb-3">
             <h3 className="text-sm font-semibold mb-2">Basic Information</h3>

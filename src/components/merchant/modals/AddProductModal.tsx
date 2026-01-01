@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle } from 'lucide-react'
+import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle,Tags } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
@@ -346,7 +346,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] h-[72vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white">
+          <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white">
           <div className="flex items-center space-x-2">
             <div className="p-1.5 bg-blue-100 rounded-lg">
               <Package className="w-3.5 h-3.5 text-orange-600" />

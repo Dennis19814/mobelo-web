@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { useMerchantAuth } from '@/hooks';
-import { Plus, AlertCircle, Search, Loader2, FolderTree } from 'lucide-react';
+import { Plus, AlertCircle, Search, Loader2, FolderTree, Pencil, Trash2 } from 'lucide-react';
 import { TaxCategory } from '@/types/tax.types';
 import { useTaxCategories } from '@/hooks/useTaxCategories';
 import { useCrudOperations } from '@/hooks/useCrudOperations';
@@ -122,6 +122,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
       </div>
 
       {/* Search */}
+      <div >
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <input
@@ -134,6 +135,10 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
       </div>
 
       {/* Categories List */}
+
+      <div className="pt-6">
+
+ 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
@@ -200,16 +205,21 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <button
                       onClick={() => handleEditCategory(category)}
-                      className="text-orange-600 hover:text-slate-900 transition-colors"
+                      className="text-gray-600 hover:text-orange-600 transition-colors"
                     >
-                      Edit
+                                                    <Pencil className="h-4 w-4" />
+
                     </button>
                     <button
                       onClick={() => handleDeleteCategory(category)}
                       disabled={deleteLoading === category.id}
-                      className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+                      className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
                     >
-                      {deleteLoading === category.id ? 'Deleting...' : 'Delete'}
+                      {deleteLoading === category.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
                     </button>
                   </td>
                 </tr>
@@ -218,7 +228,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
           </table>
         </div>
       )}
-
+     </div>
       {/* Modals */}
       <Suspense fallback={null}>
         {isAddModalOpen && (
@@ -242,6 +252,8 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
           />
         )}
       </Suspense>
+      </div>
+
     </div>
   );
 };
