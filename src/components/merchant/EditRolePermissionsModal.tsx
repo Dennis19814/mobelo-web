@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Key, User, X } from 'lucide-react';
 import { PermissionMatrix } from './PermissionMatrix';
 import { apiService } from '@/lib/api-service';
 
@@ -76,7 +76,7 @@ export function EditRolePermissionsModal({
         {/* Modal */}
         <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          {/* <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Edit Role Permissions: {role.role}
@@ -93,8 +93,34 @@ export function EditRolePermissionsModal({
             >
               <X className="h-6 w-6" />
             </button>
-          </div>
+          </div> */}
 
+
+        {/* Header */}
+    <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Key className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+       Edit Role Permissions: {role.role}
+            </h2>
+
+                 {isSystemRole && (
+                <p className="mt-1 text-sm text-amber-600">
+                  ⚠️ This is a system role. Changes will affect all staff members with this role.
+                </p>
+              )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+          </button>
+          </div>
+        </div>
           {/* Content */}
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             {error && (
