@@ -12,6 +12,12 @@ interface SettingsTemplatesSectionProps {
 export default function SettingsTemplatesSection({ appId, apiKey, appSecretKey }: SettingsTemplatesSectionProps) {
   return (
     <div className="space-y-4 w-full max-w-full">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Templates</h1>
+        <p className="text-sm md:text-base text-gray-600 break-words">Manage system email and SMS templates</p>
+      </div>
+
       <Suspense fallback={
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-orange-600" />

@@ -235,11 +235,10 @@ export default function SettingsSocialAuthSection({ appId, apiKey, appSecretKey 
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Social Authentication</h3>
-          <p className="text-sm text-gray-600">Configure OAuth providers for user login</p>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Social Authentication</h1>
+        <p className="text-sm md:text-base text-gray-600 break-words">Configure OAuth providers for user login</p>
       </div>
 
       {loading ? (

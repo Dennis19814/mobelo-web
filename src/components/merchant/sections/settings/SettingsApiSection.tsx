@@ -21,11 +21,10 @@ export default function SettingsApiSection({ apiKey, appSecretKey }: SettingsApi
 
   return (
     <div className="space-y-4 w-full max-w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 md:gap-3">
-        <div>
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">API Credentials</h3>
-          <p className="text-xs md:text-sm text-gray-600 break-words">Use these credentials to authenticate with the Mobelo API</p>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">API Credentials</h1>
+        <p className="text-sm md:text-base text-gray-600 break-words">Use these credentials to authenticate with the Mobelo API</p>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-3 w-full max-w-full overflow-hidden min-w-0">

@@ -167,18 +167,21 @@ export default function SettingsEmailSection({ appId, apiKey, appSecretKey }: Se
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 lg:gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Email Provider Configuration</h3>
-          <p className="text-sm text-gray-600">Manage email service credentials for transactional emails</p>
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 lg:gap-3">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Email Provider Configuration</h1>
+            <p className="text-sm md:text-base text-gray-600 break-words">Manage email service credentials for transactional emails</p>
+          </div>
+          <button
+            onClick={() => setShowEmailModal(true)}
+            className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 whitespace-nowrap w-full lg:w-auto shrink-0"
+          >
+            <Key className="w-4 h-4 mr-2" />
+            {emailConfig ? 'Update Configuration' : 'Configure Email'}
+          </button>
         </div>
-        <button
-          onClick={() => setShowEmailModal(true)}
-          className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 whitespace-nowrap w-full lg:w-auto shrink-0"
-        >
-          <Key className="w-4 h-4 mr-2" />
-          {emailConfig ? 'Update Configuration' : 'Configure Email'}
-        </button>
       </div>
 
       {loading ? (

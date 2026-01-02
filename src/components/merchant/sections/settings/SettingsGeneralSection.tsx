@@ -375,6 +375,12 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
 
   return (
     <div className="w-full max-w-full min-w-0">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">General</h1>
+        <p className="text-sm md:text-base text-gray-600 break-words">Manage your app information, logo, splash screen, and legal documents</p>
+      </div>
+
       {/* Toast Messages */}
       {successMessage && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 animate-in slide-in-from-top duration-300">

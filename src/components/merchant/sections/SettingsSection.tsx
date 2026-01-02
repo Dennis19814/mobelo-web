@@ -79,11 +79,6 @@ export default function SettingsSection({ app, apiKey, appSecretKey, activeSecti
 
   return (
     <div className="w-full max-w-full min-w-0">
-      <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-        <p className="text-sm md:text-base text-gray-600 break-words">Configure your app preferences, authentication, and integrations</p>
-      </div>
-
       <Suspense fallback={
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
