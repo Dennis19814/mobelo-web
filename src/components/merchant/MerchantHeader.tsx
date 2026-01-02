@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Grid3x3, ChevronDown, LogOut, Settings, CreditCard } from 'lucide-react'
+import { Grid3x3, ChevronDown, LogOut, Settings, CreditCard, Bell } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
+import { NotificationsModal } from '@/components/modals'
 import type { User } from '@/types'
 
 interface App {
@@ -29,10 +30,29 @@ export default function MerchantHeader({
 }: MerchantHeaderProps) {
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false)
+  const notificationsRef = useRef<HTMLDivElement>(null)
 
   // Staff user context
   const { staffUser } = useStaffUser()
   const { role, isAdmin } = useStaffPermissions()
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setShowNotificationsModal(false)
+      }
+    }
+
+    if (showNotificationsModal) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showNotificationsModal])
 
   const getUserInitials = (user: User | null) => {
     if (!user) return 'U'
@@ -80,7 +100,7 @@ export default function MerchantHeader({
             </div>
           </div>
 
-          {/* Right side - My Apps button and User menu */}
+          {/* Right side - My Apps button, Notifications, and User menu */}
           <div className="flex items-center space-x-2 md:space-x-3 shrink-0">
             {/* My Apps Button - visible only for owner sessions, responsive */}
             {ownerLoggedIn && (
@@ -94,10 +114,38 @@ export default function MerchantHeader({
               </button>
             )}
 
+            {/* Notifications Button */}
+            <div className="relative" ref={notificationsRef}>
+              <button
+                onClick={() => {
+                  setShowNotificationsModal(!showNotificationsModal)
+                  setShowUserMenu(false) // Close user menu when opening notifications
+                }}
+                className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
+                aria-label="Notifications"
+                aria-expanded={showNotificationsModal}
+              >
+                <Bell className="w-5 h-5 md:w-6 md:h-6" />
+                {/* Unread badge */}
+                <span className="absolute top-1 right-1 w-2 h-2 bg-orange-600 rounded-full border-2 border-white"></span>
+              </button>
+              
+              {/* Notifications Dropdown */}
+              {showNotificationsModal && (
+                <NotificationsModal
+                  isOpen={showNotificationsModal}
+                  onClose={() => setShowNotificationsModal(false)}
+                />
+              )}
+            </div>
+
             {/* User Menu - responsive */}
             <div className="relative">
               <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={() => {
+                  setShowUserMenu(!showUserMenu)
+                  setShowNotificationsModal(false) // Close notifications when opening user menu
+                }}
                 className="flex items-center space-x-1.5 md:space-x-2 px-2 md:px-3 py-1.5 md:py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
                 aria-expanded={showUserMenu}
                 aria-label="User menu"

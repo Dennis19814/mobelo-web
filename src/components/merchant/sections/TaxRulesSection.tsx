@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, memo } from 'react';
 import { useMerchantAuth, useTaxRules, useTaxOptions, useCrudOperations } from '@/hooks';
-import { Plus, AlertCircle, Search, Loader2, Receipt, X } from 'lucide-react';
+import { Plus, AlertCircle, Search, Loader2, Receipt, X, Percent, Pencil, Trash2 } from 'lucide-react';
 import { TaxRule, TaxRuleFormData } from '@/types/tax.types';
 import { apiService } from '@/lib/api-service';
 
@@ -69,12 +69,27 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">{rule ? 'Edit' : 'Add'} Tax Rule</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X className="w-5 h-5" />
+           <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Percent className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+{rule ? 'Edit' : 'Add'} Tax Rule  
+ 
+
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
+          </div>
         </div>
+
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
@@ -286,7 +301,7 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Tax Rules</h2>
@@ -301,7 +316,9 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
         </button>
       </div>
 
-      <div className="relative">
+
+<div className="pt-4">
+       <div className="relative ">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <input
           type="text"
@@ -311,7 +328,9 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
       </div>
-
+</div>
+ 
+   <div className="pt-6">
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
@@ -366,11 +385,16 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button onClick={() => { setSelectedRule(rule); setIsEditModalOpen(true); }} className="text-orange-600 hover:text-slate-900">
-                      Edit
+                    <button onClick={() => { setSelectedRule(rule); setIsEditModalOpen(true); }} className="text-gray-600 hover:text-orange-600">
+                                                                         <Pencil className="h-4 w-4" />
+
                     </button>
                     <button onClick={() => handleDeleteRule(rule)} disabled={deleteLoading === rule.id} className="text-red-600 hover:text-red-900 disabled:opacity-50">
-                      {deleteLoading === rule.id ? 'Deleting...' : 'Delete'}
+                      {deleteLoading === rule.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
                     </button>
                   </td>
                 </tr>
@@ -379,7 +403,7 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
           </table>
         </div>
       )}
-
+</div>
       <TaxRuleModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

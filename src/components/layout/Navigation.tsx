@@ -94,6 +94,17 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')
+      localStorage.removeItem('userApiKey')
+      localStorage.removeItem('appSecretKey')
+      // Clear merchant panel section keys
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('merchant-panel-section-')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
     }
 
     // Update UI state

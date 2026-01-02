@@ -228,7 +228,7 @@ export default function TeamSection({ appId }: TeamSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -260,6 +260,7 @@ export default function TeamSection({ appId }: TeamSectionProps) {
       )}
 
       {/* Filters */}
+      <div className="pt-6">
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
@@ -311,8 +312,9 @@ export default function TeamSection({ appId }: TeamSectionProps) {
           </div>
         </div>
       </div>
-
+  </div>
       {/* Staff Table */}
+            <div className="pt-6">
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
@@ -419,7 +421,7 @@ export default function TeamSection({ appId }: TeamSectionProps) {
           </table>
         )}
       </div>
-
+</div>
       {/* Modals */}
       {showInviteModal && (
         <InviteStaffModal

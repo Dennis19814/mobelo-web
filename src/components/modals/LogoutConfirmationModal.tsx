@@ -50,6 +50,8 @@ export default function LogoutConfirmationModal({
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
     localStorage.removeItem('selected_features')
+    localStorage.removeItem('userApiKey')
+    localStorage.removeItem('appSecretKey')
 
     // Clear all sessionStorage
     try {
@@ -59,10 +61,11 @@ export default function LogoutConfirmationModal({
       logger.warn('[LogoutModal] Failed to clear sessionStorage:', { error: error instanceof Error ? error.message : String(error) })
     }
 
-    // Also clear any staff session to avoid cross-session confusion
+    // Also clear any staff session and merchant panel data to avoid cross-session confusion
     try {
-      const { clearStaffAuthData } = await import('@/lib/auth-utils')
+      const { clearStaffAuthData, clearMerchantPanelData } = await import('@/lib/auth-utils')
       clearStaffAuthData()
+      clearMerchantPanelData()
     } catch (_) {}
 
     // Dispatch custom event to notify other components of auth change
@@ -96,7 +99,7 @@ export default function LogoutConfirmationModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-6 pt-24 sm:pt-32 bg-black/50"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/50"
       onClick={handleBackdropClick}
     >
       <div className="relative bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">

@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
 interface App {
   id: number
@@ -76,7 +76,22 @@ const menuItems: MenuItem[] = [
     ]
   },
   { id: 'activity' as SectionType, label: 'Activity', icon: Activity },
-  { id: 'settings' as SectionType, label: 'Settings', icon: Settings },
+  {
+    id: 'settings' as SectionType,
+    label: 'Settings',
+    icon: Settings,
+    children: [
+      { id: 'settings-general' as SectionType, label: 'General', icon: Settings },
+      { id: 'settings-api' as SectionType, label: 'API', icon: Key },
+      { id: 'settings-social-auth' as SectionType, label: 'Logins', icon: Smartphone },
+      { id: 'settings-payments' as SectionType, label: 'Payment Gateway', icon: CreditCard },
+      { id: 'settings-sms' as SectionType, label: 'SMS', icon: MessageSquare },
+      { id: 'settings-email' as SectionType, label: 'Email', icon: Mail },
+      { id: 'settings-templates' as SectionType, label: 'Templates', icon: FileText },
+      { id: 'settings-appearance' as SectionType, label: 'Appearance', icon: Palette },
+      { id: 'settings-notifications' as SectionType, label: 'Notifications', icon: Bell },
+    ]
+  },
   { id: 'help-center' as SectionType, label: 'Help Center', icon: HelpCircle },
 ]
 

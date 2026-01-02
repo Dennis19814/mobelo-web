@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { 
   LayoutDashboard, Package, DollarSign, FolderTree, ShoppingCart, 
@@ -64,11 +64,14 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const hashedId = params.id as string
   const appId = unhashId(hashedId)
 
@@ -86,10 +89,90 @@ export default function MerchantPanel() {
   const [currentApp, setCurrentApp] = useState<App | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Initialize activeSection - will be set from URL/localStorage in useEffect
   const [activeSection, setActiveSection] = useState<SectionType>('dashboard')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [apiKeys, setApiKeys] = useState<ApiKeysData | null>(null)
+  const [sectionInitialized, setSectionInitialized] = useState(false)
+  
+  // Initialize section from URL params or localStorage on mount
+  useEffect(() => {
+    if (sectionInitialized) return
+    
+    // First, check URL search params
+    const sectionFromUrl = searchParams.get('section') as SectionType | null
+    if (sectionFromUrl && validSections.includes(sectionFromUrl)) {
+      setActiveSection(sectionFromUrl)
+      // Update localStorage to match URL
+      if (typeof window !== 'undefined' && appId) {
+        localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
+      }
+      setSectionInitialized(true)
+      return
+    }
+    
+    // Then, check localStorage
+    if (typeof window !== 'undefined' && appId) {
+      const sectionFromStorage = localStorage.getItem(`merchant-panel-section-${appId}`) as SectionType | null
+      if (sectionFromStorage && validSections.includes(sectionFromStorage)) {
+        setActiveSection(sectionFromStorage)
+        // Update URL to match localStorage
+        const currentUrl = new URL(window.location.href)
+        currentUrl.searchParams.set('section', sectionFromStorage)
+        router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
+        setSectionInitialized(true)
+        return
+      }
+    }
+    
+    // Default to dashboard - ensure URL reflects this
+    const currentUrl = new URL(window.location.href)
+    if (!currentUrl.searchParams.has('section')) {
+      currentUrl.searchParams.set('section', 'dashboard')
+      router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
+    }
+    setSectionInitialized(true)
+  }, [searchParams, appId, router, sectionInitialized])
+  
+  // Update URL and localStorage when section changes (after initialization)
+  const handleSectionChange = useCallback((section: SectionType) => {
+    setActiveSection(section)
+    
+    // Update URL with section parameter
+    const currentUrl = new URL(window.location.href)
+    currentUrl.searchParams.set('section', section)
+    router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
+    
+    // Update localStorage for persistence
+    if (typeof window !== 'undefined' && appId) {
+      localStorage.setItem(`merchant-panel-section-${appId}`, section)
+    }
+  }, [router, appId])
+  
+  // Redirect 'settings' to 'settings-general' if needed
+  useEffect(() => {
+    if (activeSection === 'settings' && sectionInitialized) {
+      handleSectionChange('settings-general' as SectionType)
+    }
+  }, [activeSection, sectionInitialized, handleSectionChange])
+  
+  // Sync section from URL when URL changes (for browser back/forward)
+  useEffect(() => {
+    if (!sectionInitialized) return
+    
+    const sectionFromUrl = searchParams.get('section') as SectionType | null
+    if (sectionFromUrl && validSections.includes(sectionFromUrl)) {
+      if (sectionFromUrl !== activeSection) {
+        setActiveSection(sectionFromUrl)
+        // Update localStorage to match URL
+        if (typeof window !== 'undefined' && appId) {
+          localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
+        }
+      }
+    }
+  }, [searchParams, appId, sectionInitialized, activeSection])
 
   // Preload ProductsSection to prevent flash when clicking Product Catalog
   useEffect(() => {
@@ -341,7 +424,7 @@ export default function MerchantPanel() {
           app={currentApp}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={dashboardFinalAppSecretKey || undefined}
-          onSectionChange={(section) => setActiveSection(section as SectionType)}
+          onSectionChange={(section) => handleSectionChange(section as SectionType)}
         />
       case 'products':
         const appFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
@@ -446,14 +529,47 @@ export default function MerchantPanel() {
       case 'team-roles':
         return <RolesSection />
       case 'help-center':
-        return <HelpCenterSection onNavigate={(section) => setActiveSection(section as SectionType)} />
+        return <HelpCenterSection onNavigate={(section) => handleSectionChange(section as SectionType)} />
       case 'help-faq':
-        return <HelpFaqSection onNavigate={(section) => setActiveSection(section as SectionType)} />
+        return <HelpFaqSection onNavigate={(section) => handleSectionChange(section as SectionType)} />
       case 'help-tutorials':
-        return <HelpTutorialsSection onNavigate={(section) => setActiveSection(section as SectionType)} />
+        return <HelpTutorialsSection onNavigate={(section) => handleSectionChange(section as SectionType)} />
       case 'activity':
         return <ActivitySection appId={currentApp.id} />
       case 'settings':
+        // Default to general settings - redirect handled by useEffect
+        // Use same API key logic as other sections
+        const defaultSettingsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const defaultSettingsFinalAppSecretKey = defaultSettingsAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <SettingsSection
+          app={currentApp}
+          apiKey={apiKeys?.userApiKey || ''}
+          appSecretKey={defaultSettingsFinalAppSecretKey || ''}
+          activeSection="settings-general"
+          onAppUpdated={(patch) => {
+            setCurrentApp(prev => prev ? ({ ...prev, ...patch } as any) : prev)
+            setApps(prev => prev.map(a => a.id === currentApp.id ? ({ ...a, ...patch } as any) : a))
+            try {
+              const staffAppData = typeof window !== 'undefined' ? localStorage.getItem('staff_app') : null
+              if (staffAppData) {
+                const staffApp = JSON.parse(staffAppData)
+                if (staffApp && staffApp.id === currentApp.id) {
+                  localStorage.setItem('staff_app', JSON.stringify({ ...staffApp, ...patch }))
+                }
+              }
+            } catch { /* noop */ }
+          }}
+        />
+      case 'settings-general':
+      case 'settings-api':
+      case 'settings-social-auth':
+      case 'settings-payments':
+      case 'settings-sms':
+      case 'settings-email':
+      case 'settings-templates':
+      case 'settings-appearance':
+      case 'settings-notifications':
         // Use same API key logic as other sections
         const settingsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
         const settingsFinalAppSecretKey = settingsAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
@@ -462,6 +578,7 @@ export default function MerchantPanel() {
           app={currentApp}
           apiKey={apiKeys?.userApiKey || ''}
           appSecretKey={settingsFinalAppSecretKey || ''}
+          activeSection={activeSection}
           onAppUpdated={(patch) => {
             // Update currentApp state
             setCurrentApp(prev => prev ? ({ ...prev, ...patch } as any) : prev)
@@ -480,7 +597,7 @@ export default function MerchantPanel() {
           }}
         />
       default:
-        return <DashboardSection app={currentApp} onSectionChange={(section) => setActiveSection(section as SectionType)} />
+        return <DashboardSection app={currentApp} onSectionChange={(section) => handleSectionChange(section as SectionType)} />
     }
   }
 
@@ -499,7 +616,7 @@ export default function MerchantPanel() {
           {/* Sidebar - fixed position, responsive width */}
           <MerchantSidebar
             activeSection={activeSection}
-            onSectionChange={setActiveSection}
+            onSectionChange={handleSectionChange}
             isOpen={isSidebarOpen}
             onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
             currentApp={currentApp}

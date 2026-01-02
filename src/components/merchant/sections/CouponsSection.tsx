@@ -3,7 +3,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { apiService } from '@/lib/api-service'
 import { Coupon, CouponFilters, CouponStatus, DiscountType, TargetScope, BuyXGetYConfig } from '@/types/coupon'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
 
 // Lazy load modals for better performance
 const CreateCouponModal = lazy(() => import('../CreateCouponModal'))
@@ -404,15 +404,20 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => handleEdit(coupon)}
-                        className="text-orange-600 hover:text-slate-900 text-xs sm:text-sm p-1"
+                        className="text-gray-600 hover:text-orange-600 text-xs sm:text-sm p-1"
+                           title="Edit Coupon"
                       >
-                        Edit
+                                    <Pencil className="h-4 w-4" />
+
                       </button>
                       <button
                         onClick={() => handleDelete(coupon.id)}
-                        className="text-red-600 hover:text-red-900 text-xs sm:text-sm p-1"
+                        className="text-gray-600 hover:text-red-600 text-xs sm:text-sm p-1"
+                                                   title="Delete Coupon"
+
                       >
-                        Delete
+                                      <Trash2 className="h-4 w-4" />
+
                       </button>
                     </div>
                   </td>

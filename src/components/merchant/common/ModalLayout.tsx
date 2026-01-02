@@ -42,8 +42,8 @@ export function ModalLayout({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className={`relative top-20 mx-auto p-0 border w-full ${maxWidthClasses[maxWidth]} shadow-lg rounded-lg bg-white`}>
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div className={`relative mx-auto p-0 border w-full ${maxWidthClasses[maxWidth]} shadow-lg rounded-lg bg-white max-h-[calc(100vh-2rem)] flex flex-col`}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -66,7 +66,7 @@ export function ModalLayout({
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-2 text-sm">
