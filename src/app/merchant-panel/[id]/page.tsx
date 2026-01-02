@@ -64,9 +64,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -150,6 +150,13 @@ export default function MerchantPanel() {
       localStorage.setItem(`merchant-panel-section-${appId}`, section)
     }
   }, [router, appId])
+  
+  // Redirect 'settings' to 'settings-general' if needed
+  useEffect(() => {
+    if (activeSection === 'settings' && sectionInitialized) {
+      handleSectionChange('settings-general' as SectionType)
+    }
+  }, [activeSection, sectionInitialized, handleSectionChange])
   
   // Sync section from URL when URL changes (for browser back/forward)
   useEffect(() => {
@@ -530,6 +537,39 @@ export default function MerchantPanel() {
       case 'activity':
         return <ActivitySection appId={currentApp.id} />
       case 'settings':
+        // Default to general settings - redirect handled by useEffect
+        // Use same API key logic as other sections
+        const defaultSettingsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const defaultSettingsFinalAppSecretKey = defaultSettingsAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <SettingsSection
+          app={currentApp}
+          apiKey={apiKeys?.userApiKey || ''}
+          appSecretKey={defaultSettingsFinalAppSecretKey || ''}
+          activeSection="settings-general"
+          onAppUpdated={(patch) => {
+            setCurrentApp(prev => prev ? ({ ...prev, ...patch } as any) : prev)
+            setApps(prev => prev.map(a => a.id === currentApp.id ? ({ ...a, ...patch } as any) : a))
+            try {
+              const staffAppData = typeof window !== 'undefined' ? localStorage.getItem('staff_app') : null
+              if (staffAppData) {
+                const staffApp = JSON.parse(staffAppData)
+                if (staffApp && staffApp.id === currentApp.id) {
+                  localStorage.setItem('staff_app', JSON.stringify({ ...staffApp, ...patch }))
+                }
+              }
+            } catch { /* noop */ }
+          }}
+        />
+      case 'settings-general':
+      case 'settings-api':
+      case 'settings-social-auth':
+      case 'settings-payments':
+      case 'settings-sms':
+      case 'settings-email':
+      case 'settings-templates':
+      case 'settings-appearance':
+      case 'settings-notifications':
         // Use same API key logic as other sections
         const settingsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
         const settingsFinalAppSecretKey = settingsAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
@@ -538,6 +578,7 @@ export default function MerchantPanel() {
           app={currentApp}
           apiKey={apiKeys?.userApiKey || ''}
           appSecretKey={settingsFinalAppSecretKey || ''}
+          activeSection={activeSection}
           onAppUpdated={(patch) => {
             // Update currentApp state
             setCurrentApp(prev => prev ? ({ ...prev, ...patch } as any) : prev)
