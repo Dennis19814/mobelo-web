@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Save, FileText, AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { apiService } from '@/lib/api-service';
 import { logger } from '@/lib/logger';
+import toast from 'react-hot-toast';
 import 'react-quill/dist/quill.snow.css';
 
 // Dynamically import ReactQuill to avoid SSR issues
@@ -30,6 +31,8 @@ export function LegalDocumentModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingDocument, setExistingDocument] = useState<any>(null);
+  const [hasFocused, setHasFocused] = useState(false);
+  const quillRef = useRef<any>(null);
 
   const title = documentType === 'terms_and_conditions'
     ? 'Terms and Conditions'
@@ -59,10 +62,51 @@ export function LegalDocumentModal({
   // Fetch existing document when modal opens
   useEffect(() => {
     if (isOpen && appId && documentType) {
+      setHasFocused(false); // Reset focus flag when fetching new document
       fetchDocument();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, appId, documentType]);
+
+  // Focus the editor when modal opens and content is loaded
+  useEffect(() => {
+    if (isOpen && !loading && !hasFocused) {
+      // Use a longer delay to ensure ReactQuill is fully mounted (dynamic import)
+      const focusTimer = setTimeout(() => {
+        if (quillRef.current) {
+          try {
+            const editor = quillRef.current.getEditor();
+            if (editor) {
+              editor.focus();
+              // Move cursor to end of content
+              const length = editor.getLength();
+              editor.setSelection(length, 0);
+              setHasFocused(true);
+            }
+          } catch (err) {
+            // Quill might not be ready yet, retry once more
+            setTimeout(() => {
+              try {
+                if (quillRef.current) {
+                  const editor = quillRef.current.getEditor();
+                  if (editor) {
+                    editor.focus();
+                    const length = editor.getLength();
+                    editor.setSelection(length, 0);
+                    setHasFocused(true);
+                  }
+                }
+              } catch (retryErr) {
+                logger.warn('Could not focus editor after retry:', retryErr);
+              }
+            }, 500);
+          }
+        }
+      }, 300);
+
+      return () => clearTimeout(focusTimer);
+    }
+  }, [isOpen, loading, hasFocused]);
 
   const fetchDocument = async () => {
     setLoading(true);
@@ -100,6 +144,13 @@ export function LegalDocumentModal({
       return;
     }
 
+    // Validate minimum content length (stripping HTML tags)
+    const strippedContent = content.replace(/<[^>]*>/g, '').trim();
+    if (strippedContent.length < 10) {
+      setError('Content must contain at least 10 characters of actual text');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -110,6 +161,7 @@ export function LegalDocumentModal({
       });
 
       if (response.ok) {
+        toast.success('Legal document saved successfully!');
         onSave();
         onClose();
       } else {
@@ -117,7 +169,7 @@ export function LegalDocumentModal({
       }
     } catch (err: any) {
       logger.error('Error saving legal document:', err);
-      setError(err.response?.data?.message || 'Failed to save document. Please try again.');
+      setError(err.data?.message || 'Failed to save document. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -127,6 +179,7 @@ export function LegalDocumentModal({
     setContent('');
     setError(null);
     setExistingDocument(null);
+    setHasFocused(false);
     onClose();
   };
 
@@ -171,6 +224,7 @@ export function LegalDocumentModal({
                 </label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <ReactQuill
+                    ref={quillRef}
                     theme="snow"
                     value={content}
                     onChange={setContent}
@@ -180,6 +234,9 @@ export function LegalDocumentModal({
                     style={{ minHeight: '400px' }}
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Minimum 10 characters required. Current: {content.replace(/<[^>]*>/g, '').trim().length} characters
+                </p>
               </div>
 
               {existingDocument && (

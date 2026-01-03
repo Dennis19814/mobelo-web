@@ -74,15 +74,20 @@ build_web() {
     log_info "Installing dependencies..."
     npm ci --legacy-peer-deps
 
-    # Build Next.js app
+    # Build Next.js app with NODE_ENV=production
     log_info "Building production bundle..."
-    npm run build
+    NODE_ENV=production npm run build
 
     # Verify build output
     if [ ! -d ".next/standalone" ]; then
         log_error "✗ Build failed - .next/standalone directory not found"
         exit 1
     fi
+
+    # Copy static assets for standalone build
+    log_info "Copying static assets for standalone build..."
+    cp -r public .next/standalone/
+    cp -r .next/static .next/standalone/.next/
 
     log_info "✓ Next.js app built successfully"
 }
@@ -210,8 +215,10 @@ restart_services() {
         # Stop and delete existing process
         pm2 delete mobelo-web 2>/dev/null || true
 
-        # Start new process
-        pm2 start server.js --name "mobelo-web" --env production
+        # Start new process from standalone build
+        cd .next/standalone
+        NODE_ENV=production PORT=5173 pm2 start server.js --name "mobelo-web" --update-env
+        cd ../..
 
         # Save PM2 configuration
         pm2 save
