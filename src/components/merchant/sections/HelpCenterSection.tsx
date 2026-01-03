@@ -1,12 +1,16 @@
 'use client'
 
-import { MessageCircleQuestion, Video, Calendar, Headset, ArrowRight, Clock, BookOpen } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageCircleQuestion, Video, ArrowRight, Clock, BookOpen, Calendar, Headset, ArrowLeft } from 'lucide-react'
+import Intercom from '@intercom/messenger-js-sdk'
 
 interface HelpCenterSectionProps {
   onNavigate: (section: 'help-faq' | 'help-tutorials') => void
 }
 
 export default function HelpCenterSection({ onNavigate }: HelpCenterSectionProps) {
+  const [showCalendly, setShowCalendly] = useState(false)
+
   const trendingTopics = [
     'Publishing Apps',
     'Stripe Setup',
@@ -15,8 +19,46 @@ export default function HelpCenterSection({ onNavigate }: HelpCenterSectionProps
 
   const quickLinks = [
     { icon: Calendar, label: 'Book a Meeting', color: 'from-sky-500 to-blue-500' },
-    { icon: Headset, label: 'Contact Support', color: 'from-emerald-600 to-teal-600' },
+    { icon: Headset, label: 'Contact Chat Support', color: 'from-emerald-600 to-teal-600' },
   ]
+
+  // Initialize Intercom on component mount
+  useEffect(() => {
+    Intercom({
+      app_id: 'parymzk6',
+    })
+  }, [])
+
+  // If showing Calendly, replace entire content with iframe
+  if (showCalendly) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-sky-500 to-blue-500">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCalendly(false)}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-white" />
+              </button>
+              <h3 className="text-xl font-bold text-white">Book a Meeting</h3>
+            </div>
+          </div>
+          <div className="w-full h-[800px]">
+            <iframe
+              src="https://calendly.com/mobelo/need-help-building-my-mobile-app?back=1&month=2026-01"
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              title="Book a Meeting"
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -125,9 +167,19 @@ export default function HelpCenterSection({ onNavigate }: HelpCenterSectionProps
         <div className="grid sm:grid-cols-2 gap-4">
           {quickLinks.map((link, index) => {
             const Icon = link.icon
+            const handleClick = () => {
+              if (link.label === 'Book a Meeting') {
+                setShowCalendly(true)
+              } else if (link.label === 'Contact Chat Support') {
+                if (typeof window !== 'undefined' && (window as any).Intercom) {
+                  (window as any).Intercom('show')
+                }
+              }
+            }
             return (
               <button
                 key={index}
+                onClick={handleClick}
                 className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 hover:scale-105 bg-slate-50 hover:bg-white"
               >
                 <div className={`w-12 h-12 bg-gradient-to-br ${link.color} rounded-xl flex items-center justify-center text-white shadow-md`}>
@@ -148,9 +200,16 @@ export default function HelpCenterSection({ onNavigate }: HelpCenterSectionProps
       <div className="mt-8 text-center">
         <p className="text-slate-500 text-sm">
           Can't find what you're looking for?{' '}
-          <a href="#" className="text-teal-600 hover:text-teal-700 font-medium">
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).Intercom) {
+                (window as any).Intercom('show')
+              }
+            }}
+            className="text-teal-600 hover:text-teal-700 font-medium underline"
+          >
             Contact our support team
-          </a>
+          </button>
         </p>
       </div>
     </div>
