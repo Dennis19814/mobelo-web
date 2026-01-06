@@ -7,7 +7,7 @@
 
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { Package, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ModalProps } from '@/types'
 
@@ -106,6 +106,7 @@ export default function Modal({
           'transform transition-all duration-200',
           'animate-in fade-in-0 zoom-in-95',
           'm-4 max-h-[calc(100vh-2rem)] flex flex-col',
+          'overflow-hidden',
           modalSizes[size],
           className
         )}
@@ -113,24 +114,26 @@ export default function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-            {title && (
-              <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            )}
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            )}
+         <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Package className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+          </button>
+        </div>
         )}
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="px-6 overflow-y-auto flex-1">
           {children}
         </div>
       </div>

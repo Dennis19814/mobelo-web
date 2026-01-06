@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle,Tags } from 'lucide-react'
+import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
@@ -19,7 +19,7 @@ interface AddProductModalProps {
 }
 
 export default function AddProductModal({ isOpen, onClose, onSuccess, appId, apiKey, appSecretKey }: AddProductModalProps) {
-  const [activeTab, setActiveTab] = useState<'basic' | 'pricing' | 'inventory' | 'shipping' | 'variants' | 'media' | 'categories'>('basic')
+  const [activeStep, setActiveStep] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<ProductCategory[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -32,7 +32,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [productMedia, setProductMedia] = useState<ProductMedia[]>([])
   const [createdProductId, setCreatedProductId] = useState<number | null>(null)
+  const [tempUploadedMedia, setTempUploadedMedia] = useState<File[]>([]) // Track temporary uploads
   const [isBrandValid, setIsBrandValid] = useState(true)
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
+  const [basePriceInput, setBasePriceInput] = useState<string>('') // Local state for base price input
 
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
@@ -203,8 +206,25 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   useEffect(() => {
     if (isOpen) {
       fetchCategories()
+      // Sync basePriceInput with formData when modal opens
+      if (formData.basePrice === 0) {
+        setBasePriceInput('')
+      } else {
+        setBasePriceInput(formData.basePrice.toString())
+      }
     }
   }, [isOpen, fetchCategories])
+  
+  // Sync basePriceInput when formData.basePrice changes externally
+  useEffect(() => {
+    if (formData.basePrice === 0 && basePriceInput !== '') {
+      // Only update if input is not empty (user might be typing)
+      // This prevents clearing while user is typing
+    } else if (formData.basePrice !== 0 && basePriceInput !== formData.basePrice.toString()) {
+      // Sync if formData changed externally and input doesn't match
+      setBasePriceInput(formData.basePrice.toString())
+    }
+  }, [formData.basePrice])
 
   const handleInputChange = (field: keyof CreateProductDto, value: any) => {
     setFormData(prev => ({
@@ -219,6 +239,51 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         return newErrors
       })
     }
+  }
+
+  const validateStep = (stepId: string): boolean => {
+    const newErrors: Record<string, string> = {}
+    const stepFields: string[] = []
+    
+    switch (stepId) {
+      case 'basic':
+        stepFields.push('name')
+        if (!formData.name.trim()) {
+          newErrors.name = 'Product name is required'
+        }
+        break
+      case 'pricing':
+        stepFields.push('basePrice')
+        if (formData.basePrice <= 0) {
+          newErrors.basePrice = 'Price must be greater than 0'
+        }
+        break
+      case 'inventory':
+        stepFields.push('minimumQuantity')
+        if (formData.trackInventory && formData.minimumQuantity && formData.minimumQuantity < 0) {
+          newErrors.minimumQuantity = 'Minimum quantity cannot be negative'
+        }
+        break
+      default:
+        // Other steps don't have required fields
+        break
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...newErrors }))
+      return false
+    }
+    
+    // Clear errors for this step's fields if validation passes
+    if (stepFields.length > 0) {
+      setErrors(prev => {
+        const updated = { ...prev }
+        stepFields.forEach(key => delete updated[key])
+        return updated
+      })
+    }
+    
+    return true
   }
 
   const validateForm = () => {
@@ -240,12 +305,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
   const handleSubmit = async (status: 'draft' | 'active') => {
     if (!validateForm()) {
-      // Switch to the tab with the first error
+      // Switch to the step with the first error
       const errorFields = Object.keys(errors)
       if (errorFields.includes('name') || errorFields.includes('description')) {
-        setActiveTab('basic')
+        goToStep(0) // basic step
       } else if (errorFields.includes('basePrice')) {
-        setActiveTab('pricing')
+        goToStep(1) // pricing step
       }
       return
     }
@@ -263,7 +328,47 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
       })
 
       if (response.ok && response.data) {
-        setCreatedProductId(response.data.id)
+        const newProductId = response.data.id
+        setCreatedProductId(newProductId)
+
+        // Upload temporary media files if any
+        if (tempUploadedMedia.length > 0 && newProductId) {
+          try {
+            const uploadFormData = new FormData()
+            tempUploadedMedia.forEach(file => {
+              uploadFormData.append('files', file)
+            })
+            
+            const uploadResponse = await apiService.uploadProductMedia(newProductId, uploadFormData)
+            if (uploadResponse.ok && uploadResponse.data?.media) {
+              // Update productMedia with uploaded media IDs
+              const uploadedMedia = uploadResponse.data.media
+              setProductMedia(prev => {
+                const tempMedia = prev.filter(m => m.isTemporary)
+                const permanentMedia = prev.filter(m => !m.isTemporary)
+                
+                // Replace temporary media with uploaded media
+                const updatedMedia = [...permanentMedia, ...uploadedMedia]
+                
+                // Clean up blob URLs
+                tempMedia.forEach(m => {
+                  if (m.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(m.url)
+                  }
+                })
+                
+                return updatedMedia
+              })
+              
+              // Clear temporary files
+              setTempUploadedMedia([])
+            }
+          } catch (uploadError) {
+            logger.error('Error uploading temporary media:', { error: uploadError instanceof Error ? uploadError.message : String(uploadError), stack: uploadError instanceof Error ? uploadError.stack : undefined })
+            // Don't fail the whole operation if media upload fails
+          }
+        }
+
         onSuccess()
         onClose()
         resetForm()
@@ -319,7 +424,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
       variants: []
     })
     setErrors({})
-    setActiveTab('basic')
+    setActiveStep(0)
+    setCompletedSteps(new Set())
     setShowAddCategory(false)
     setNewCategoryName('')
     setNewCategoryDescription('')
@@ -328,11 +434,19 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     setDeletingCategoryId(null)
     setProductMedia([])
     setCreatedProductId(null)
+    setTempUploadedMedia([])
+    setBasePriceInput('')
+    // Clean up any blob URLs
+    productMedia.forEach(m => {
+      if (m.isTemporary && m.url.startsWith('blob:')) {
+        URL.revokeObjectURL(m.url)
+      }
+    })
   }
 
   if (!isOpen) return null
 
-  const tabs = [
+  const steps = [
     { id: 'basic', label: 'Basic Info', icon: Package },
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'inventory', label: 'Inventory', icon: Box },
@@ -342,16 +456,58 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     { id: 'categories', label: 'Categories', icon: FolderTree }
   ]
 
+  const currentStepId = steps[activeStep]?.id || 'basic'
+
+  const nextStep = () => {
+    // Validate current step before proceeding
+    if (validateStep(currentStepId)) {
+      // Mark current step as completed
+      setCompletedSteps(prev => new Set(prev).add(activeStep))
+      
+      // Move to next step if available
+      if (activeStep < steps.length - 1) {
+        setActiveStep(activeStep + 1)
+      }
+    }
+  }
+
+  const previousStep = () => {
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1)
+    }
+  }
+
+  const goToStep = (stepIndex: number) => {
+    // Only allow navigation to completed steps, previous steps, or the immediate next step (if current is valid)
+    if (stepIndex >= 0 && stepIndex < steps.length) {
+      const isCompleted = completedSteps.has(stepIndex)
+      const isPrevious = stepIndex < activeStep
+      const isCurrent = stepIndex === activeStep
+      const isImmediateNext = stepIndex === activeStep + 1
+      
+      // Allow going to: completed steps, previous steps, current step, or immediate next step (if current is valid)
+      if (isCompleted || isPrevious || isCurrent || (isImmediateNext && validateStep(currentStepId))) {
+        if (isImmediateNext && validateStep(currentStepId)) {
+          setCompletedSteps(prev => new Set(prev).add(activeStep))
+        }
+        setActiveStep(stepIndex)
+      }
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] h-[72vh] overflow-hidden flex flex-col shadow-2xl">
+      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] h-[85vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
           <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white">
           <div className="flex items-center space-x-2">
             <div className="p-1.5 bg-blue-100 rounded-lg">
               <Package className="w-3.5 h-3.5 text-orange-600" />
             </div>
-            <h2 className="text-base font-semibold text-gray-900">Add New Product</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Add New Product</h2>
+              <p className="text-xs text-gray-500">Step {activeStep + 1} of {steps.length}</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -361,43 +517,66 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <div className="px-4">
-            <div className="flex space-x-2 md:space-x-4 overflow-x-auto" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-              {tabs.map(tab => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
+        {/* Steps Indicator */}
+        <div className="border-b border-gray-200 bg-gray-50">
+          <div className="px-4 py-2">
+            <div className="flex items-center justify-between overflow-x-auto" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+              {steps.map((step, index) => {
+                const Icon = step.icon
+                const isActive = activeStep === index
+                const isCompleted = completedSteps.has(index)
+                const isPrevious = index < activeStep
+                const isCurrent = index === activeStep
+                const isImmediateNext = index === activeStep + 1
+                // Allow clicking on completed steps, previous steps, current step, or immediate next step
+                const isClickable = isCompleted || isPrevious || isCurrent || isImmediateNext
+                
                 return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className="py-4 px-2 md:px-3 text-xs whitespace-nowrap transition-all"
-                  >
-                    <span className={`flex items-center pb-1 ${
-                      isActive
-                        ? 'font-bold text-gray-900 border-b-[3px] border-orange-600'
-                        : 'font-normal text-gray-600 border-b-[3px] border-transparent hover:text-gray-900'
-                    }`}>
-                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="ml-1.5">{tab.label}</span>
-                      {/* Special badges for certain tabs */}
-                      {tab.id === 'variants' && formData.variants && formData.variants.length > 0 && (
-                        <span className={`ml-1 px-1 py-0.5 text-[10px] rounded-full ${
-                          isActive ? 'bg-blue-100 text-orange-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {formData.variants.length}
-                        </span>
-                      )}
-                      {tab.id === 'categories' && formData.categoryIds && formData.categoryIds.length > 0 && (
-                        <span className={`ml-1 px-1 py-0.5 text-[10px] rounded-full ${
-                          isActive ? 'bg-blue-100 text-orange-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {formData.categoryIds.length}
-                        </span>
-                      )}
-                    </span>
-                  </button>
+                  <div key={step.id} className="flex items-center flex-shrink-0 pt-2">
+                    <button
+                      onClick={() => isClickable && goToStep(index)}
+                      disabled={!isClickable}
+                      className={`flex flex-col items-center min-w-[80px] transition-all ${
+                        isClickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <div className={`relative flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-all ${
+                        isActive
+                          ? 'bg-orange-600 text-white shadow-md'
+                          : isCompleted
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                        {/* Count badge on top-right corner of icon */}
+                        {step.id === 'variants' && formData.variants && formData.variants.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {formData.variants.length}
+                          </span>
+                        )}
+                        {step.id === 'categories' && formData.categoryIds && formData.categoryIds.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {formData.categoryIds.length}
+                          </span>
+                        )}
+                        {step.id === 'media' && productMedia && Array.isArray(productMedia) && productMedia.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {productMedia.length}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-xs text-center max-w-[80px] ${
+                        isActive ? 'font-semibold text-gray-900' : 'font-normal text-gray-600'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </button>
+                    {index < steps.length - 1 && (
+                      <div className={`mx-2 h-0.5 w-8 md:w-14 transition-all ${
+                        completedSteps.has(index) ? 'bg-green-500' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -412,8 +591,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Basic Info Tab */}
-          {activeTab === 'basic' && (
+          {/* Basic Info Step */}
+          {currentStepId === 'basic' && (
             <div className="space-y-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -550,8 +729,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Pricing Tab */}
-          {activeTab === 'pricing' && (
+          {/* Pricing Step */}
+          {currentStepId === 'pricing' && (
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -559,8 +738,30 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                 </label>
                 <input
                   type="number"
-                  value={formData.basePrice}
-                  onChange={(e) => handleInputChange('basePrice', parseFloat(e.target.value) || 0)}
+                  value={basePriceInput}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // Update local input state - allow empty
+                    setBasePriceInput(value)
+                    
+                    // Update formData only when there's a valid number
+                    if (value === '' || value === null || value === undefined) {
+                      handleInputChange('basePrice', 0)
+                    } else {
+                      const numValue = parseFloat(value)
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        handleInputChange('basePrice', numValue)
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    // On blur, sync the input with formData
+                    if (formData.basePrice === 0) {
+                      setBasePriceInput('')
+                    } else {
+                      setBasePriceInput(formData.basePrice.toString())
+                    }
+                  }}
                   className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                     errors.basePrice ? 'border-red-300' : 'border-gray-300'
                   }`}
@@ -609,8 +810,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Inventory Tab */}
-          {activeTab === 'inventory' && (
+          {/* Inventory Step */}
+          {currentStepId === 'inventory' && (
             <div className="space-y-3">
               <div className="flex items-center mb-4">
                 <input
@@ -706,8 +907,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Shipping Tab */}
-          {activeTab === 'shipping' && (
+          {/* Shipping Step */}
+          {currentStepId === 'shipping' && (
             <div className="space-y-3">
               {!formData.isDigital && (
                 <>
@@ -928,8 +1129,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Variants Tab */}
-          {activeTab === 'variants' && (
+          {/* Variants Step */}
+          {currentStepId === 'variants' && (
             <div className="space-y-3">
               <div className="mb-4">
                 <p className="text-sm text-gray-600">
@@ -943,27 +1144,23 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
-          {/* Media Tab */}
-          {activeTab === 'media' && (
+          {/* Media Step */}
+          {currentStepId === 'media' && (
             <div className="space-y-3">
-              {!createdProductId ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">Please save the product first to upload media</p>
-                  <p className="text-xs text-gray-500">Click "Save as Draft" or "Save & Publish" to enable image and video uploads</p>
-                </div>
-              ) : (
-                <MediaManager
-                  productId={createdProductId}
-                  media={productMedia}
-                  onMediaChange={(newMedia) => {
-                    setProductMedia(newMedia)
-                    // Update thumbnail URL if primary image changes
-                    const primaryImage = newMedia.find(m => m.isPrimary)
-                    if (primaryImage) {
-                      handleInputChange('thumbnailUrl', primaryImage.url)
-                    }
-                  }}
-                  onUpload={async (file) => {
+              <MediaManager
+                productId={createdProductId || undefined}
+                media={productMedia}
+                onMediaChange={(newMedia) => {
+                  setProductMedia(newMedia)
+                  // Update thumbnail URL if primary image changes
+                  const primaryImage = newMedia.find(m => m.isPrimary)
+                  if (primaryImage) {
+                    handleInputChange('thumbnailUrl', primaryImage.url)
+                  }
+                }}
+                onUpload={async (file) => {
+                  // If product is already created, upload immediately
+                  if (createdProductId) {
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -981,8 +1178,40 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       logger.error('Upload failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
                       return null
                     }
-                  }}
-                  onDelete={async (mediaId) => {
+                  } else {
+                    // Create temporary preview URL (do NOT upload to server yet)
+                    const tempId = `temp-${Date.now()}-${Math.random()}`
+                    const previewUrl = URL.createObjectURL(file)
+
+                    // Check if this is the first image being added
+                    const currentImages = productMedia.filter(m => m.type === 'image' || !m.type)
+                    const isFirstImage = currentImages.length === 0
+
+                    // Add temporary media to state for preview
+                    const tempMedia: ProductMedia = {
+                      id: tempId as any,
+                      url: previewUrl,
+                      type: file.type.startsWith('video/') ? 'video' as const : 'image' as const,
+                      altText: '',
+                      displayOrder: productMedia.length,
+                      isPrimary: isFirstImage, // Auto-set as primary if it's the first image
+                      isListingThumbnail: false,
+                      isDetailThumbnail: false,
+                      thumbnailUrl: previewUrl,
+                      isTemporary: true // Flag to identify temp uploads
+                    }
+
+                    setProductMedia(prev => [...prev, tempMedia])
+
+                    // Store the file for later upload on submit
+                    setTempUploadedMedia(prev => [...prev, file])
+
+                    return tempMedia
+                  }
+                }}
+                onDelete={async (mediaId) => {
+                  // If product exists, delete from server
+                  if (createdProductId) {
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -994,8 +1223,32 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       logger.error('Delete failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
                       return false
                     }
-                  }}
+                  } else {
+                    // Remove temporary media
+                    setProductMedia(prev => {
+                      const mediaToDelete = prev.find(m => m.id === mediaId)
+                      if (mediaToDelete?.isTemporary && mediaToDelete.url.startsWith('blob:')) {
+                        URL.revokeObjectURL(mediaToDelete.url)
+                      }
+                      
+                      // Find the index of the temporary media to remove corresponding file
+                      const tempMediaIndex = prev.findIndex(m => m.id === mediaId && m.isTemporary)
+                      if (tempMediaIndex !== -1) {
+                        // Remove corresponding file from tempUploadedMedia
+                        setTempUploadedMedia(files => {
+                          const newFiles = [...files]
+                          newFiles.splice(tempMediaIndex, 1)
+                          return newFiles
+                        })
+                      }
+                      
+                      return prev.filter(m => m.id !== mediaId)
+                    })
+                    return true
+                  }
+                }}
                   onSetPrimary={async (mediaId) => {
+                    if (!createdProductId) return false
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1009,6 +1262,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetListingThumbnail={async (mediaId) => {
+                    if (!createdProductId) return false
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1022,6 +1276,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetDetailThumbnail={async (mediaId) => {
+                    if (!createdProductId) return false
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1035,12 +1290,11 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                 />
-              )}
             </div>
           )}
 
-          {/* Categories Tab */}
-          {activeTab === 'categories' && (
+          {/* Categories Step */}
+          {currentStepId === 'categories' && (
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1213,7 +1467,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         </div>
 
         {/* Footer - Fixed at bottom */}
-        <div className="px-4 py-3 border-t border-gray-200 flex justify-between bg-gray-50">
+        <div className="px-4 py-3 border-t border-gray-200 flex justify-between items-center bg-gray-50">
           <button
             onClick={onClose}
             className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors"
@@ -1221,28 +1475,55 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           >
             Cancel
           </button>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => handleSubmit('draft')}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save as Draft'}
-            </button>
-            <button
-              onClick={() => handleSubmit('active')}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  <span>Add Product</span>
-                </>
-              )}
-            </button>
+          <div className="flex items-center space-x-3">
+            {/* Previous Button */}
+            {activeStep > 0 && (
+              <button
+                onClick={previousStep}
+                disabled={loading}
+                className="px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </button>
+            )}
+            
+            {/* Next Button */}
+            {activeStep < steps.length - 1 ? (
+              <button
+                onClick={nextStep}
+                disabled={loading}
+                className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <>
+                {/* Save as Draft and Add Product - Only show on last step */}
+                <button
+                  onClick={() => handleSubmit('draft')}
+                  disabled={loading}
+                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save as Draft'}
+                </button>
+                <button
+                  onClick={() => handleSubmit('active')}
+                  disabled={loading}
+                  className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Add Product</span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

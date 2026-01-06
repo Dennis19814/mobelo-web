@@ -31,10 +31,11 @@ export default function EditProductModal({
   appSecretKey,
   onCategoriesUpdate
 }: EditProductModalProps) {
-  const [activeTab, setActiveTab] = useState('basic')
+  const [activeStep, setActiveStep] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [basePriceInput, setBasePriceInput] = useState<string>('') // Local state for base price input
   
   const [formData, setFormData] = useState<UpdateProductDto>({
     name: product.name,
@@ -127,6 +128,13 @@ export default function EditProductModal({
         metadata: product.metadata || {}
       })
 
+      // Sync basePriceInput with formData when modal opens
+      if (product.basePrice === 0 || product.basePrice === undefined) {
+        setBasePriceInput('')
+      } else {
+        setBasePriceInput(product.basePrice.toString())
+      }
+
       logger.debug('EditProductModal: FormData initialized with shipping details:', {
         requiresShipping: product.requiresShipping || false,
         shippingInfo: product.shippingInfo || undefined,
@@ -135,6 +143,19 @@ export default function EditProductModal({
       })
     }
   }, [isOpen, product])
+  
+  // Sync basePriceInput when formData.basePrice changes externally
+  useEffect(() => {
+    if (formData.basePrice === 0 || formData.basePrice === undefined) {
+      if (basePriceInput !== '') {
+        // Only update if input is not empty (user might be typing)
+        // This prevents clearing while user is typing
+      }
+    } else if (basePriceInput !== formData.basePrice.toString()) {
+      // Sync if formData changed externally and input doesn't match
+      setBasePriceInput(formData.basePrice.toString())
+    }
+  }, [formData.basePrice])
 
   // Fetch existing media when modal opens
   useEffect(() => {
@@ -736,7 +757,7 @@ export default function EditProductModal({
     }
   }
 
-  const tabs = [
+  const steps = [
     { id: 'basic', label: 'Basic Info', icon: Package },
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'inventory', label: 'Inventory', icon: Box },
@@ -746,6 +767,15 @@ export default function EditProductModal({
     { id: 'categories', label: 'Categories', icon: FolderTree },
     { id: 'extras', label: 'Extra Info', icon: Sparkles }
   ]
+
+  const currentStepId = steps[activeStep]?.id || 'basic'
+
+  const goToStep = (stepIndex: number) => {
+    // All steps are accessible in edit mode
+    if (stepIndex >= 0 && stepIndex < steps.length) {
+      setActiveStep(stepIndex)
+    }
+  }
 
   const handleClose = () => {
     // Clean up temporary preview URLs to prevent memory leaks
@@ -780,46 +810,63 @@ export default function EditProductModal({
       position="top"
       className="max-w-6xl"
     >
-      <div className="flex flex-col h-[72vh]">
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 -mx-6 mb-4">
-          <div className="px-4">
-            <div className="flex space-x-2 md:space-x-4 overflow-x-auto" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-              {tabs.map(tab => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
+      <div className="flex flex-col h-[80vh]">
+        {/* Steps Indicator */}
+        <div className="border-b border-gray-200 bg-gray-50 -mx-6 mb-4 rounded-t-lg ">
+          <div className="px-4 py-4">
+            <div className="flex items-center justify-between overflow-x-auto pt-1" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+              {steps.map((step, index) => {
+                const Icon = step.icon
+                const isActive = activeStep === index
+                // In edit mode, all steps are considered completed/accessible
+                const isCompleted = true
+                
                 return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    disabled={loading}
-                    className="py-4 px-2 md:px-3 text-xs whitespace-nowrap transition-all"
-                  >
-                    <span className={`flex items-center pb-1 ${
-                      isActive
-                        ? 'font-bold text-gray-900 border-b-[3px] border-orange-600'
-                        : 'font-normal text-gray-600 border-b-[3px] border-transparent hover:text-gray-900'
-                    } ${loading ? 'opacity-50' : ''}`}>
-                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="ml-1.5">{tab.label}</span>
-                      {/* Special badges for certain tabs */}
-                      {tab.id === 'variants' && formData.variants && formData.variants.length > 0 && (
-                        <span className={`ml-1 px-1 py-0.5 text-[10px] rounded-full ${
-                          isActive ? 'bg-blue-100 text-orange-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {formData.variants.length}
-                        </span>
-                      )}
-                      {tab.id === 'categories' && formData.categoryIds && formData.categoryIds.length > 0 && (
-                        <span className={`ml-1 px-1 py-0.5 text-[10px] rounded-full ${
-                          isActive ? 'bg-blue-100 text-orange-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {formData.categoryIds.length}
-                        </span>
-                      )}
-                    </span>
-                  </button>
+                  <div key={step.id} className="flex items-center flex-shrink-0">
+                    <button
+                      onClick={() => goToStep(index)}
+                      disabled={loading}
+                      className={`flex flex-col items-center min-w-[80px] transition-all ${
+                        loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                      }`}
+                    >
+                      <div className={`relative flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-all ${
+                        isActive
+                          ? 'bg-orange-600 text-white shadow-md'
+                          : isCompleted
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                        {/* Count badge on top-right corner of icon */}
+                        {step.id === 'variants' && formData.variants && Array.isArray(formData.variants) && formData.variants.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {formData.variants.length}
+                          </span>
+                        )}
+                        {step.id === 'categories' && formData.categoryIds && Array.isArray(formData.categoryIds) && formData.categoryIds.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {formData.categoryIds.length}
+                          </span>
+                        )}
+                        {step.id === 'media' && productMedia && Array.isArray(productMedia) && productMedia.length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-semibold rounded-full border-2 border-white">
+                            {productMedia.length}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-xs text-center max-w-[80px] ${
+                        isActive ? 'font-semibold text-gray-900' : 'font-normal text-gray-600'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </button>
+                    {index < steps.length - 1 && (
+                      <div className={`mx-2 h-0.5 w-8 md:w-13 transition-all ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -836,7 +883,7 @@ export default function EditProductModal({
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {/* Basic Info Tab */}
-          {activeTab === 'basic' && (
+          {currentStepId === 'basic' && (
             <div className="space-y-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1028,7 +1075,7 @@ export default function EditProductModal({
           )}
 
           {/* Pricing Tab */}
-          {activeTab === 'pricing' && (
+          {currentStepId === 'pricing' && (
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1036,8 +1083,30 @@ export default function EditProductModal({
                 </label>
                 <input
                   type="number"
-                  value={formData.basePrice}
-                  onChange={(e) => handleInputChange('basePrice', parseFloat(e.target.value) || 0)}
+                  value={basePriceInput}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // Update local input state - allow empty
+                    setBasePriceInput(value)
+                    
+                    // Update formData only when there's a valid number
+                    if (value === '' || value === null || value === undefined) {
+                      handleInputChange('basePrice', 0)
+                    } else {
+                      const numValue = parseFloat(value)
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        handleInputChange('basePrice', numValue)
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    // On blur, sync the input with formData
+                    if (formData.basePrice === 0 || formData.basePrice === undefined) {
+                      setBasePriceInput('')
+                    } else {
+                      setBasePriceInput(formData.basePrice.toString())
+                    }
+                  }}
                   className={`
                     w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                     ${errors.basePrice ? 'border-red-300' : 'border-gray-300'}
@@ -1109,7 +1178,7 @@ export default function EditProductModal({
           )}
 
           {/* Inventory Tab */}
-          {activeTab === 'inventory' && (
+          {currentStepId === 'inventory' && (
             <div className="space-y-3">
               <div className="flex items-center">
                 <input
@@ -1234,7 +1303,7 @@ export default function EditProductModal({
           )}
 
           {/* Variants Tab */}
-          {activeTab === 'variants' && (
+          {currentStepId === 'variants' && (
             <div className="space-y-4">
               <div className="mb-4">
                 <p className="text-sm text-gray-600">
@@ -1249,7 +1318,7 @@ export default function EditProductModal({
           )}
 
           {/* Media Tab */}
-          {activeTab === 'media' && (
+          {currentStepId === 'media' && (
             <div className="space-y-4">
               <MediaManager
                 productId={product.id}
@@ -1364,7 +1433,7 @@ export default function EditProductModal({
           )}
 
           {/* Categories Tab */}
-          {activeTab === 'categories' && (
+          {currentStepId === 'categories' && (
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1619,7 +1688,7 @@ export default function EditProductModal({
           )}
 
           {/* Extra Info Tab */}
-          {activeTab === 'extras' && (
+          {currentStepId === 'extras' && (
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Extra Info</label>
@@ -1632,7 +1701,7 @@ export default function EditProductModal({
           )}
 
           {/* Shipping Tab */}
-          {activeTab === 'shipping' && (
+          {currentStepId === 'shipping' && (
             <div className="space-y-2">
               {!formData.isDigital && (
                 <>
@@ -1859,7 +1928,7 @@ export default function EditProductModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end space-x-3 mt-4 pt-3 border-t border-gray-200 flex-shrink-0">
+        <div className="flex justify-end space-x-3 mt-4 pt-3 pb-3 border-t border-gray-200 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
