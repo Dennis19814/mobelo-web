@@ -8,7 +8,7 @@ import {
   Package, Search, Plus, Minus, AlertCircle,
   RefreshCw, History, TrendingUp, TrendingDown,
   Filter, Download, Upload, Calendar, ArrowUpDown,
-  Grid3X3, List
+  Grid3X3, List, X, Box
 } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { Product, ProductVariant } from '@/types/product.types'
@@ -348,7 +348,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-4">
@@ -676,14 +676,32 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
 
       {/* Stock Adjustment Modal */}
       {showAddStock && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-10 z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 my-10">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                {adjustment.movementType === 'in' ? 'Add Stock' : 
-                 adjustment.movementType === 'out' ? 'Remove Stock' : 
-                 'Adjust Stock'}
-              </h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <Box className="w-3.5 h-3.5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">
+                    {adjustment.movementType === 'in' ? 'Add Stock' : 
+                     adjustment.movementType === 'out' ? 'Remove Stock' : 
+                     'Adjust Stock'}
+                  </h2>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddStock(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+              >
+                <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1">
               
               {/* Product Info */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
