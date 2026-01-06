@@ -276,33 +276,31 @@ export function EmailConfigModal({
   const providerInfo = getProviderInfo(config.provider);
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-0 border w-full max-w-3xl shadow-lg rounded-lg bg-white">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <Mail className="w-6 h-6 text-indigo-600" />
+        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Mail className="w-3.5 h-3.5 text-orange-600" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
+              <h2 className="text-base font-semibold text-gray-900">
                 Configure Email Service Provider
-              </h3>
-              <p className="text-sm text-gray-500">
-                Set up email provider credentials for transactional emails
-              </p>
+              </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+            disabled={saving}
           >
-            <X className="h-6 w-6" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-2 text-sm">
               <p className="text-red-800">{error}</p>

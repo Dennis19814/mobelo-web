@@ -23,7 +23,8 @@ import {
   MapPin,
   CreditCard,
   User,
-  Home
+  Home,
+  X
 } from 'lucide-react';
 import {
   MobileUserSummary,
@@ -329,7 +330,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}
@@ -733,32 +734,32 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
       {/* User Details Modal with Tabs */}
       {isUserDetailsOpen && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col my-8">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {selectedUser.firstName} {selectedUser.lastName}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedUser.email || selectedUser.phone}
-                  </p>
+            <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <User className="w-3.5 h-3.5 text-orange-600" />
                 </div>
-                <button
-                  onClick={() => {
-                    setIsUserDetailsOpen(false);
-                    setActiveTab('basic'); // Reset tab on close
-                    setShowModalBlockForm(false); // Reset block form
-                    setModalBlockReason('');
-                    setShowModalUnblockForm(false); // Reset unblock form
-                    setModalUnblockNote('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl font-light"
-                >
-                  ×
-                </button>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">
+                   {selectedUser.email || selectedUser.phone}
+                  </h2>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  setIsUserDetailsOpen(false);
+                  setActiveTab('basic'); // Reset tab on close
+                  setShowModalBlockForm(false); // Reset block form
+                  setModalBlockReason('');
+                  setShowModalUnblockForm(false); // Reset unblock form
+                  setModalUnblockNote('');
+                }}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+              >
+                <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              </button>
             </div>
 
             {/* Tab Navigation */}

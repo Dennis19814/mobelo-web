@@ -197,7 +197,7 @@ export default function SettingsSocialAuthSection({ appId, apiKey, appSecretKey 
   const socialConfigs = configurations.filter(c => c.configType === 'social_auth');
 
   return (
-    <div className="space-y-4 w-full max-w-full">
+    <div className=" w-full max-w-full">
       {/* Toast Messages */}
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 animate-in slide-in-from-top duration-300">

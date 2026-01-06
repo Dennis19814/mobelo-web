@@ -170,7 +170,7 @@ export default function SettingsPaymentsSection({ appId, apiKey, appSecretKey }:
   const productionConfig = stripeConfigs.find(c => c.environment === 'production');
 
   return (
-    <div className="space-y-4 w-full max-w-full">
+    <div className=" w-full max-w-full">
       {/* Toast Messages */}
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 animate-in slide-in-from-top duration-300">
