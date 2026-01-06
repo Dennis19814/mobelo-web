@@ -53,7 +53,7 @@ export default function ProductDetailsModal({
       title="Product Details"
       size="lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 pt-4">
         {/* Product Image and Basic Info */}
         <div className="flex gap-4">
           {/* Product Thumbnail */}

@@ -18,6 +18,8 @@ import { logger, type LogContext } from '@/lib/logger'
 import { APP_BUILDER_CONFIG } from '@/lib/app-builder-config'
 import toast from 'react-hot-toast'
 import { PublishProgressModal } from '@/components/modals/PublishProgressModal'
+import { DownloadSourceModal } from '@/components/modals/DownloadSourceModal'
+import { AppStorePublishModal } from '@/components/modals/AppStorePublishModal'
 
 interface ExpoInfo {
   qrCode: string
@@ -123,12 +125,30 @@ function AppBuilderContent() {
     contactEmail: '',
     buildType: 'aab'
   })
+  const [showAppStoreModal, setShowAppStoreModal] = useState(false)
+  const [appStoreForm, setAppStoreForm] = useState({
+    bundleId: '',
+    apiKey: '',
+    appName: '',
+    subtitle: '',
+    description: '',
+    keywords: '',
+    primaryLanguage: 'en-US',
+    supportUrl: '',
+    privacyPolicyUrl: '',
+    contactEmail: '',
+    track: 'testflight-internal',
+    buildType: 'ipa'
+  })
+  const [isSubmittingAppStore, setIsSubmittingAppStore] = useState(false)
   const [showPublishProgressModal, setShowPublishProgressModal] = useState(false)
   const [publishProgress, setPublishProgress] = useState(0)
   const [publishStatus, setPublishStatus] = useState('pending')
   const [publishStep, setPublishStep] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
   const [publishJobId, setPublishJobId] = useState<number | null>(null)
+  const [showDownloadModal, setShowDownloadModal] = useState(false)
+  const [existingDownloadJob, setExistingDownloadJob] = useState<any>(null)
   const [isSubmittingPlay, setIsSubmittingPlay] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -1055,6 +1075,54 @@ function AppBuilderContent() {
     prefillPlayForm()
   }, [showPlayModal, appId, user])
 
+  // Pre-fill App Store form when modal opens
+  useEffect(() => {
+    const prefillAppStoreForm = async () => {
+      if (!showAppStoreModal || !appId || !user) return
+
+      try {
+        // Fetch app details
+        const response = await apiService.getApp(appId)
+        const appData = response.data
+
+        if (!appData) return
+
+        // Helper: Sanitize app name for bundle ID
+        const sanitizeAppName = (name: string) =>
+          name.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+        // Generate bundle ID from user and app name
+        const userName = user.firstName?.toLowerCase() || user.email?.split('@')[0]?.toLowerCase() || 'user'
+        const sanitizedAppName = sanitizeAppName(appData.app_name || 'app')
+        const bundleId = `com.${userName}.${sanitizedAppName}`
+
+        // Extract subtitle (first 30 chars of app_idea)
+        const subtitle = appData.app_idea?.substring(0, 30) || ''
+
+        // Pre-fill the form
+        setAppStoreForm(prev => ({
+          ...prev,
+          bundleId,
+          appName: appData.app_name || '',
+          subtitle,
+          description: appData.app_idea || '',
+          contactEmail: user.email || ''
+        }))
+
+        logger.debug('🎯 [AppStoreModal] Pre-filled form with app data', {
+          appId,
+          appName: appData.app_name,
+          bundleId,
+          contactEmail: user.email
+        })
+      } catch (error) {
+        logger.error('❌ [AppStoreModal] Failed to pre-fill form', { error })
+      }
+    }
+
+    prefillAppStoreForm()
+  }, [showAppStoreModal, appId, user])
+
   const handlePlayFieldChange = (field: string, value: string) => {
     setPlayForm(prev => ({ ...prev, [field]: value }))
   }
@@ -1108,6 +1176,160 @@ function AppBuilderContent() {
       logger.error('[AppBuilder] Cancel publish failed', { err })
       toast.error(err?.response?.data?.message || 'Failed to cancel publish job')
     }
+  }
+
+  // App Store form handlers
+  const handleAppStoreFieldChange = (field: string, value: string) => {
+    setAppStoreForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const validateAppStoreForm = () => {
+    const { bundleId, apiKey, appName, description, supportUrl, privacyPolicyUrl, contactEmail } = appStoreForm
+
+    // Required fields validation
+    if (!bundleId.trim()) {
+      toast.error('Bundle ID is required')
+      return false
+    }
+
+    if (!apiKey.trim()) {
+      toast.error('App Store Connect API Key is required')
+      return false
+    }
+
+    if (!appName.trim()) {
+      toast.error('App Name is required')
+      return false
+    }
+
+    if (!description.trim()) {
+      toast.error('Description is required')
+      return false
+    }
+
+    if (!supportUrl.trim()) {
+      toast.error('Support URL is required')
+      return false
+    }
+
+    if (!privacyPolicyUrl.trim()) {
+      toast.error('Privacy Policy URL is required')
+      return false
+    }
+
+    if (!contactEmail.trim()) {
+      toast.error('Contact Email is required')
+      return false
+    }
+
+    // Format validation
+    const bundleIdPattern = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$/i
+    if (!bundleIdPattern.test(bundleId)) {
+      toast.error('Invalid Bundle ID format. Use format: com.company.appname')
+      return false
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(contactEmail)) {
+      toast.error('Invalid email address')
+      return false
+    }
+
+    const urlPattern = /^https?:\/\/.+/
+    if (!urlPattern.test(supportUrl)) {
+      toast.error('Support URL must be a valid URL starting with http:// or https://')
+      return false
+    }
+
+    if (!urlPattern.test(privacyPolicyUrl)) {
+      toast.error('Privacy Policy URL must be a valid URL starting with http:// or https://')
+      return false
+    }
+
+    // App name length validation
+    if (appName.length > 30) {
+      toast.error('App Name must be 30 characters or less')
+      return false
+    }
+
+    // Subtitle length validation
+    if (appStoreForm.subtitle.length > 30) {
+      toast.error('Subtitle must be 30 characters or less')
+      return false
+    }
+
+    // Keywords length validation
+    if (appStoreForm.keywords.length > 100) {
+      toast.error('Keywords must be 100 characters or less')
+      return false
+    }
+
+    // Description length validation
+    if (description.length > 4000) {
+      toast.error('Description must be 4000 characters or less')
+      return false
+    }
+
+    // API Key JSON validation
+    try {
+      const parsedKey = JSON.parse(apiKey)
+      if (!parsedKey.key_id || !parsedKey.issuer_id || !parsedKey.key) {
+        toast.error('API Key must contain key_id, issuer_id, and key fields')
+        return false
+      }
+    } catch (e) {
+      toast.error('API Key must be valid JSON')
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmitAppStorePublish = async () => {
+    if (!appId) {
+      toast.error('No app id found')
+      return
+    }
+
+    if (!validateAppStoreForm()) {
+      return
+    }
+
+    toast.success('Validation passed! Ready to publish to App Store.')
+    logger.info('[AppBuilder] App Store form validated successfully', {
+      bundleId: appStoreForm.bundleId,
+      track: appStoreForm.track
+    })
+
+    // Close modal after successful validation
+    setShowAppStoreModal(false)
+  }
+
+  const handleDownloadSourceClick = async () => {
+    if (!appId) return
+
+    try {
+      // Check for existing active job
+      const response = await apiService.getLatestDownloadJob(Number(appId))
+
+      if (response.ok && response.data) {
+        const job = response.data
+        // Only set as existing if it's an active job (pending/processing)
+        if (job.status === 'pending' || job.status === 'processing') {
+          setExistingDownloadJob(job)
+        } else {
+          // Completed/failed/expired - allow new request
+          setExistingDownloadJob(null)
+        }
+      } else {
+        setExistingDownloadJob(null)
+      }
+    } catch (error) {
+      logger.error('[AppBuilder] Error checking download job:', { error })
+      setExistingDownloadJob(null)
+    }
+
+    setShowDownloadModal(true)
   }
 
   // Monitor socketExpoInfo changes and update isAppRunning
@@ -2099,15 +2321,19 @@ function AppBuilderContent() {
                 </a>
 
                 {/* Publish to App Store */}
-                <button className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group">
+                <button
+                  onClick={() => setShowAppStoreModal(true)}
+                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group"
+                >
                   <div className="flex items-center gap-1.5 md:gap-2.5">
                     <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
                       <Image
-                        src="/images/play-store-icon.png"
+                        src="/images/app-store-icon.webp"
                         alt="Apple App Store"
                         width={20}
                         height={20}
                         className="w-4 h-4 md:w-5 md:h-5"
+                        unoptimized
                       />
                     </div>
                     <span className="font-medium text-white text-[10px] md:text-xs">Publish to App Store</span>
@@ -2136,7 +2362,10 @@ function AppBuilderContent() {
                 </button>
 
                 {/* Download Source */}
-                <button className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-purple-900 rounded-lg transition-colors group">
+                <button
+                  onClick={handleDownloadSourceClick}
+                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-purple-900 rounded-lg transition-colors group"
+                >
                   <div className="flex items-center gap-1.5 md:gap-2.5">
                     <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
                       <Download className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
@@ -2295,6 +2524,24 @@ function AppBuilderContent() {
         jobId={publishJobId}
         onClose={() => setShowPublishProgressModal(false)}
         onCancel={handleCancelPublish}
+      />
+
+      {/* Download Source Modal */}
+      <DownloadSourceModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        appId={Number(appId)}
+        existingJob={existingDownloadJob}
+      />
+
+      {/* App Store Publish Modal */}
+      <AppStorePublishModal
+        isOpen={showAppStoreModal}
+        onClose={() => setShowAppStoreModal(false)}
+        form={appStoreForm}
+        onFieldChange={handleAppStoreFieldChange}
+        onSubmit={handleSubmitAppStorePublish}
+        isSubmitting={isSubmittingAppStore}
       />
     </div>
   )
