@@ -44,7 +44,7 @@ export default function VariantManager({ variants, onVariantsChange }: VariantMa
       sku: '',
       option1Name: 'Size',
       option1Value: '',
-      option2Name: 'Colour',
+      option2Name: '',
       option2Value: '',
       option3Name: '',
       option3Value: '',
@@ -299,8 +299,6 @@ export default function VariantManager({ variants, onVariantsChange }: VariantMa
                           return (
                             <div className="flex flex-col space-y-2">
                               {renderOptionRow('option1Name','option1Value','Option 1 (e.g., Size)','Value (e.g., 8)')}
-                              {renderOptionRow('option2Name','option2Value','Option 2 (e.g., Colour)','Value (e.g., Red)')}
-                              {renderOptionRow('option3Name','option3Value','Option 3 (optional)','Value')}
                             </div>
                           )
                         })()}

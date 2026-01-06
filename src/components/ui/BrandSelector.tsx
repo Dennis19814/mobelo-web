@@ -15,6 +15,7 @@ interface BrandSelectorProps {
   error?: string
   onValidationChange?: (isValid: boolean) => void
   requireExplicitCreation?: boolean
+  multiSelect?: boolean // Enable multi-select mode (keeps dropdown open after selection)
 }
 
 export default function BrandSelector({
@@ -27,7 +28,8 @@ export default function BrandSelector({
   className = '',
   error,
   onValidationChange,
-  requireExplicitCreation = false
+  requireExplicitCreation = false,
+  multiSelect = false
 }: BrandSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState(value || '')
@@ -179,9 +181,9 @@ export default function BrandSelector({
     }
   }, [isOpen, handleBlur])
 
-  const selectBrand = async (brand: string, isExplicitCreation = false) => {
+  const selectBrand = async (brand: string, isExplicitCreation = false, keepOpen = false) => {
     const trimmedBrand = brand.trim()
-    logger.debug('Selecting brand:', { brand: trimmedBrand, explicitCreation: isExplicitCreation })
+    logger.debug('Selecting brand:', { brand: trimmedBrand, explicitCreation: isExplicitCreation, keepOpen })
     
     // Mark as explicitly created if this was a creation action
     if (isExplicitCreation && trimmedBrand) {
@@ -236,13 +238,22 @@ export default function BrandSelector({
       setBrands(prev => [trimmedBrand, ...prev].sort())
     }
     
-    setInputValue(trimmedBrand)
     onChange(trimmedBrand)
-    setIsOpen(false)
-    setHighlightedIndex(-1)
     
-    if (!isExplicitCreation) {
+    if (keepOpen) {
+      // Keep dropdown open and clear input for multi-select scenario
+      setInputValue('')
+      setHighlightedIndex(-1)
       inputRef.current?.focus()
+      // Keep dropdown open
+    } else {
+      // Close dropdown for single-select scenario
+      setInputValue(trimmedBrand)
+      setIsOpen(false)
+      setHighlightedIndex(-1)
+      if (!isExplicitCreation) {
+        inputRef.current?.focus()
+      }
     }
   }
 
@@ -274,15 +285,15 @@ export default function BrandSelector({
       case 'Enter':
         e.preventDefault()
         if (highlightedIndex >= 0 && highlightedIndex < filteredBrands.length) {
-          selectBrand(filteredBrands[highlightedIndex])
+          selectBrand(filteredBrands[highlightedIndex], false, multiSelect)
         } else if (shouldShowCreateOption() && highlightedIndex === filteredBrands.length) {
           // Create new brand
           logger.debug('Creating brand via keyboard:', { value: inputValue.trim() })
-          selectBrand(inputValue.trim(), true)
+          selectBrand(inputValue.trim(), true, multiSelect)
         } else if (inputValue.trim() && shouldShowCreateOption()) {
           // If no option is highlighted but there's input, create the brand
           logger.debug('Creating brand from input:', { value: inputValue.trim() })
-          selectBrand(inputValue.trim(), true)
+          selectBrand(inputValue.trim(), true, multiSelect)
         }
         break
       case 'Escape':
@@ -402,7 +413,7 @@ export default function BrandSelector({
                     <div
                       key={brand}
                       ref={(el) => { optionsRef.current[index] = el }}
-                      onClick={() => selectBrand(brand)}
+                      onClick={() => selectBrand(brand, false, multiSelect)}
                       className={`
                         px-3 py-2 text-sm cursor-pointer flex items-center justify-between
                         ${highlightedIndex === index 
@@ -412,7 +423,7 @@ export default function BrandSelector({
                       `}
                     >
                       <span>{brand}</span>
-                      {value === brand && (
+                      {!multiSelect && value === brand && (
                         <Check className="w-4 h-4 text-orange-600" />
                       )}
                     </div>
@@ -425,7 +436,7 @@ export default function BrandSelector({
                         e.preventDefault()
                         e.stopPropagation()
                         logger.debug('Creating brand:', { value: inputValue.trim() })
-                        selectBrand(inputValue.trim(), true)
+                        selectBrand(inputValue.trim(), true, multiSelect)
                       }}
                       className={`
                         px-3 py-2 text-sm cursor-pointer flex items-center border-t border-gray-100

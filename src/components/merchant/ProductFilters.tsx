@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/logger'
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Filter,
   ChevronDown,
@@ -31,6 +31,7 @@ interface ProductFiltersProps {
   horizontal?: boolean;
   apiKey?: string;
   appSecretKey?: string;
+  initialFilters?: FilterValues; // Current applied filters to display
 }
 
 export interface FilterValues {
@@ -52,8 +53,10 @@ export default function ProductFilters({
   horizontal = false,
   apiKey,
   appSecretKey,
+  initialFilters,
 }: ProductFiltersProps) {
-  const [filters, setFilters] = useState<FilterValues>({
+  // Initialize filters from initialFilters if provided, otherwise empty
+  const [filters, setFilters] = useState<FilterValues>(initialFilters || {
     categories: [],
     brands: [],
     priceRange: {},
@@ -66,9 +69,18 @@ export default function ProductFilters({
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
   );
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
+  const [priceMin, setPriceMin] = useState(initialFilters?.priceRange?.min?.toString() || "");
+  const [priceMax, setPriceMax] = useState(initialFilters?.priceRange?.max?.toString() || "");
   const [currentBrand, setCurrentBrand] = useState("");
+
+  // Sync filters when initialFilters changes (when panel opens with new filters)
+  useEffect(() => {
+    if (isOpen && initialFilters) {
+      setFilters(initialFilters);
+      setPriceMin(initialFilters.priceRange?.min?.toString() || "");
+      setPriceMax(initialFilters.priceRange?.max?.toString() || "");
+    }
+  }, [initialFilters, isOpen]);
 
   const handleCategoryToggle = (categoryId: number) => {
     const newCategories = filters.categories.includes(categoryId)
@@ -271,18 +283,26 @@ export default function ProductFilters({
             <div className="space-y-2">
               <BrandSelector
                 value={currentBrand}
+                multiSelect={true}
                 onChange={(value) => {
-                  setCurrentBrand(value);
                   if (value) {
                     handleBrandAdd(value);
+                    // Clear the input after adding (the BrandSelector will handle this with multiSelect)
                   }
                 }}
                 onFetchBrands={async (search) => {
                   if (!apiKey || !appSecretKey) return [];
                   try {
-                    const response = await apiService.getBrands({ search });
-                    if (response.ok && Array.isArray(response.data)) {
-                      return response.data;
+                    const response = await apiService.getBrands({ search, limit: 100 });
+                    if (response.ok && response.data) {
+                      // Handle paginated response format { data: Brand[], total: number }
+                      if (Array.isArray(response.data)) {
+                        // Simple array format
+                        return response.data.map((brand: any) => typeof brand === 'string' ? brand : brand.name || brand);
+                      } else if (response.data.data && Array.isArray(response.data.data)) {
+                        // Paginated format with data property
+                        return response.data.data.map((brand: any) => typeof brand === 'string' ? brand : brand.name || brand);
+                      }
                     }
                     return [];
                   } catch (error) {
@@ -462,18 +482,26 @@ export default function ProductFilters({
         <div className="space-y-3">
           <BrandSelector
             value={currentBrand}
+            multiSelect={true}
             onChange={(value) => {
-              setCurrentBrand(value);
               if (value) {
                 handleBrandAdd(value);
+                // Clear the input after adding (the BrandSelector will handle this with multiSelect)
               }
             }}
             onFetchBrands={async (search) => {
               if (!apiKey || !appSecretKey) return [];
               try {
-                const response = await apiService.getBrands({ search });
-                if (response.ok && Array.isArray(response.data)) {
-                  return response.data;
+                const response = await apiService.getBrands({ search, limit: 100 });
+                if (response.ok && response.data) {
+                  // Handle paginated response format { data: Brand[], total: number }
+                  if (Array.isArray(response.data)) {
+                    // Simple array format
+                    return response.data.map((brand: any) => typeof brand === 'string' ? brand : brand.name || brand);
+                  } else if (response.data.data && Array.isArray(response.data.data)) {
+                    // Paginated format with data property
+                    return response.data.data.map((brand: any) => typeof brand === 'string' ? brand : brand.name || brand);
+                  }
                 }
                 return [];
               } catch (error) {

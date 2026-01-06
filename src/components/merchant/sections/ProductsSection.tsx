@@ -73,6 +73,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [loadingProductData, setLoadingProductData] = useState(false)
 
@@ -198,6 +199,15 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady])
 
+  // Fetch products when filters change
+  useEffect(() => {
+    const hasStaffToken = typeof window !== 'undefined' ? !!localStorage.getItem('staff_access_token') : false
+    if ((isReady || hasStaffToken) && initialLoadComplete) {
+      fetchProducts()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true)
     fetchProducts()
@@ -225,20 +235,79 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
     }
   }, [])
 
+  // Convert ProductFiltersType to FilterValues for ProductFilters component
+  const convertToFilterValues = useCallback((productFilters: ProductFiltersType): FilterValues => {
+    const productFlags: string[] = []
+    if (productFilters.featured) productFlags.push('featured')
+    if (productFilters.isNew) productFlags.push('new')
+    if (productFilters.isBestSeller) productFlags.push('best_seller')
+    if (productFilters.isOnSale) productFlags.push('on_sale')
+
+    const statusArray: string[] = []
+    if (productFilters.status) {
+      if (Array.isArray(productFilters.status)) {
+        statusArray.push(...productFilters.status)
+      } else {
+        statusArray.push(productFilters.status)
+      }
+    }
+
+    return {
+      categories: productFilters.categories || [],
+      brands: productFilters.brands || [],
+      priceRange: {
+        min: productFilters.minPrice,
+        max: productFilters.maxPrice,
+      },
+      stockStatus: productFilters.stockStatus || [],
+      productFlags,
+      status: statusArray,
+      dateRange: {},
+    }
+  }, [])
+
+  // Check if any filters are currently applied
+  const hasActiveFilters = useMemo(() => {
+    const hasCategories = Array.isArray(filters.categories) && filters.categories.length > 0
+    const hasBrands = Array.isArray(filters.brands) && filters.brands.length > 0
+    const hasPriceRange = (typeof filters.minPrice === 'number') || (typeof filters.maxPrice === 'number')
+    const hasStockStatus = Array.isArray(filters.stockStatus) && filters.stockStatus.length > 0
+    const hasProductFlags = filters.featured === true || filters.isNew === true || filters.isBestSeller === true || filters.isOnSale === true
+    const hasStatus = (filters.status !== undefined && filters.status !== null && filters.status !== '') || 
+                     (Array.isArray(filters.status) && filters.status.length > 0)
+    const hasSearch = filters.search !== undefined && filters.search !== null && String(filters.search).trim().length > 0
+
+    return hasCategories || hasBrands || hasPriceRange || hasStockStatus || hasProductFlags || hasStatus || hasSearch
+  }, [filters])
+
+  // Count active filters for badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (Array.isArray(filters.categories) && filters.categories.length > 0) count++
+    if (Array.isArray(filters.brands) && filters.brands.length > 0) count++
+    if (typeof filters.minPrice === 'number' || typeof filters.maxPrice === 'number') count++
+    if (Array.isArray(filters.stockStatus) && filters.stockStatus.length > 0) count++
+    if (filters.featured === true || filters.isNew === true || filters.isBestSeller === true || filters.isOnSale === true) count++
+    if ((filters.status !== undefined && filters.status !== null && filters.status !== '') || 
+        (Array.isArray(filters.status) && filters.status.length > 0)) count++
+    if (filters.search !== undefined && filters.search !== null && String(filters.search).trim().length > 0) count++
+    return count
+  }, [filters])
+
   const handleFiltersChange = useCallback((filterValues: FilterValues) => {
     const newFilters: ProductFiltersType = {
       ...filters,
       page: 1,
-      categories: filterValues.categories,
-      brands: filterValues.brands,
-      minPrice: filterValues.priceRange.min,
-      maxPrice: filterValues.priceRange.max,
-      stockStatus: filterValues.stockStatus,
-      featured: filterValues.productFlags.includes('featured'),
-      isNew: filterValues.productFlags.includes('new'),
-      isBestSeller: filterValues.productFlags.includes('best_seller'),
-      isOnSale: filterValues.productFlags.includes('on_sale'),
-      status: filterValues.status.length > 0 ? filterValues.status[0] as any : undefined
+      categories: filterValues.categories && filterValues.categories.length > 0 ? filterValues.categories : undefined,
+      brands: filterValues.brands && filterValues.brands.length > 0 ? filterValues.brands : undefined,
+      minPrice: filterValues.priceRange.min !== undefined ? filterValues.priceRange.min : undefined,
+      maxPrice: filterValues.priceRange.max !== undefined ? filterValues.priceRange.max : undefined,
+      stockStatus: filterValues.stockStatus && filterValues.stockStatus.length > 0 ? filterValues.stockStatus : undefined,
+      featured: filterValues.productFlags.includes('featured') ? true : undefined,
+      isNew: filterValues.productFlags.includes('new') ? true : undefined,
+      isBestSeller: filterValues.productFlags.includes('best_seller') ? true : undefined,
+      isOnSale: filterValues.productFlags.includes('on_sale') ? true : undefined,
+      status: filterValues.status && filterValues.status.length > 0 ? (filterValues.status.length === 1 ? filterValues.status[0] as any : filterValues.status as any) : undefined
     }
     setFilters(newFilters)
   }, [filters])
@@ -422,6 +491,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   const handleBulkDelete = useCallback(async () => {
     if (selectedProducts.length === 0 || !headers) return
 
+    setShowBulkDeleteModal(false)
     const deleteOperations = selectedProducts.map(id =>
       () => apiService.deleteProduct(id)
     )
@@ -581,15 +651,24 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-2 border rounded-lg transition-colors text-sm ${
+            className={`relative flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-2 border rounded-lg transition-colors text-sm ${
               showFilters
                 ? 'border-orange-500 bg-orange-50 text-orange-600'
+                : hasActiveFilters
+                ? 'border-orange-400 bg-orange-50/50 text-orange-700'
                 : 'border-gray-300 hover:bg-gray-50'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Filters</span>
-            {showFilters && <span className="hidden md:inline text-xs">(Active)</span>}
+            {hasActiveFilters && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-xs font-semibold text-white bg-orange-600 rounded-full">
+                {activeFiltersCount}
+              </span>
+            )}
+            {showFilters && !hasActiveFilters && (
+              <span className="hidden md:inline text-xs">(Active)</span>
+            )}
           </button>
           <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
             <button
@@ -644,6 +723,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
             horizontal={true}
             apiKey={apiKey}
             appSecretKey={appSecretKey}
+            initialFilters={convertToFilterValues(filters)}
           />
         </div>
       )}
@@ -655,13 +735,15 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
           <div className="flex gap-2">
             {canDeleteProducts && (
               <button
-                onClick={() => setShowDeleteModal(true)}
-                className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100"
+                onClick={() => setShowBulkDeleteModal(true)}
+                disabled={crudLoading}
+                className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >Delete</button>
             )}
             <button
               onClick={() => selectedProducts.forEach((id) => handleDuplicate(id))}
-              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100"
+              disabled={crudLoading}
+              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >Duplicate</button>
           </div>
         </div>
@@ -900,8 +982,28 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
             confirmText="Delete"
             isDestructive={true}
           />
+
         </Suspense>
       )}
+
+      {/* Bulk Delete Confirmation Modal - Outside selectedProduct conditional */}
+      <Suspense fallback={null}>
+          <ConfirmationModal
+            isOpen={showBulkDeleteModal}
+            onClose={() => {
+              setShowBulkDeleteModal(false)
+            }}
+            onConfirm={handleBulkDelete}
+            title={selectedProducts.length === 1 ? 'Delete Product' : 'Delete Products'}
+            message={
+              selectedProducts.length === 1
+                ? `Are you sure you want to delete this product? This action cannot be undone.`
+                : `Are you sure you want to delete ${selectedProducts.length} selected products? This action cannot be undone.`
+            }
+            confirmText="Delete"
+            isDestructive={true}
+          />
+      </Suspense>
 
       {/* Loading Overlay for fetching product data */}
       {loadingProductData && (

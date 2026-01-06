@@ -35,6 +35,7 @@ export default function MediaManager({
   const [settingListingThumbnailId, setSettingListingThumbnailId] = useState<number | null>(null)
   const [settingDetailThumbnailId, setSettingDetailThumbnailId] = useState<number | null>(null)
   const [draggedItem, setDraggedItem] = useState<number | null>(null)
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -248,57 +249,124 @@ export default function MediaManager({
 
 
   return (
-    <div className="space-y-4">
-      {/* Upload Area */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,video/*"
-          onChange={handleFileSelect}
-          className="hidden"
-          disabled={disabled || uploading}
-        />
-        
-        <div className="space-y-3">
-          <div className="flex justify-center">
-            {uploading ? (
-              <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
-            ) : (
-              <Upload className="w-8 h-8 text-gray-400" />
-            )}
-          </div>
-          
-          <div>
-            <button
-              onClick={() => fileInputRef.current?.click()}
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Upload Area - Left Side */}
+        <div className="lg:w-80 flex-shrink-0">
+          <div 
+            className={`relative border-2 border-dashed rounded-xl p-4 transition-all duration-200 cursor-pointer ${
+              isDraggingOver
+                ? 'border-orange-500 bg-gradient-to-br from-orange-100 to-orange-50 scale-[1.02] shadow-lg'
+                : 'border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-orange-400 hover:bg-gradient-to-br hover:from-orange-50 hover:to-white'
+            }`}
+            onClick={() => !disabled && !uploading && fileInputRef.current?.click()}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (!disabled && !uploading) {
+                setIsDraggingOver(true)
+              }
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setIsDraggingOver(false)
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDraggingOver(false)
+              if (disabled || uploading || !onUpload) return
+              const files = Array.from(e.dataTransfer.files)
+              if (files.length > 0) {
+                const event = { target: { files } } as any
+                handleFileSelect(event as React.ChangeEvent<HTMLInputElement>)
+              }
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              onChange={handleFileSelect}
+              className="hidden"
               disabled={disabled || uploading}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {uploading ? 'Uploading...' : 'Select Media Files'}
-            </button>
+            />
+            
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                {uploading ? (
+                  <div className="relative">
+                    <div className="w-12 h-12 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-orange-600" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    fileInputRef.current?.click()
+                  }}
+                  disabled={disabled || uploading}
+                  className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg font-medium text-sm"
+                >
+                  {uploading ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Uploading...</span>
+                    </span>
+                  ) : (
+                    'Select Media Files'
+                  )}
+                </button>
+                
+                <p className="text-xs text-gray-600 text-center">
+                  Drag and drop files here or click to select
+                </p>
+              </div>
+              
+              <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                <div className="flex items-center space-x-1.5 text-xs text-gray-500">
+                  <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Images: Max 5MB</span>
+                </div>
+                <div className="flex items-center space-x-1.5 text-xs text-gray-500">
+                  <Play className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Videos: Max 50MB</span>
+                </div>
+                <div className="flex items-start space-x-1.5 text-xs text-gray-500">
+                  <FileText className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>JPG, PNG, GIF, WebP, MP4, WebM, MOV</span>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          <p className="text-xs text-gray-500">
-            Drag and drop images and videos here, or click to select files
-            <br />
-            Images: Max 5MB • Videos: Max 50MB • Supported formats: JPG, PNG, GIF, WebP, MP4, WebM, MOV
-          </p>
         </div>
-      </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
+        {/* Media Grid - Right Side */}
+        <div className="flex-1">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
-      {/* Media Grid */}
-      {media.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {media.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {media.map((item, index) => (
             <div
               key={item.id || index}
@@ -308,44 +376,44 @@ export default function MediaManager({
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
               className={`
-                relative group border border-gray-200 rounded-lg overflow-hidden bg-white
-                ${draggedItem === index ? 'opacity-50' : ''}
+                relative group border-2 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all
+                ${draggedItem === index ? 'opacity-50 scale-95' : ''}
                 ${
                   item.isListingThumbnail && item.isDetailThumbnail
-                    ? 'ring-2 ring-gradient-to-r from-blue-500 to-green-500'
+                    ? 'ring-2 ring-orange-500 border-orange-300'
                     : item.isListingThumbnail
-                    ? 'ring-2 ring-blue-500'
+                    ? 'ring-2 ring-blue-500 border-blue-300'
                     : item.isDetailThumbnail
-                    ? 'ring-2 ring-green-500'
+                    ? 'ring-2 ring-green-500 border-green-300'
                     : item.isPrimary
-                    ? 'ring-2 ring-purple-500'
-                    : ''
+                    ? 'ring-2 ring-purple-500 border-purple-300'
+                    : 'border-gray-200 hover:border-gray-300'
                 }
               `}
             >
               {/* Drag Handle */}
               <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="p-1 bg-white rounded shadow-sm cursor-move">
-                  <GripVertical className="w-4 h-4 text-gray-500" />
+                <div className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-md cursor-move hover:bg-white">
+                  <GripVertical className="w-4 h-4 text-gray-600" />
                 </div>
               </div>
 
               {/* Thumbnail Badges */}
-              <div className="absolute top-2 right-2 z-10 flex flex-col space-y-1">
+              <div className="absolute top-2 right-2 z-10 flex flex-col space-y-1.5">
                 {item.isListingThumbnail && (
-                  <div className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full flex items-center space-x-1">
+                  <div className="px-2.5 py-1 bg-blue-600 text-white text-xs font-medium rounded-lg flex items-center space-x-1 shadow-md">
                     <Star className="w-3 h-3 fill-current" />
                     <span>Listing</span>
                   </div>
                 )}
                 {item.isDetailThumbnail && (
-                  <div className="px-2 py-1 bg-green-500 text-white text-xs rounded-full flex items-center space-x-1">
+                  <div className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded-lg flex items-center space-x-1 shadow-md">
                     <Star className="w-3 h-3 fill-current" />
                     <span>Detail</span>
                   </div>
                 )}
                 {item.isPrimary && !item.isListingThumbnail && !item.isDetailThumbnail && (
-                  <div className="px-2 py-1 bg-purple-500 text-white text-xs rounded-full flex items-center space-x-1">
+                  <div className="px-2.5 py-1 bg-purple-600 text-white text-xs font-medium rounded-lg flex items-center space-x-1 shadow-md">
                     <Star className="w-3 h-3 fill-current" />
                     <span>Primary</span>
                   </div>
@@ -353,7 +421,7 @@ export default function MediaManager({
               </div>
 
               {/* Media Display (Image or Video) */}
-              <div className="aspect-square relative">
+              <div className="aspect-square relative bg-gray-100">
                 {item.type === 'video' ? (
                   <div className="relative w-full h-full bg-gray-900 flex items-center justify-center">
                     {/* Video Preview */}
@@ -406,11 +474,11 @@ export default function MediaManager({
                 )}
 
                 {/* Media Type Badge */}
-                <div className="absolute top-2 left-2 z-10">
-                  <div className={`px-2 py-1 text-xs rounded-full flex items-center space-x-1 ${
+                <div className="absolute bottom-2 left-2 z-10">
+                  <div className={`px-2.5 py-1 text-xs font-medium rounded-lg flex items-center space-x-1 shadow-md ${
                     item.type === 'video'
-                      ? 'bg-red-500 text-white'
-                      : 'bg-orange-500 text-white'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-orange-600 text-white'
                   }`}>
                     {item.type === 'video' ? (
                       <>
@@ -428,17 +496,20 @@ export default function MediaManager({
               </div>
 
               {/* Actions Overlay */}
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <div className="flex flex-col space-y-2">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-xl">
+                <div className="flex flex-col space-y-3">
                   <div className="flex space-x-2">
                     {onSetListingThumbnail && (
                       <button
-                        onClick={() => item.id && handleSetListingThumbnail(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          item.id && handleSetListingThumbnail(item.id)
+                        }}
                         disabled={disabled || settingListingThumbnailId === item.id}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                        className={`p-2.5 rounded-lg transition-all disabled:opacity-50 shadow-lg ${
                           item.isListingThumbnail 
-                            ? 'bg-orange-500 text-white hover:bg-orange-600' 
-                            : 'bg-white text-orange-600 hover:bg-orange-50'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-white text-blue-600 hover:bg-blue-50'
                         }`}
                         title="Set as listing thumbnail"
                       >
@@ -452,11 +523,14 @@ export default function MediaManager({
                     
                     {onSetDetailThumbnail && (
                       <button
-                        onClick={() => item.id && handleSetDetailThumbnail(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          item.id && handleSetDetailThumbnail(item.id)
+                        }}
                         disabled={disabled || settingDetailThumbnailId === item.id}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                        className={`p-2.5 rounded-lg transition-all disabled:opacity-50 shadow-lg ${
                           item.isDetailThumbnail 
-                            ? 'bg-green-500 text-white hover:bg-green-600' 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
                             : 'bg-white text-green-600 hover:bg-green-50'
                         }`}
                         title="Set as detail thumbnail"
@@ -471,9 +545,12 @@ export default function MediaManager({
                     
                     {!item.isPrimary && !item.isListingThumbnail && !item.isDetailThumbnail && onSetPrimary && (
                       <button
-                        onClick={() => item.id && handleSetPrimary(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          item.id && handleSetPrimary(item.id)
+                        }}
                         disabled={disabled || settingPrimaryId === item.id}
-                        className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                        className="p-2.5 bg-white rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 shadow-lg"
                         title="Set as primary"
                       >
                         {settingPrimaryId === item.id ? (
@@ -488,9 +565,12 @@ export default function MediaManager({
                   {onDelete && (
                     <div className="flex justify-center">
                       <button
-                        onClick={() => item.id && handleDelete(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          item.id && handleDelete(item.id)
+                        }}
                         disabled={disabled || deletingId === item.id}
-                        className="p-2 bg-white rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                        className="p-2.5 bg-white rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 shadow-lg"
                         title="Delete media"
                       >
                         {deletingId === item.id ? (
@@ -504,26 +584,34 @@ export default function MediaManager({
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex justify-center space-x-3 mb-4">
+                <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                  <ImageIcon className="w-7 h-7 text-gray-400" />
+                </div>
+                <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                  <Play className="w-7 h-7 text-gray-400" />
+                </div>
+              </div>
+              <p className="text-gray-600 font-medium mb-1">No media uploaded yet</p>
+              <p className="text-sm text-gray-400">Upload images and videos to display them here</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <div className="flex justify-center space-x-2 mb-3">
-            <ImageIcon className="w-12 h-12 text-gray-400" />
-            <Play className="w-12 h-12 text-gray-400" />
-          </div>
-          <p className="text-gray-500">No media uploaded yet</p>
-          <p className="text-xs text-gray-400 mt-1">Upload images and videos to display them here</p>
-        </div>
-      )}
+      </div>
 
       {/* Instructions */}
       {media.length > 0 && (
-        <div className="text-xs text-gray-500 space-y-1">
-          <p>• Drag and drop media files to reorder them</p>
-          <p>• <span className="text-orange-600">Blue star</span>: Feature on listing pages • <span className="text-green-600">Green star</span>: Feature on detail page</p>
-          <p>• Videos show duration and play preview on hover</p>
-          <p>• Hover over media to see available actions</p>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="text-xs text-orange-800 space-y-1.5">
+            <p className="font-medium mb-2">💡 Tips:</p>
+            <p>• Drag and drop media files to reorder them</p>
+            <p>• <span className="font-semibold text-blue-700">Blue star</span>: Feature on listing pages • <span className="font-semibold text-green-700">Green star</span>: Feature on detail page</p>
+            <p>• Hover over media to see available actions</p>
+          </div>
         </div>
       )}
     </div>
