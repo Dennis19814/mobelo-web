@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import 'react-quill/dist/quill.snow.css';
 
 // Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false }) as any;
 
 interface LegalDocumentModalProps {
   isOpen: boolean;
@@ -97,7 +97,7 @@ export function LegalDocumentModal({
                   }
                 }
               } catch (retryErr) {
-                logger.warn('Could not focus editor after retry:', retryErr);
+                logger.warn('Could not focus editor after retry:', { retryErr });
               }
             }, 500);
           }

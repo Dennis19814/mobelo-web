@@ -175,6 +175,16 @@ class ApiService {
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
+  async triggerAppStorePublish(appId: number, payload: any): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/platform/apps/${appId}/appstore-publish`, payload);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  async cancelAppStorePublish(appId: number, jobId: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/platform/apps/${appId}/appstore-publish/${jobId}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
   async deleteApp(appId: number): Promise<ApiResponse> {
     const response = await httpClient.delete(`/v1/platform/apps/${appId}`);
     return { ok: response.ok, status: response.status, data: response.data };
@@ -1055,6 +1065,23 @@ class ApiService {
    */
   async updateLegalDocument(appId: number, documentType: 'terms_and_conditions' | 'privacy_policy', content: string): Promise<ApiResponse> {
     const response = await httpClient.patch(`/v1/platform/apps/${appId}/legal-documents/${documentType}`, { content });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  // =============== Download Jobs ===============
+  /**
+   * Get latest download job for app
+   */
+  async getLatestDownloadJob(appId: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/platform/apps/${appId}/download-jobs/latest`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Request new source download
+   */
+  async requestSourceDownload(appId: number): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/platform/apps/${appId}/download-source`);
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
