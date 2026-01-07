@@ -2,12 +2,21 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronDown, Plus, Check } from 'lucide-react'
+import { ChevronDown, Plus, Check, Building2 } from 'lucide-react'
+
+interface Brand {
+  name: string
+  logoUrl?: string
+  imageUrl?: string
+  [key: string]: any // Allow additional properties for flexibility
+}
+
+type BrandInput = string | Brand
 
 interface BrandSelectorProps {
   value: string
   onChange: (value: string) => void
-  onFetchBrands: (search?: string) => Promise<string[]>
+  onFetchBrands: (search?: string) => Promise<BrandInput[]>
   onCreateBrand?: (brandName: string) => Promise<boolean>
   placeholder?: string
   disabled?: boolean
@@ -15,6 +24,9 @@ interface BrandSelectorProps {
   error?: string
   onValidationChange?: (isValid: boolean) => void
   requireExplicitCreation?: boolean
+  multiSelect?: boolean // Enable multi-select mode (keeps dropdown open after selection)
+  /** Optional text size class for dropdown option labels (e.g. 'text-xs', 'text-sm'). Defaults to 'text-sm'. */
+  optionTextClassName?: string
 }
 
 export default function BrandSelector({
@@ -27,15 +39,30 @@ export default function BrandSelector({
   className = '',
   error,
   onValidationChange,
-  requireExplicitCreation = false
+  requireExplicitCreation = false,
+  multiSelect = false,
+  optionTextClassName = 'text-sm'
 }: BrandSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState(value || '')
-  const [brands, setBrands] = useState<string[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const [explicitlyCreatedBrands, setExplicitlyCreatedBrands] = useState<Set<string>>(new Set())
+
+  // Helper function to normalize brand input to Brand object
+  const normalizeBrand = (brand: BrandInput): Brand => {
+    if (typeof brand === 'string') {
+      return { name: brand }
+    }
+    return brand
+  }
+
+  // Helper function to get brand name
+  const getBrandName = (brand: Brand | string): string => {
+    return typeof brand === 'string' ? brand : brand.name
+  }
 
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -48,7 +75,16 @@ export default function BrandSelector({
     setLoading(true)
     try {
       const result = await onFetchBrands(search)
-      const fetchedBrands = result || []
+      const fetchedBrands = (result || []).map(normalizeBrand)
+      
+      // Debug: Log first brand to verify image URLs are present
+      if (fetchedBrands.length > 0) {
+        logger.debug('Fetched brands sample:', { 
+          firstBrand: fetchedBrands[0],
+          hasLogoUrl: !!fetchedBrands[0].logoUrl,
+          hasImageUrl: !!fetchedBrands[0].imageUrl
+        })
+      }
       
       // Merge fetched brands with explicitly created brands
       setBrands(prev => {
@@ -56,18 +92,18 @@ export default function BrandSelector({
         const combined = [...fetchedBrands]
         
         // Add explicitly created brands that aren't already in fetched results
-        explicitlyCreated.forEach(brand => {
-          if (!fetchedBrands.some(b => b.toLowerCase() === brand.toLowerCase())) {
-            combined.unshift(brand) // Add at the beginning
+        explicitlyCreated.forEach(brandName => {
+          if (!fetchedBrands.some(b => b.name.toLowerCase() === brandName.toLowerCase())) {
+            combined.unshift({ name: brandName }) // Add at the beginning
           }
         })
         
-        return combined.sort()
+        return combined.sort((a, b) => a.name.localeCompare(b.name))
       })
     } catch (error) {
       logger.error('Failed to fetch brands:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
       // Keep explicitly created brands even if fetch fails
-      setBrands(prev => Array.from(explicitlyCreatedBrands).sort())
+      setBrands(prev => Array.from(explicitlyCreatedBrands).map(name => ({ name })).sort((a, b) => a.name.localeCompare(b.name)))
     } finally {
       setLoading(false)
     }
@@ -110,7 +146,7 @@ export default function BrandSelector({
     
     const trimmedBrand = brandName.trim()
     // Valid if it exists in the fetched brands or was explicitly created
-    return brands.some(b => b.toLowerCase() === trimmedBrand.toLowerCase()) || 
+    return brands.some(b => b.name.toLowerCase() === trimmedBrand.toLowerCase()) || 
            explicitlyCreatedBrands.has(trimmedBrand)
   }, [brands, explicitlyCreatedBrands, requireExplicitCreation])
 
@@ -150,8 +186,8 @@ export default function BrandSelector({
         onChange(trimmedInput)
         
         // Only auto-add to local brands list if not requiring explicit creation
-        if (!requireExplicitCreation && !brands.some(b => b.toLowerCase() === trimmedInput.toLowerCase())) {
-          setBrands(prev => [trimmedInput, ...prev].sort())
+        if (!requireExplicitCreation && !brands.some(b => b.name.toLowerCase() === trimmedInput.toLowerCase())) {
+          setBrands(prev => [{ name: trimmedInput }, ...prev].sort((a, b) => a.name.localeCompare(b.name)))
         }
       }
     }, 150)
@@ -179,9 +215,10 @@ export default function BrandSelector({
     }
   }, [isOpen, handleBlur])
 
-  const selectBrand = async (brand: string, isExplicitCreation = false) => {
-    const trimmedBrand = brand.trim()
-    logger.debug('Selecting brand:', { brand: trimmedBrand, explicitCreation: isExplicitCreation })
+  const selectBrand = async (brand: Brand | string, isExplicitCreation = false, keepOpen = false) => {
+    const brandObj = typeof brand === 'string' ? normalizeBrand(brand) : brand
+    const trimmedBrand = brandObj.name.trim()
+    logger.debug('Selecting brand:', { brand: trimmedBrand, explicitCreation: isExplicitCreation, keepOpen })
     
     // Mark as explicitly created if this was a creation action
     if (isExplicitCreation && trimmedBrand) {
@@ -210,9 +247,9 @@ export default function BrandSelector({
         
         // Immediately add to brands list for immediate feedback
         setBrands(current => {
-          const updated = current.some(b => b.toLowerCase() === trimmedBrand.toLowerCase()) 
+          const updated = current.some(b => b.name.toLowerCase() === trimmedBrand.toLowerCase()) 
             ? current 
-            : [trimmedBrand, ...current].sort()
+            : [{ name: trimmedBrand }, ...current].sort((a, b) => a.name.localeCompare(b.name))
           logger.debug('Updated brands list:', { value: updated })
           return updated
         })
@@ -231,18 +268,27 @@ export default function BrandSelector({
           }, 100)
         }
       }, 200)
-    } else if (trimmedBrand && !brands.some(b => b.toLowerCase() === trimmedBrand.toLowerCase())) {
+    } else if (trimmedBrand && !brands.some(b => b.name.toLowerCase() === trimmedBrand.toLowerCase())) {
       // Add existing brand to local list if not already there
-      setBrands(prev => [trimmedBrand, ...prev].sort())
+      setBrands(prev => [brandObj, ...prev].sort((a, b) => a.name.localeCompare(b.name)))
     }
     
-    setInputValue(trimmedBrand)
     onChange(trimmedBrand)
-    setIsOpen(false)
-    setHighlightedIndex(-1)
     
-    if (!isExplicitCreation) {
+    if (keepOpen) {
+      // Keep dropdown open and clear input for multi-select scenario
+      setInputValue('')
+      setHighlightedIndex(-1)
       inputRef.current?.focus()
+      // Keep dropdown open
+    } else {
+      // Close dropdown for single-select scenario
+      setInputValue(trimmedBrand)
+      setIsOpen(false)
+      setHighlightedIndex(-1)
+      if (!isExplicitCreation) {
+        inputRef.current?.focus()
+      }
     }
   }
 
@@ -274,15 +320,15 @@ export default function BrandSelector({
       case 'Enter':
         e.preventDefault()
         if (highlightedIndex >= 0 && highlightedIndex < filteredBrands.length) {
-          selectBrand(filteredBrands[highlightedIndex])
+          selectBrand(filteredBrands[highlightedIndex], false, multiSelect)
         } else if (shouldShowCreateOption() && highlightedIndex === filteredBrands.length) {
           // Create new brand
           logger.debug('Creating brand via keyboard:', { value: inputValue.trim() })
-          selectBrand(inputValue.trim(), true)
+          selectBrand({ name: inputValue.trim() }, true, multiSelect)
         } else if (inputValue.trim() && shouldShowCreateOption()) {
           // If no option is highlighted but there's input, create the brand
           logger.debug('Creating brand from input:', { value: inputValue.trim() })
-          selectBrand(inputValue.trim(), true)
+          selectBrand({ name: inputValue.trim() }, true, multiSelect)
         }
         break
       case 'Escape':
@@ -301,7 +347,7 @@ export default function BrandSelector({
     const searchLower = inputValue.toLowerCase().trim()
     return brands
       .filter(brand => 
-        brand.toLowerCase().includes(searchLower)
+        brand.name.toLowerCase().includes(searchLower)
       )
       .slice(0, 10) // Limit to 10 results for performance
   }
@@ -312,7 +358,7 @@ export default function BrandSelector({
     
     // Don't show create option if exact match exists
     const exactMatch = brands.some(brand => 
-      brand.toLowerCase() === trimmedInput.toLowerCase()
+      brand.name.toLowerCase() === trimmedInput.toLowerCase()
     )
     
     return !exactMatch
@@ -329,6 +375,43 @@ export default function BrandSelector({
       })
     }
   }, [highlightedIndex])
+
+  // BrandImage component to display brand logo/image
+  const BrandImage = ({ brand }: { brand: Brand }) => {
+    const [imageError, setImageError] = useState(false)
+    // Try multiple possible property names for image URL (matching brands table logic)
+    const imageUrl = brand.logoUrl || brand.imageUrl
+
+    // Check if imageUrl is valid (not empty, null, or undefined)
+    const hasValidImage = imageUrl && typeof imageUrl === 'string' && imageUrl.trim().length > 0
+
+    if (!hasValidImage || imageError) {
+      // Placeholder icon for brands without logo (matching brands table style)
+      return (
+        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+          <Building2 className="w-4 h-4 text-gray-400" />
+        </div>
+      )
+    }
+
+    return (
+      <div className="relative w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden bg-white">
+        <img
+          src={imageUrl}
+          alt={brand.name}
+          className="w-full h-full object-contain"
+          onError={() => {
+            setImageError(true)
+            logger.debug('Brand image failed to load', { brand: brand.name, imageUrl })
+          }}
+          onLoad={() => {
+            setImageError(false)
+            logger.debug('Brand image loaded successfully', { brand: brand.name, imageUrl })
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="relative">
@@ -386,34 +469,37 @@ export default function BrandSelector({
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
         >
           {loading ? (
-            <div className="px-3 py-2 text-sm text-gray-500 flex items-center">
+            <div className={`px-3 py-2 ${optionTextClassName} text-gray-500 flex items-center`}>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2" />
               Loading brands...
             </div>
           ) : (
             <>
               {filteredBrands.length === 0 && !shouldShowCreateOption() ? (
-                <div className="px-3 py-2 text-sm text-gray-500">
+                <div className={`px-3 py-2 ${optionTextClassName} text-gray-500`}>
                   {inputValue.trim() ? 'No brands found' : 'No brands available'}
                 </div>
               ) : (
                 <>
                   {filteredBrands.map((brand, index) => (
                     <div
-                      key={brand}
+                      key={brand.name}
                       ref={(el) => { optionsRef.current[index] = el }}
-                      onClick={() => selectBrand(brand)}
+                      onClick={() => selectBrand(brand, false, multiSelect)}
                       className={`
-                        px-3 py-2 text-sm cursor-pointer flex items-center justify-between
+                        px-3 py-2 ${optionTextClassName} cursor-pointer flex items-center justify-between gap-3
                         ${highlightedIndex === index 
                           ? 'bg-orange-50 text-slate-900' 
                           : 'hover:bg-gray-50 text-gray-900'
                         }
                       `}
                     >
-                      <span>{brand}</span>
-                      {value === brand && (
-                        <Check className="w-4 h-4 text-orange-600" />
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <BrandImage brand={brand} />
+                        <span className="truncate">{brand.name}</span>
+                      </div>
+                      {!multiSelect && value === brand.name && (
+                        <Check className="w-4 h-4 text-orange-600 flex-shrink-0" />
                       )}
                     </div>
                   ))}
@@ -425,17 +511,17 @@ export default function BrandSelector({
                         e.preventDefault()
                         e.stopPropagation()
                         logger.debug('Creating brand:', { value: inputValue.trim() })
-                        selectBrand(inputValue.trim(), true)
+                        selectBrand({ name: inputValue.trim() }, true, multiSelect)
                       }}
                       className={`
-                        px-3 py-2 text-sm cursor-pointer flex items-center border-t border-gray-100
+                        px-3 py-2 ${optionTextClassName} cursor-pointer flex items-center border-t border-gray-100 gap-2
                         ${highlightedIndex === filteredBrands.length
                           ? 'bg-orange-50 text-slate-900'
                           : 'hover:bg-gray-50 text-gray-900'
                         }
                       `}
                     >
-                      <Plus className="w-4 h-4 mr-2 text-gray-400" />
+                      <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span>Create "{inputValue.trim()}"</span>
                     </div>
                   )}

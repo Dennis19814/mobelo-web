@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/logger'
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Filter,
   ChevronDown,
@@ -31,6 +31,7 @@ interface ProductFiltersProps {
   horizontal?: boolean;
   apiKey?: string;
   appSecretKey?: string;
+  initialFilters?: FilterValues; // Current applied filters to display
 }
 
 export interface FilterValues {
@@ -52,8 +53,10 @@ export default function ProductFilters({
   horizontal = false,
   apiKey,
   appSecretKey,
+  initialFilters,
 }: ProductFiltersProps) {
-  const [filters, setFilters] = useState<FilterValues>({
+  // Initialize filters from initialFilters if provided, otherwise empty
+  const [filters, setFilters] = useState<FilterValues>(initialFilters || {
     categories: [],
     brands: [],
     priceRange: {},
@@ -66,9 +69,18 @@ export default function ProductFilters({
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
   );
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
+  const [priceMin, setPriceMin] = useState(initialFilters?.priceRange?.min?.toString() || "");
+  const [priceMax, setPriceMax] = useState(initialFilters?.priceRange?.max?.toString() || "");
   const [currentBrand, setCurrentBrand] = useState("");
+
+  // Sync filters when initialFilters changes (when panel opens with new filters)
+  useEffect(() => {
+    if (isOpen && initialFilters) {
+      setFilters(initialFilters);
+      setPriceMin(initialFilters.priceRange?.min?.toString() || "");
+      setPriceMax(initialFilters.priceRange?.max?.toString() || "");
+    }
+  }, [initialFilters, isOpen]);
 
   const handleCategoryToggle = (categoryId: number) => {
     const newCategories = filters.categories.includes(categoryId)
@@ -166,6 +178,17 @@ export default function ProductFilters({
     setExpandedCategories(newExpanded);
   };
 
+  // Flatten hierarchical categories for compact horizontal layout
+  const getFlatCategories = (cats: Category[], level: number = 0): { category: Category; level: number }[] => {
+    return cats.flatMap((cat) => {
+      const current = { category: cat, level };
+      const children = cat.children && cat.children.length > 0
+        ? getFlatCategories(cat.children, level + 1)
+        : [];
+      return [current, ...children];
+    });
+  };
+
   const renderCategory = (category: Category, level: number = 0) => {
     const hasChildren = category.children && category.children.length > 0;
     const isExpanded = expandedCategories.has(category.id);
@@ -218,6 +241,8 @@ export default function ProductFilters({
 
   // Horizontal layout for filters
   if (horizontal) {
+    const flatCategories = getFlatCategories(categories);
+
     return (
       <div className="space-y-4">
         {/* Header */}
@@ -251,15 +276,26 @@ export default function ProductFilters({
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-900">Categories</h4>
             <div className="max-h-32 overflow-y-auto space-y-1">
-              {categories.map((category) => (
-                <label key={category.id} className="flex items-center cursor-pointer text-xs">
+              {flatCategories.map(({ category, level }) => (
+                <label
+                  key={category.id}
+                  className="flex items-center cursor-pointer text-xs"
+                  style={{ paddingLeft: level > 0 ? level * 12 : 0 }}
+                >
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-orange-600 mr-1"
                     checked={filters.categories.includes(category.id)}
                     onChange={() => handleCategoryToggle(category.id)}
                   />
-                  <span className="text-gray-700 truncate">{category.name}</span>
+                  <span className="text-gray-700 truncate">
+                    {category.name}
+                    {category.productCount !== undefined && (
+                      <span className="ml-1 text-[10px] text-gray-500">
+                        ({category.productCount})
+                      </span>
+                    )}
+                  </span>
                 </label>
               ))}
             </div>
@@ -271,18 +307,48 @@ export default function ProductFilters({
             <div className="space-y-2">
               <BrandSelector
                 value={currentBrand}
+                multiSelect={true}
                 onChange={(value) => {
-                  setCurrentBrand(value);
                   if (value) {
                     handleBrandAdd(value);
+                    // Clear the input after adding (the BrandSelector will handle this with multiSelect)
                   }
                 }}
                 onFetchBrands={async (search) => {
                   if (!apiKey || !appSecretKey) return [];
                   try {
-                    const response = await apiService.getBrands({ search });
-                    if (response.ok && Array.isArray(response.data)) {
-                      return response.data;
+                    const response = await apiService.getBrands({ search, limit: 100 });
+                    if (response.ok && response.data) {
+                      let brandsArray: any[] = [];
+                      
+                      // Handle paginated response format { data: Brand[], total: number }
+                      if (Array.isArray(response.data)) {
+                        brandsArray = response.data;
+                      } else if (response.data.data && Array.isArray(response.data.data)) {
+                        brandsArray = response.data.data;
+                      }
+                      
+                      // Debug: Log first brand to verify structure
+                      if (brandsArray.length > 0) {
+                        logger.debug('Brands fetched for filter (horizontal):', { 
+                          firstBrand: brandsArray[0],
+                          hasLogoUrl: !!brandsArray[0].logoUrl,
+                          hasImageUrl: !!brandsArray[0].imageUrl,
+                          totalBrands: brandsArray.length
+                        });
+                      }
+                      
+                      // Return full brand objects to support images
+                      return brandsArray.map((brand: any) => {
+                        if (typeof brand === 'string') {
+                          return { name: brand };
+                        }
+                        // Preserve all brand properties including logoUrl and imageUrl
+                        return {
+                          ...brand,
+                          name: brand.name || brand
+                        };
+                      });
                     }
                     return [];
                   } catch (error) {
@@ -292,6 +358,7 @@ export default function ProductFilters({
                 }}
                 placeholder="Add brand filter..."
                 className="text-xs"
+                optionTextClassName="text-xs"
               />
               {/* Selected brands */}
               {filters.brands.length > 0 && (
@@ -462,18 +529,48 @@ export default function ProductFilters({
         <div className="space-y-3">
           <BrandSelector
             value={currentBrand}
+            multiSelect={true}
             onChange={(value) => {
-              setCurrentBrand(value);
               if (value) {
                 handleBrandAdd(value);
+                // Clear the input after adding (the BrandSelector will handle this with multiSelect)
               }
             }}
             onFetchBrands={async (search) => {
               if (!apiKey || !appSecretKey) return [];
               try {
-                const response = await apiService.getBrands({ search });
-                if (response.ok && Array.isArray(response.data)) {
-                  return response.data;
+                const response = await apiService.getBrands({ search, limit: 100 });
+                if (response.ok && response.data) {
+                  let brandsArray: any[] = [];
+                  
+                  // Handle paginated response format { data: Brand[], total: number }
+                  if (Array.isArray(response.data)) {
+                    brandsArray = response.data;
+                  } else if (response.data.data && Array.isArray(response.data.data)) {
+                    brandsArray = response.data.data;
+                  }
+                  
+                  // Debug: Log first brand to verify structure
+                  if (brandsArray.length > 0) {
+                    logger.debug('Brands fetched for filter:', { 
+                      firstBrand: brandsArray[0],
+                      hasLogoUrl: !!brandsArray[0].logoUrl,
+                      hasImageUrl: !!brandsArray[0].imageUrl,
+                      totalBrands: brandsArray.length
+                    });
+                  }
+                  
+                  // Return full brand objects to support images
+                  return brandsArray.map((brand: any) => {
+                    if (typeof brand === 'string') {
+                      return { name: brand };
+                    }
+                    // Preserve all brand properties including logoUrl and imageUrl
+                    return {
+                      ...brand,
+                      name: brand.name || brand
+                    };
+                  });
                 }
                 return [];
               } catch (error) {
@@ -483,6 +580,7 @@ export default function ProductFilters({
             }}
             placeholder="Add brand filter..."
             className="text-sm"
+            optionTextClassName="text-sm"
           />
           {/* Selected brands */}
           {filters.brands.length > 0 && (
