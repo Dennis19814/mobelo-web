@@ -115,7 +115,7 @@ export default function TemplatesSection({ appId, apiKey, appSecretKey }: Templa
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">OTP Templates</h2>

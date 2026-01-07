@@ -97,18 +97,22 @@ export default function OrderDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-3xl w-full h-[85vh] overflow-hidden flex flex-col">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Order #{order.orderNumber}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{formatDate(order.createdAt)}</p>
+      <div className="bg-white rounded-lg max-w-3xl w-full h-[85vh] overflow-hidden flex flex-col shadow-xl">
+        {/* Header */}
+        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <Package className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Order #{order.orderNumber}</h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 

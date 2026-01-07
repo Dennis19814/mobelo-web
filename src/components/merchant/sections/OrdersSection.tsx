@@ -323,7 +323,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">

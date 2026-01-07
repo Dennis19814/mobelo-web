@@ -96,20 +96,29 @@ export function TemplateEditModal({ template, onSave, onPreview, onClose }: Temp
   const isOverSmsLimit = !isEmail && characterCount > 160;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Edit {template.name}</h2>
-            <p className="text-sm text-gray-600 mt-1">{isEmail ? 'Email' : 'SMS'} OTP Template</p>
+        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              {isEmail ? (
+                <FileText className="w-3.5 h-3.5 text-orange-600" />
+              ) : (
+                <Code className="w-3.5 h-3.5 text-orange-600" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Edit {template.name}</h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
             aria-label="Close modal"
+            disabled={isSaving}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 

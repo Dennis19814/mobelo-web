@@ -70,43 +70,97 @@ export function LegalDocumentModal({
 
   // Focus the editor when modal opens and content is loaded
   useEffect(() => {
-    if (isOpen && !loading && !hasFocused) {
-      // Use a longer delay to ensure ReactQuill is fully mounted (dynamic import)
-      const focusTimer = setTimeout(() => {
-        if (quillRef.current) {
-          try {
-            const editor = quillRef.current.getEditor();
-            if (editor) {
-              editor.focus();
-              // Move cursor to end of content
-              const length = editor.getLength();
-              editor.setSelection(length, 0);
-              setHasFocused(true);
-            }
-          } catch (err) {
-            // Quill might not be ready yet, retry once more
-            setTimeout(() => {
-              try {
-                if (quillRef.current) {
-                  const editor = quillRef.current.getEditor();
-                  if (editor) {
-                    editor.focus();
-                    const length = editor.getLength();
-                    editor.setSelection(length, 0);
-                    setHasFocused(true);
-                  }
-                }
-              } catch (retryErr) {
-                logger.warn('Could not focus editor after retry:', { retryErr });
-              }
-            }, 500);
-          }
-        }
-      }, 300);
-
-      return () => clearTimeout(focusTimer);
+    if (!isOpen) {
+      setHasFocused(false); // Reset when modal closes
+      return;
     }
-  }, [isOpen, loading, hasFocused]);
+
+    if (!loading && content !== undefined && !hasFocused) {
+      // Use requestAnimationFrame and multiple attempts to ensure ReactQuill is fully mounted
+      let attempt = 0;
+      const maxAttempts = 10;
+      const timers: NodeJS.Timeout[] = [];
+      
+      const attemptFocus = () => {
+        if (hasFocused) {
+          return;
+        }
+
+        if (attempt >= maxAttempts) {
+          logger.warn('Could not focus editor after multiple attempts');
+          return;
+        }
+
+        attempt++;
+        
+        // Use requestAnimationFrame for better timing with DOM updates
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (hasFocused) return;
+            
+            if (quillRef.current) {
+              try {
+                const editor = quillRef.current.getEditor();
+                if (editor) {
+                  // Try multiple methods to ensure focus works
+                  // Method 1: Focus via Quill API
+                  editor.focus();
+                  
+                  // Method 2: Focus the editor's root DOM element directly
+                  const editorElement = editor.root;
+                  if (editorElement && editorElement instanceof HTMLElement) {
+                    editorElement.focus();
+                    // Also try clicking it to ensure focus
+                    editorElement.click();
+                  }
+                  
+                  // Method 3: Find and focus the .ql-editor element within the ReactQuill container
+                  const quillContainer = quillRef.current;
+                  if (quillContainer) {
+                    const qlEditor = (quillContainer as any).editingArea || 
+                                     (quillContainer as any).editor?.root ||
+                                     document.querySelector('.ql-editor') as HTMLElement;
+                    if (qlEditor && qlEditor instanceof HTMLElement) {
+                      qlEditor.focus();
+                      qlEditor.click();
+                    }
+                  }
+                  
+                  // Move cursor to end of content
+                  const length = editor.getLength();
+                  if (length > 1) {
+                    editor.setSelection(length - 1, 0);
+                  } else {
+                    editor.setSelection(0, 0);
+                  }
+                  
+                  setHasFocused(true);
+                  return;
+                }
+              } catch (err) {
+                // Quill might not be ready yet, retry
+                attemptFocus();
+                return;
+              }
+            }
+            
+            // ReactQuill ref not ready yet, retry
+            attemptFocus();
+          }, 50 * attempt); // Increasing delay: 50ms, 100ms, 150ms, etc.
+        });
+      };
+
+      // Start focusing after a short delay to ensure modal is fully rendered
+      const initialTimer = setTimeout(() => {
+        attemptFocus();
+      }, 100);
+      timers.push(initialTimer);
+      
+      return () => {
+        timers.forEach(timer => clearTimeout(timer));
+      };
+    }
+  }, [isOpen, loading, content, hasFocused]);
 
   const fetchDocument = async () => {
     setLoading(true);
@@ -187,19 +241,23 @@ export function LegalDocumentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center gap-3">
-            <FileText className="w-6 h-6 text-orange-600" />
-            <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <FileText className="w-3.5 h-3.5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+            </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
             disabled={saving}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 
@@ -224,7 +282,29 @@ export function LegalDocumentModal({
                 </label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <ReactQuill
-                    ref={quillRef}
+                    ref={(el) => {
+                      quillRef.current = el;
+                      // Try to focus immediately when ReactQuill is mounted
+                      if (el && isOpen && !loading && !hasFocused) {
+                        setTimeout(() => {
+                          try {
+                            const editor = el.getEditor();
+                            if (editor) {
+                              editor.focus();
+                              const length = editor.getLength();
+                              if (length > 1) {
+                                editor.setSelection(length - 1, 0);
+                              } else {
+                                editor.setSelection(0, 0);
+                              }
+                              setHasFocused(true);
+                            }
+                          } catch (err) {
+                            // Editor not ready yet, will be handled by useEffect
+                          }
+                        }, 100);
+                      }
+                    }}
                     theme="snow"
                     value={content}
                     onChange={setContent}

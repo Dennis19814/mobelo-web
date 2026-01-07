@@ -53,26 +53,28 @@ export default function CancelOrderModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full">
+      <div className="bg-white rounded-lg max-w-md w-full overflow-hidden flex flex-col shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-lg">
+              <AlertTriangle className="w-3.5 h-3.5 text-orange-600" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Cancel Order</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Cancel Order</h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
             disabled={isLoading}
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
               <strong>Warning:</strong> This action will cancel order{' '}
