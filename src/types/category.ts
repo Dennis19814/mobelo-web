@@ -43,6 +43,7 @@ export interface CreateCategoryData {
   parentId?: number;
   displayOrder?: number;
   isActive?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface UpdateCategoryData {
@@ -60,6 +61,7 @@ export interface UpdateCategoryData {
   parentId?: number;
   displayOrder?: number;
   isActive?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface CategoryReorderData {
