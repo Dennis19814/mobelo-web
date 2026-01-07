@@ -369,6 +369,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           }
         }
 
+        // Defer user-facing success message to parent section (shows inline banner like SettingsGeneralSection)
         onSuccess()
         onClose()
         resetForm()

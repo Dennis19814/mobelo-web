@@ -247,12 +247,34 @@ export default function MediaManager({
     setDraggedItem(null)
   }
 
+  // Allow dropping files anywhere in the media section (not just on the upload card)
+  const handleSectionDragOver = (e: React.DragEvent) => {
+    // Only prevent default for file drags so internal drag-and-drop (reordering) still works
+    if (disabled || uploading || !onUpload) return
+    if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault()
+    }
+  }
+
+  const handleSectionDrop = (e: React.DragEvent) => {
+    if (disabled || uploading || !onUpload) return
+    if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return
+
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    const event = { target: { files } } as any
+    handleFileSelect(event as React.ChangeEvent<HTMLInputElement>)
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Upload Area - Left Side */}
-        <div className="lg:w-80 flex-shrink-0">
+    <div
+      className="space-y-6"
+      onDragOver={handleSectionDragOver}
+      onDrop={handleSectionDrop}
+    >
+      <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-stretch">
+        {/* Upload Area + Tips - Left Side */}
+        <div className="lg:w-80 flex-shrink-0 flex flex-col gap-4 h-full">
           <div 
             className={`relative border-2 border-dashed rounded-xl p-4 transition-all duration-200 cursor-pointer ${
               isDraggingOver
@@ -353,6 +375,21 @@ export default function MediaManager({
               </div>
             </div>
           </div>
+
+          {/* Instructions */}
+          {media.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4 lg:mt-auto">
+              <div className="text-xs text-orange-800 space-y-1.5">
+                <p className="font-medium mb-2">💡 Tips:</p>
+                <p>• Drag and drop media files to reorder them</p>
+                <p>
+                  • <span className="font-semibold text-blue-700">Blue star</span>: Feature on listing pages •{' '}
+                  <span className="font-semibold text-green-700">Green star</span>: Feature on detail page
+                </p>
+                <p>• Hover over media to see available actions</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Media Grid - Right Side */}
@@ -602,18 +639,6 @@ export default function MediaManager({
           )}
         </div>
       </div>
-
-      {/* Instructions */}
-      {media.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="text-xs text-orange-800 space-y-1.5">
-            <p className="font-medium mb-2">💡 Tips:</p>
-            <p>• Drag and drop media files to reorder them</p>
-            <p>• <span className="font-semibold text-blue-700">Blue star</span>: Feature on listing pages • <span className="font-semibold text-green-700">Green star</span>: Feature on detail page</p>
-            <p>• Hover over media to see available actions</p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
