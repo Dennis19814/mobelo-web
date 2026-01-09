@@ -33,7 +33,7 @@ export default function ConfirmationModal({
       size="sm"
       showCloseButton={false}
     >
-      <div className="text-center">
+      <div className="text-center py-6 px-2">
         {/* Icon */}
         <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
           <AlertTriangle className="w-6 h-6 text-red-600" />

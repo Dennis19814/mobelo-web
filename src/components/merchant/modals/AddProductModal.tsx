@@ -36,6 +36,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [isBrandValid, setIsBrandValid] = useState(true)
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [basePriceInput, setBasePriceInput] = useState<string>('') // Local state for base price input
+  const [hasUnsavedVariant, setHasUnsavedVariant] = useState(false)
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null)
+  const [triggerVariantShake, setTriggerVariantShake] = useState(false)
 
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
@@ -226,6 +229,17 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     }
   }, [formData.basePrice])
 
+  // Clear variants error when there's no unsaved variant
+  useEffect(() => {
+    if (!hasUnsavedVariant && errors.variants) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors.variants
+        return newErrors
+      })
+    }
+  }, [hasUnsavedVariant, errors.variants])
+
   const handleInputChange = (field: keyof CreateProductDto, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -242,6 +256,23 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   }
 
   const validateStep = (stepId: string): boolean => {
+    // If there's an unsaved variant on variants step, prevent validation
+    if (stepId === 'variants' && hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before proceeding to the next step' })
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.variants
+          return newErrors
+        })
+      }, 4000)
+      return false
+    }
+    
     const newErrors: Record<string, string> = {}
     const stepFields: string[] = []
     
@@ -369,6 +400,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           }
         }
 
+        // Defer user-facing success message to parent section (shows inline banner like SettingsGeneralSection)
         onSuccess()
         onClose()
         resetForm()
@@ -436,6 +468,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     setCreatedProductId(null)
     setTempUploadedMedia([])
     setBasePriceInput('')
+    setHasUnsavedVariant(false)
     // Clean up any blob URLs
     productMedia.forEach(m => {
       if (m.isTemporary && m.url.startsWith('blob:')) {
@@ -459,6 +492,23 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const currentStepId = steps[activeStep]?.id || 'basic'
 
   const nextStep = () => {
+    // If there's an unsaved variant being edited, prevent navigation
+    if (currentStepId === 'variants' && hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before proceeding to the next step' })
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.variants
+          return newErrors
+        })
+      }, 4000)
+      return
+    }
+    
     // Validate current step before proceeding
     if (validateStep(currentStepId)) {
       // Mark current step as completed
@@ -472,12 +522,47 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   }
 
   const previousStep = () => {
+    // If there's an unsaved variant being edited on variants step, prevent navigation
+    if (currentStepId === 'variants' && hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before going back to the previous step' })
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.variants
+          return newErrors
+        })
+      }, 4000)
+      return
+    }
+    
     if (activeStep > 0) {
       setActiveStep(activeStep - 1)
     }
   }
 
   const goToStep = (stepIndex: number) => {
+    // If there's an unsaved variant being edited on variants step, prevent navigation to any other step
+    if (currentStepId === 'variants' && hasUnsavedVariant && stepIndex !== activeStep) {
+      const direction = stepIndex > activeStep ? 'proceeding to the next step' : 'going back to the previous step'
+      setErrors({ variants: `Please save or cancel the current variant before ${direction}` })
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.variants
+          return newErrors
+        })
+      }, 4000)
+      return
+    }
+    
     // Only allow navigation to completed steps, previous steps, or the immediate next step (if current is valid)
     if (stepIndex >= 0 && stepIndex < steps.length) {
       const isCompleted = completedSteps.has(stepIndex)
@@ -495,9 +580,38 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     }
   }
 
+  const handleClose = () => {
+    // If there's an unsaved variant, prevent closing
+    if (hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before closing the modal' })
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.variants
+          return newErrors
+        })
+      }, 4000)
+      // Navigate to variants step if not already there
+      if (currentStepId !== 'variants') {
+        const variantsStepIndex = steps.findIndex(s => s.id === 'variants')
+        if (variantsStepIndex !== -1) {
+          setActiveStep(variantsStepIndex)
+        }
+      }
+      return
+    }
+
+    // Call the original onClose
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] h-[95vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
           <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white">
           <div className="flex items-center space-x-2">
@@ -510,7 +624,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
           >
             <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
@@ -584,10 +698,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 relative">
           {errors.submit && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {errors.submit}
+            </div>
+          )}
+          {errors.variants && (
+            <div className="sticky top-0 z-50 mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm flex items-center space-x-2 shadow-md">
+              <span className="font-medium">⚠️</span>
+              <span>{errors.variants}</span>
             </div>
           )}
 
@@ -1131,15 +1251,20 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
           {/* Variants Step */}
           {currentStepId === 'variants' && (
-            <div className="space-y-3">
-              <div className="mb-4">
+            <div className="">
+              {/* <div className="mb-4">
                 <p className="text-sm text-gray-600">
                   Add product variants for different options like size, color, or material. Each variant can have its own SKU, price, and inventory.
                 </p>
-              </div>
+              </div> */}
               <VariantManager
                 variants={formData.variants || []}
                 onVariantsChange={(variants) => handleInputChange('variants', variants)}
+                onEditingStateChange={(hasUnsaved, editingIndex) => {
+                  setHasUnsavedVariant(hasUnsaved)
+                  setEditingVariantIndex(editingIndex)
+                }}
+                triggerShake={triggerVariantShake}
               />
             </div>
           )}
@@ -1469,7 +1594,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         {/* Footer - Fixed at bottom */}
         <div className="px-4 py-3 border-t border-gray-200 flex justify-between items-center bg-gray-50">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors"
             disabled={loading}
           >

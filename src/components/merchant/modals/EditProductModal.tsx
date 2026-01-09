@@ -74,6 +74,9 @@ export default function EditProductModal({
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateProductDto, string>>>({})
   const [tagInput, setTagInput] = useState('')
   const [isBrandValid, setIsBrandValid] = useState(true)
+  const [hasUnsavedVariant, setHasUnsavedVariant] = useState(false)
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null)
+  const [triggerVariantShake, setTriggerVariantShake] = useState(false)
 
   // Category management state
   const [localCategories, setLocalCategories] = useState<ProductCategory[]>([])
@@ -198,6 +201,17 @@ export default function EditProductModal({
     
     fetchProductMedia()
   }, [isOpen, product.id, apiKey, appSecretKey])
+
+  // Clear variant error when variant is saved or cancelled
+  useEffect(() => {
+    if (!hasUnsavedVariant && (errors as any).variants) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete (newErrors as any).variants
+        return newErrors
+      })
+    }
+  }, [hasUnsavedVariant, errors])
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -534,6 +548,30 @@ export default function EditProductModal({
       e.stopPropagation()
     }
 
+    // If there's an unsaved variant being edited, prevent submission
+    if (hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before updating the product' } as any)
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete (newErrors as any).variants
+          return newErrors
+        })
+      }, 4000)
+      // Navigate to variants step if not already there
+      if (currentStepId !== 'variants') {
+        const variantsStepIndex = steps.findIndex(s => s.id === 'variants')
+        if (variantsStepIndex !== -1) {
+          setActiveStep(variantsStepIndex)
+        }
+      }
+      return
+    }
+
     if (!validateForm()) {
       return
     }
@@ -771,6 +809,24 @@ export default function EditProductModal({
   const currentStepId = steps[activeStep]?.id || 'basic'
 
   const goToStep = (stepIndex: number) => {
+    // If there's an unsaved variant being edited on variants step, prevent navigation to any other step
+    if (currentStepId === 'variants' && hasUnsavedVariant && stepIndex !== activeStep) {
+      const direction = stepIndex > activeStep ? 'proceeding to the next step' : 'going back to the previous step'
+      setErrors({ variants: `Please save or cancel the current variant before ${direction}` } as any)
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete (newErrors as any).variants
+          return newErrors
+        })
+      }, 4000)
+      return
+    }
+    
     // All steps are accessible in edit mode
     if (stepIndex >= 0 && stepIndex < steps.length) {
       setActiveStep(stepIndex)
@@ -778,6 +834,30 @@ export default function EditProductModal({
   }
 
   const handleClose = () => {
+    // If there's an unsaved variant, prevent closing
+    if (hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before closing the modal' } as any)
+      // Trigger shake animation
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      // Clear error after 4 seconds
+      setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete (newErrors as any).variants
+          return newErrors
+        })
+      }, 4000)
+      // Navigate to variants step if not already there
+      if (currentStepId !== 'variants') {
+        const variantsStepIndex = steps.findIndex(s => s.id === 'variants')
+        if (variantsStepIndex !== -1) {
+          setActiveStep(variantsStepIndex)
+        }
+      }
+      return
+    }
+
     // Clean up temporary preview URLs to prevent memory leaks
     productMedia.forEach(media => {
       if ((media as any).isTemporary && media.url) {
@@ -796,6 +876,7 @@ export default function EditProductModal({
     setSelectedParentCategory(null)
     setEditingCategory(null)
     setEditCategoryName('')
+    setHasUnsavedVariant(false)
     // Call the original onClose
     onClose()
   }
@@ -877,6 +958,12 @@ export default function EditProductModal({
         {error && (
           <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
             {error}
+          </div>
+        )}
+        {(errors as any).variants && (
+          <div className="sticky top-0 z-50 mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm flex items-center space-x-2 shadow-md">
+            <span className="font-medium">⚠️</span>
+            <span>{(errors as any).variants}</span>
           </div>
         )}
 
@@ -1304,15 +1391,20 @@ export default function EditProductModal({
 
           {/* Variants Tab */}
           {currentStepId === 'variants' && (
-            <div className="space-y-4">
-              <div className="mb-4">
+            <div className="">
+              {/* <div className="mb-4">
                 <p className="text-sm text-gray-600">
                   Manage product variants for different options like size, color, or material. Each variant can have its own SKU, price, and inventory.
                 </p>
-              </div>
+              </div> */}
               <VariantManager
                 variants={formData.variants || []}
                 onVariantsChange={(variants: ProductVariant[]) => handleInputChange('variants', variants)}
+                onEditingStateChange={(hasUnsaved, editingIndex) => {
+                  setHasUnsavedVariant(hasUnsaved)
+                  setEditingVariantIndex(editingIndex)
+                }}
+                triggerShake={triggerVariantShake}
               />
             </div>
           )}
