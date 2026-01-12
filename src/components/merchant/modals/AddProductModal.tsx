@@ -1523,6 +1523,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             </div>
           )}
 
+  
           {/* Categories Step */}
           {currentStepId === 'categories' && (
             <div className="space-y-3">
@@ -1533,7 +1534,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   </label>
                   <button
                     type="button"
-                    onClick={handleOpenAddCategoryModal}
+                    onClick={() => setShowAddCategory(!showAddCategory)}
                     disabled={creatingCategory}
                     className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1542,6 +1543,58 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   </button>
                 </div>
 
+                {/* Add New Category Form */}
+                {showAddCategory && (
+                  <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Category name"
+                        disabled={creatingCategory}
+                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
+                      />
+                      <input
+                        type="text"
+                        value={newCategoryDescription}
+                        onChange={(e) => setNewCategoryDescription(e.target.value)}
+                        placeholder="Category description (optional)"
+                        disabled={creatingCategory}
+                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={handleAddCategory}
+                          disabled={creatingCategory || !newCategoryName.trim()}
+                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                        >
+                          {creatingCategory ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1" />
+                              Creating...
+                            </>
+                          ) : (
+                            'Create'
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddCategory(false)
+                            setNewCategoryName('')
+                            setNewCategoryDescription('')
+                          }}
+                          disabled={creatingCategory}
+                          className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
                   {categories.length === 0 ? (
@@ -1642,6 +1695,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
               </div>
             </div>
           )}
+
         </div>
 
         {/* Footer - Fixed at bottom */}

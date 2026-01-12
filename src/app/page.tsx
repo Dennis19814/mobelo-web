@@ -584,58 +584,70 @@ export default function HomePage() {
                     <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tpl.color}`}></div>
                     
                     {/* Phone mockup */}
-                    <div className={`relative h-[400px] overflow-visible bg-slate-50 flex items-center justify-center p-6 transition-all duration-300`}
-                         style={{
-                           background: 'rgb(248 250 252)'
-                         }}
-                         onMouseEnter={(e) => {
-                           // Extract color values for hover effect
-                           const colorMap: { [key: string]: string } = {
-                             'from-[#ec4899] to-[#f472b6]': 'linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(244, 114, 182, 0.08))',
-                             'from-[#10b981] to-[#34d399]': 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.08))',
-                             'from-[#8b5cf6] to-[#a78bfa]': 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08))',
-                             'from-[#3b82f6] to-[#60a5fa]': 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(96, 165, 250, 0.08))',
-                             'from-[#f97316] to-[#fb923c]': 'linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(251, 146, 60, 0.08))',
-                             'from-[#64748b] to-[#94a3b8]': 'linear-gradient(135deg, rgba(100, 116, 139, 0.08), rgba(148, 163, 184, 0.08))',
-                           }
-                           e.currentTarget.style.background = colorMap[tpl.color] || 'rgb(248 250 252)'
-                         }}
-                         onMouseLeave={(e) => {
-                           e.currentTarget.style.background = 'rgb(248 250 252)'
-                         }}
-                    >
-                      {/* iOS Frame */}
-                      <div className="relative transform group-hover:scale-105 transition-transform duration-300">
-                        {/* Device frame */}
-                        <div className="relative w-[160px] h-[320px] bg-slate-900 rounded-[32px] shadow-2xl border-[8px] border-slate-900">
-                          {/* Screen */}
-                          <div className="absolute inset-0 rounded-[24px] overflow-hidden bg-white">
-                            {/* Image content - fills the screen area */}
-                            {tpl.image && (
-                              <div className="absolute inset-0">
-                                <Image
-                                  src={tpl.image}
-                                  alt={`${tpl.name} mobile app mockup`}
-                                  fill
-                                  className="object-contain"
-                                  sizes="160px"
-                                  quality={100}
-                                  loading="lazy"
-                                />
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Home indicator */}
-                          {/* <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-1 bg-slate-800 rounded-full"></div> */}
-                        </div>
-                      </div>
-                      
-                      {/* Floating icon badge */}
-                      <div className={`absolute top-4 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg shadow-black/10 group-hover:scale-110 transition-transform`}>
-                        {Icon ? <Icon className="w-7 h-7" /> : isEmoji ? <span className="text-2xl">{tpl.icon}</span> : null}
-                      </div>
-                    </div>
+         <div 
+  className="relative h-[400px] overflow-visible bg-slate-50 flex items-center justify-center p-6 transition-all duration-300 group"
+  style={{ background: 'rgb(248 250 252)' }}
+  onMouseEnter={(e) => {
+    const colorMap: { [key: string]: string } = {
+      'from-[#ec4899] to-[#f472b6]': 'linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(244, 114, 182, 0.08))',
+      'from-[#10b981] to-[#34d399]': 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.08))',
+      'from-[#8b5cf6] to-[#a78bfa]': 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08))',
+      'from-[#3b82f6] to-[#60a5fa]': 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(96, 165, 250, 0.08))',
+      'from-[#f97316] to-[#fb923c]': 'linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(251, 146, 60, 0.08))',
+      'from-[#64748b] to-[#94a3b8]': 'linear-gradient(135deg, rgba(100, 116, 139, 0.08), rgba(148, 163, 184, 0.08))',
+    }
+    e.currentTarget.style.background = colorMap[tpl.color] || 'rgb(248 250 252)'
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = 'rgb(248 250 252)'
+  }}
+>
+  {/* iPhone 16 Pro Frame */}
+  <div className="relative aspect-[9/19.5] h-full max-h-[380px] w-auto bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50 transform group-hover:scale-105 transition-transform duration-300"
+       style={{ borderRadius: '18% / 8.5%' }}>
+    
+    {/* Physical Buttons */}
+    <div className="absolute -left-[1.5px] top-[18%] w-[2px] h-[6%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -left-[1.5px] top-[26%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -left-[1.5px] top-[40%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -right-[1.5px] top-[32%] w-[2px] h-[18%] bg-[#1a1a1a] rounded-r-sm"></div>
+
+    {/* Screen Container */}
+    <div className="relative w-full h-full bg-white overflow-hidden flex flex-col shadow-inner ring-1 ring-inset ring-black/5"
+         style={{ borderRadius: '16.5% / 7.8%' }}>
+      
+      {/* 1. REDUCED Top Spacer (Controls the height under the island) */}
+      <div className="h-[5%] w-full flex-shrink-0 bg-white z-20"></div>
+
+      {/* 2. Dynamic Island - Moved slightly up to save space */}
+      <div className="absolute top-[2.2%] left-1/2 -translate-x-1/2 w-[28%] h-[3%] bg-black rounded-full z-50 flex items-center justify-end px-[1.5%]">
+          <div className="w-[12%] aspect-square rounded-full bg-[#1a1a2e]"></div>
+      </div>
+
+      {/* 3. Content Area - Stretches to show full image including bottom tabs */}
+      <div className="flex-1 w-full relative bg-white overflow-hidden"> 
+        {tpl.image && (
+          <img
+            src={tpl.image}
+            alt={`${tpl.name} mockup`}
+            className="w-full h-full object-fill" 
+            style={{ display: 'block' }}
+          />
+        )}
+      </div>
+
+      {/* 4. Home Bar Area */}
+      <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
+        <div className="w-[32%] h-[2.5px] bg-black/15 rounded-full"></div>
+      </div>
+    </div>
+  </div>
+
+  {/* Floating icon badge */}
+  <div className={`absolute top-6 right-8 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg z-40 group-hover:scale-110 transition-transform`}>
+    {Icon ? <Icon className="w-7 h-7" /> : isEmoji ? <span className="text-2xl">{tpl.icon}</span> : null}
+  </div>
+</div>
                     
                     {/* Content */}
                     <div className="p-6 space-y-3">
