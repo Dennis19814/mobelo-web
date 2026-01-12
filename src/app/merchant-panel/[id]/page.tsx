@@ -612,7 +612,7 @@ export default function MerchantPanel() {
         />
 
         {/* Main Layout Container - responsive flex */}
-        <div className="flex pt-16">
+        <div className="flex pt-20 md:pt-24">
           {/* Sidebar - fixed position, responsive width */}
           <MerchantSidebar
             activeSection={activeSection}

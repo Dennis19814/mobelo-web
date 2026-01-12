@@ -29,8 +29,8 @@ function CheckoutDoneContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
-      <main className="flex-1">
-        <section className="py-16 px-6">
+      <main className="flex-1 flex items-center justify-center pt-20 md:pt-24">
+        <section className="w-full px-6">
           <div className="max-w-3xl mx-auto">
             <div className="flex flex-col items-center text-center">
               <CheckCircle className="w-12 h-12 text-green-600" />
@@ -78,7 +78,7 @@ export default function CheckoutDonePage() {
     <Suspense fallback={
       <div className="min-h-screen bg-white flex flex-col">
         <Navigation />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center pt-20 md:pt-24">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-gray-600">Loading...</p>
