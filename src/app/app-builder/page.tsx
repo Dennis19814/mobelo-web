@@ -2202,7 +2202,7 @@ function AppBuilderContent() {
 
         {/* Home Bar (Dark for White BG) */}
         <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
-          <div className="w-[35%] h-[4px] bg-black/10 rounded-full"></div>
+          <div className="w-[35%] h-[2.5px] bg-black/10 rounded-full"></div>
         </div>
 
       </div>
