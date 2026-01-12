@@ -358,9 +358,9 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero - responsive padding and grid */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-orange-50 via-white to-amber-50" aria-label="Hero section">
+        <section className="relative bg-gradient-to-b from-orange-50 via-white to-amber-50 min-h-screen flex items-center py-12 md:py-16 lg:py-20 pt-20 md:pt-24" aria-label="Hero section">
           <div className="absolute inset-0" aria-hidden="true" />
-          <div className="relative mx-auto max-w-6xl px-4 md:px-6 py-12 md:py-16 lg:py-20 grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
+          <div className="relative mx-auto max-w-6xl px-4 md:px-6 w-full grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
             <article className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-white via-[#fff4e8] to-white px-4 py-2 shadow-sm text-sm font-semibold text-orange-600 border-2 border-transparent bg-clip-padding" style={{ backgroundImage: 'linear-gradient(white, white), linear-gradient(to right, #fb923c, #fdba74)', backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box' }}>
                 <Sparkles className="w-4 h-4 text-orange-600" aria-hidden="true" />
@@ -450,8 +450,8 @@ export default function HomePage() {
         </section>
 
         {/* Why Choose */}
-        <section id="features" className="bg-white py-12 md:py-16" aria-labelledby="features-heading">
-          <div className="mx-auto max-w-6xl px-4 md:px-6">
+        <section id="features" className="bg-white min-h-screen flex items-center py-12 md:py-16" aria-labelledby="features-heading">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
               <p className="text-slate-600">AI-driven mobile apps, launch-ready builds, and an enterprise-grade merchant panel.</p>
@@ -474,8 +474,8 @@ export default function HomePage() {
         </section>
 
         {/* Launch Features */}
-        <section className="bg-slate-50 py-12 md:py-16" aria-labelledby="launch-features-heading">
-          <div className="mx-auto max-w-6xl px-4 md:px-6">
+        <section className="bg-slate-50 min-h-screen flex items-center py-12 md:py-16" aria-labelledby="launch-features-heading">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="launch-features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Everything You Need to Launch</h2>
               <p className="text-slate-600">Everything you need to build, launch, manage, and scale a production-ready mobile commerce app.</p>
@@ -795,8 +795,8 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="bg-gradient-to-br from-orange-500 to-amber-500 py-16" aria-labelledby="cta-heading">
-          <div className="mx-auto max-w-5xl px-6">
+        <section className="bg-gradient-to-br from-orange-500 to-amber-500 min-h-screen flex items-center py-16" aria-labelledby="cta-heading">
+          <div className="mx-auto max-w-5xl px-6 w-full">
             <div className="bg-white rounded-3xl shadow-2xl shadow-orange-300/40 p-8 md:p-10 space-y-8">
               <div className="grid md:grid-cols-2 gap-10">
                 <div className="space-y-4">

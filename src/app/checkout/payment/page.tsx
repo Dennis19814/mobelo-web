@@ -192,19 +192,19 @@ function CheckoutPaymentContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
-      <main className="flex-1">
-        <section className="py-16 px-6">
+      <main className="flex-1 flex items-center justify-center pt-20 md:pt-24">
+        <section className="w-full px-6 ">
           <div className="max-w-5xl mx-auto">
             {/* Progress */}
             <div className="flex items-center justify-center gap-3 text-sm text-gray-600">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-700">1</span>
-              <span>Summary</span>
-              <div className="w-8 h-px bg-gray-300" />
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-600 text-white">2</span>
-              <span>Payment</span>
-              <div className="w-8 h-px bg-gray-300" />
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-700">3</span>
-              <span>Done</span>
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-700">1</span>
+                <span>Summary</span>
+                <div className="w-8 h-px bg-gray-300" />
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-600 text-white">2</span>
+                <span>Payment</span>
+                <div className="w-8 h-px bg-gray-300" />
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-700">3</span>
+                <span>Done</span>
             </div>
 
             <h1 className="mt-6 text-2xl font-semibold text-gray-900 text-center">{title}</h1>

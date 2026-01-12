@@ -78,8 +78,8 @@ export default function MerchantHeader({
   const ownerLoggedIn = typeof window !== 'undefined' ? !!localStorage.getItem('access_token') : !!user
 
   return (
-    <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
-      <div className="px-4 md:px-6 py-2.5 md:py-3">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/50 backdrop-blur-md border-b border-orange-100/50 shadow-sm">
+      <div className="px-4 md:px-6 py-1.5 md:py-2">
         <div className="flex items-center justify-between gap-2 md:gap-4">
           {/* Left side - Logo and App Name */}
           <div className="flex items-center space-x-3 md:space-x-4 lg:space-x-6 min-w-0 flex-1 pl-14 md:pl-16 lg:pl-0">

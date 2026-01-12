@@ -152,7 +152,7 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
 
   return (
     <>
-      <nav className="bg-white border-b border-orange-100 px-4 md:px-6 py-3 md:py-4 shadow-sm">
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/50 backdrop-blur-md border-b border-orange-100/50 px-4 md:px-6 py-1.5 md:py-2 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3 md:gap-4">
             <div className="flex items-center space-x-3 md:space-x-4 lg:space-x-6 min-w-0 flex-1">
@@ -197,18 +197,19 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                   >
                     How it works
                   </button>
+                         <button
+                    onClick={() => scrollToSection('faq')}
+                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
+                  >
+                    FAQ
+                  </button>
                   <Link
                     href="/pricing"
                     className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
                   >
                     Pricing
                   </Link>
-                  <button
-                    onClick={() => scrollToSection('faq')}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
-                  >
-                    FAQ
-                  </button>
+           
                 </>
               )}
               {isAuthenticated && (
