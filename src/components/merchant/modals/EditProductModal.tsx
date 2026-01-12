@@ -1,7 +1,7 @@
 'use client'
 import { logger } from '@/lib/logger'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles } from 'lucide-react'
 import ExtraInfoEditor from '../ExtraInfoEditor'
 import Modal from '@/components/ui/Modal'
@@ -11,6 +11,10 @@ import BrandSelectorWithImages from '../../ui/BrandSelectorWithImages'
 import CharacterCount from '@/components/ui/CharacterCount'
 import { apiService } from '@/lib/api-service'
 import type { Product, UpdateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
+import { AddCategoryModal } from './AddCategoryModal'
+import type { Category } from '@/types/category'
+import { useCategories } from '@/hooks/useCategories'
+import { useMerchantAuth } from '@/hooks'
 
 interface EditProductModalProps {
   isOpen: boolean
@@ -83,6 +87,8 @@ export default function EditProductModal({
   const [newCategoryName, setNewCategoryName] = useState('')
   const [selectedParentCategory, setSelectedParentCategory] = useState<number | null>(null)
   const [showAddCategory, setShowAddCategory] = useState(false)
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const [isEditModalVisible, setIsEditModalVisible] = useState(true)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [editCategoryName, setEditCategoryName] = useState('')
   const [creatingCategory, setCreatingCategory] = useState(false)
@@ -460,6 +466,8 @@ export default function EditProductModal({
 
   useEffect(() => {
     if (isOpen) {
+      setIsEditModalVisible(true)
+      setShowAddCategoryModal(false)
       fetchCategories()
       // Reset form data to product values when modal opens
       setFormData({
@@ -881,9 +889,114 @@ export default function EditProductModal({
     onClose()
   }
 
+  // Get appId from product or URL
+  const getAppId = useCallback(() => {
+    const pathSegments = window.location.pathname.split('/')
+    const merchantPanelIndex = pathSegments.indexOf('merchant-panel')
+    const currentAppId = merchantPanelIndex !== -1 && pathSegments[merchantPanelIndex + 1]
+      ? parseInt(pathSegments[merchantPanelIndex + 1])
+      : product.appId || 0
+    return currentAppId
+  }, [product.appId])
+
+  // Get stable appId value
+  const currentAppId = useMemo(() => getAppId(), [getAppId])
+
+  // Use the same category creation approach as CategoriesSection
+  const { headers: merchantHeaders } = useMerchantAuth(apiKey, appSecretKey)
+  
+  // Ensure API keys are in localStorage for httpClient interceptors
+  useEffect(() => {
+    if (apiKey && typeof window !== 'undefined') {
+      localStorage.setItem('userApiKey', apiKey)
+    }
+    if (appSecretKey && typeof window !== 'undefined') {
+      localStorage.setItem('appSecretKey', appSecretKey)
+    }
+  }, [apiKey, appSecretKey])
+
+  const { createCategory: createCategoryFromHook, categories: categoriesFromHook } = useCategories({
+    appId: currentAppId,
+    headers: merchantHeaders || undefined
+  })
+
+  // Sync categories from useCategories hook to local state when they're available
+  // This ensures categories are available even if fetchCategories hasn't completed yet
+  useEffect(() => {
+    if (categoriesFromHook && Array.isArray(categoriesFromHook)) {
+      // Only update if we have categories or if localCategories is empty
+      if (categoriesFromHook.length > 0 || localCategories.length === 0) {
+        setCategories(categoriesFromHook)
+        setLocalCategories(categoriesFromHook)
+      }
+    }
+  }, [categoriesFromHook, localCategories.length])
+
+  // Handle opening Add Category modal
+  const handleOpenAddCategoryModal = () => {
+    // Ensure API keys are in localStorage before opening modal
+    if (apiKey && typeof window !== 'undefined') {
+      localStorage.setItem('userApiKey', apiKey)
+    }
+    if (appSecretKey && typeof window !== 'undefined') {
+      localStorage.setItem('appSecretKey', appSecretKey)
+    }
+    setIsEditModalVisible(false)
+    setShowAddCategoryModal(true)
+  }
+
+  // Handle closing Add Category modal and showing Edit Product modal again
+  const handleCloseAddCategoryModal = () => {
+    setShowAddCategoryModal(false)
+    setIsEditModalVisible(true)
+  }
+
+  // Handle category creation success
+  const handleCategoryCreated = async (category: Category) => {
+    // Add the newly created category to the list
+    const newCategory: ProductCategory = {
+      id: category.id,
+      name: category.name,
+      parentId: category.parentId
+    }
+
+    setLocalCategories(prev => [...prev, newCategory])
+    setCategories(prev => [...prev, newCategory])
+
+    // Also update the parent categories list if this was fetched from the API
+    if (onCategoriesUpdate) {
+      onCategoriesUpdate([...categories, category])
+    }
+
+    // Refresh categories list
+    await fetchCategories()
+
+    // Close Add Category modal and show Edit Product modal
+    handleCloseAddCategoryModal()
+  }
+
+  // Get parent categories for AddCategoryModal
+  const parentCategoriesForModal = useMemo(() => {
+    return getCategoryTree().map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      parentId: cat.parentId,
+      imageUrl: cat.imageUrl,
+      iconUrl: cat.iconUrl,
+      displayType: cat.displayType,
+      isActive: cat.isActive,
+      displayOrder: cat.displayOrder,
+      description: cat.description,
+      createdAt: cat.createdAt,
+      updatedAt: cat.updatedAt,
+      appId: cat.appId
+    } as Category))
+  }, [categories])
+
   return (
+    <>
     <Modal
-      isOpen={isOpen}
+      isOpen={isOpen && isEditModalVisible}
       onClose={handleClose}
       title="Edit Product"
       size="xl"
@@ -1524,8 +1637,7 @@ export default function EditProductModal({
             </div>
           )}
 
-          {/* Categories Tab */}
-          {currentStepId === 'categories' && (
+          {/* Categories Tab */} {currentStepId === 'categories' && (
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1779,11 +1891,13 @@ export default function EditProductModal({
             </div>
           )}
 
+
+
           {/* Extra Info Tab */}
           {currentStepId === 'extras' && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Extra Info</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Extra Info</label>
                 <ExtraInfoEditor
                   metadata={(formData as any).metadata || {}}
                   onChange={(meta: any) => handleInputChange('metadata' as any, meta)}
@@ -1820,7 +1934,7 @@ export default function EditProductModal({
                         </label>
                         <div className="grid grid-cols-4 gap-3">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Length</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Length</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.length || ''}
@@ -1828,7 +1942,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 length: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1836,7 +1950,7 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Width</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Width</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.width || ''}
@@ -1844,7 +1958,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 width: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1852,7 +1966,7 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Height</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.height || ''}
@@ -1860,7 +1974,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 height: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1868,14 +1982,14 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Unit</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                             <select
                               value={formData.shippingInfo?.dimensionUnit || 'cm'}
                               onChange={(e) => handleInputChange('shippingInfo', {
                                 ...formData.shippingInfo,
                                 dimensionUnit: e.target.value
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               disabled={loading}
                             >
                               <option value="cm">cm</option>
@@ -1899,7 +2013,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               shippingClass: e.target.value
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             disabled={loading}
                           >
                             <option value="standard">Standard Shipping</option>
@@ -1922,7 +2036,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               processingTime: e.target.value
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="1-2 business days"
                             disabled={loading}
                           />
@@ -1973,7 +2087,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               flatRate: e.target.value ? parseFloat(e.target.value) : undefined
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="0.00"
                             step="0.01"
                             min="0"
@@ -1995,7 +2109,7 @@ export default function EditProductModal({
                   value={formData.returnPolicy || ''}
                   onChange={(e) => handleInputChange('returnPolicy', e.target.value)}
                   rows={2}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Describe your return policy..."
                   disabled={loading}
                 />
@@ -2010,7 +2124,7 @@ export default function EditProductModal({
                   value={formData.warranty || ''}
                   onChange={(e) => handleInputChange('warranty', e.target.value)}
                   rows={2}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Warranty details (e.g., 1 year manufacturer warranty)"
                   disabled={loading}
                 />
@@ -2048,5 +2162,16 @@ export default function EditProductModal({
         </div>
       </div>
     </Modal>
+
+    {/* Add Category Modal */}
+    <AddCategoryModal
+      isOpen={showAddCategoryModal}
+      onClose={handleCloseAddCategoryModal}
+      appId={currentAppId}
+      parentCategories={parentCategoriesForModal}
+      onSuccess={handleCategoryCreated}
+      onSubmit={createCategoryFromHook}
+    />
+    </>
   )
 }

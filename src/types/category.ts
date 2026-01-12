@@ -30,15 +30,15 @@ export interface Category {
 export interface CreateCategoryData {
   name: string;
   description?: string;
-  iconName: string;
-  iconLibrary: string;
-  iconUrl: string;
+  iconName?: string;
+  iconLibrary?: string;
+  iconUrl?: string;
   // Emoji support
   emojiUnicode?: string;
   emojiShortcode?: string;
   emojiSource?: string;
   emojiUrl?: string;
-  displayType: 'icon' | 'emoji';
+  displayType?: 'icon' | 'emoji';
   appId: number;
   parentId?: number;
   displayOrder?: number;

@@ -302,7 +302,7 @@ export default function MyApps() {
     <>
     <div className="bg-white">
       {/* Simplified Navigation Header */}
-      <nav className="bg-white px-6 py-4 border-b border-gray-200 sticky top-0 z-40">
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/50 backdrop-blur-md border-b border-orange-100/50 px-4 md:px-6 py-1.5 md:py-2 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
@@ -429,7 +429,7 @@ export default function MyApps() {
       </nav>
       
       {/* Main Content */}
-      <main>
+      <main className="pt-20 md:pt-24">
         <div className="bg-white py-6 px-4">
           <div className="max-w-6xl mx-auto pb-16">
 

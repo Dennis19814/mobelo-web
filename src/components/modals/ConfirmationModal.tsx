@@ -7,7 +7,7 @@
 
 import React from 'react'
 import Modal from '@/components/ui/Modal'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Copy } from 'lucide-react'
 import { ConfirmationModalProps } from '@/types/shared-props'
 
 export default function ConfirmationModal({
@@ -18,8 +18,9 @@ export default function ConfirmationModal({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  isDestructive = false
-}: ConfirmationModalProps) {
+  isDestructive = false,
+  variant = 'default'
+}: ConfirmationModalProps & { variant?: 'default' | 'blue' }) {
   const handleConfirm = () => {
     onConfirm()
     onClose()
@@ -35,8 +36,20 @@ export default function ConfirmationModal({
     >
       <div className="text-center py-6 px-2">
         {/* Icon */}
-        <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-600" />
+        <div className={`mx-auto flex items-center justify-center w-12 h-12 rounded-full mb-4 ${
+          variant === 'blue' 
+            ? 'bg-blue-100' 
+            : isDestructive 
+              ? 'bg-red-100' 
+              : 'bg-orange-100'
+        }`}>
+          {variant === 'blue' ? (
+            <Copy className="w-6 h-6 text-blue-600" />
+          ) : (
+            <AlertTriangle className={`w-6 h-6 ${
+              isDestructive ? 'text-red-600' : 'text-orange-600'
+            }`} />
+          )}
         </div>
 
         {/* Title */}
@@ -60,9 +73,11 @@ export default function ConfirmationModal({
           <button
             onClick={handleConfirm}
             className={`px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-              isDestructive
-                ? 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                : 'text-white bg-orange-600 hover:bg-orange-700 focus:ring-blue-500'
+              variant === 'blue'
+                ? 'text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                : isDestructive
+                  ? 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                  : 'text-white bg-orange-600 hover:bg-orange-700 focus:ring-orange-500'
             }`}
           >
             {confirmText}

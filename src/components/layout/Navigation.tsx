@@ -31,6 +31,7 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
   const [user, setUser] = useState<User | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [isInTechSection, setIsInTechSection] = useState(false)
 
   const scrollToSection = (sectionId: string) => {
     // Close mobile menu immediately
@@ -139,6 +140,35 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
     }
   }, [pathname])
 
+  // Detect if header is over tech section
+  useEffect(() => {
+    if (pathname !== '/') return
+
+    const handleScroll = () => {
+      const techSection = document.querySelector('section[aria-labelledby="technology-heading"]')
+      if (!techSection) {
+        setIsInTechSection(false)
+        return
+      }
+
+      const scrollY = window.scrollY
+      const techSectionRect = techSection.getBoundingClientRect()
+      const techSectionTop = techSectionRect.top + scrollY
+      const techSectionBottom = techSectionTop + techSectionRect.height
+
+      // Header is dark when viewport is within the tech section bounds
+      // Start darkening when top of viewport reaches tech section
+      // Stop darkening when top of viewport passes end of tech section
+      const isOverTech = scrollY >= techSectionTop && scrollY < techSectionBottom
+      setIsInTechSection(isOverTech)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll() // Check initial state
+
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [pathname])
+
   const getUserInitials = (user: User | null) => {
     if (!user) return 'U'
     if (user.firstName && user.lastName) {
@@ -152,7 +182,11 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
 
   return (
     <>
-      <nav className="bg-white border-b border-orange-100 px-4 md:px-6 py-3 md:py-4 shadow-sm">
+      <nav className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b px-4 md:px-6 py-1.5 md:py-2 shadow-sm transition-colors duration-300 ${
+        isInTechSection 
+          ? 'bg-slate-900/50 border-slate-700/50' 
+          : 'bg-white/50 border-orange-100/50'
+      }`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3 md:gap-4">
             <div className="flex items-center space-x-3 md:space-x-4 lg:space-x-6 min-w-0 flex-1">
@@ -187,28 +221,45 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                 <>
                   <button
                     onClick={() => scrollToSection('features')}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
+                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
                   >
                     Features
                   </button>
                   <button
                     onClick={() => scrollToSection('how-it-works')}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
+                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
                   >
                     How it works
                   </button>
-                  <Link
-                    href="/pricing"
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
-                  >
-                    Pricing
-                  </Link>
-                  <button
+                         <button
                     onClick={() => scrollToSection('faq')}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-all duration-200 hover:bg-orange-50 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
+                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
                   >
                     FAQ
                   </button>
+                  <Link
+                    href="/pricing"
+                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
+                  >
+                    Pricing
+                  </Link>
+           
                 </>
               )}
               {isAuthenticated && (
@@ -245,7 +296,11 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                 <div className="hidden md:block relative">
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-1.5 md:space-x-2 px-2.5 md:px-3 lg:px-4 py-1.5 md:py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
+                    className={`flex items-center space-x-1.5 md:space-x-2 px-2.5 md:px-3 lg:px-4 py-1.5 md:py-2 font-medium transition-all duration-200 rounded-[14px] ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
                     aria-expanded={showUserMenu}
                     aria-label="User menu"
                   >
@@ -294,7 +349,11 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                 <div className="hidden md:flex items-center space-x-2 md:space-x-3">
                   <button
                     onClick={() => setShowSigninModal(true)}
-                    className="px-2.5 md:px-3 lg:px-4 py-1.5 md:py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px] text-sm lg:text-base whitespace-nowrap"
+                    className={`px-2.5 md:px-3 lg:px-4 py-1.5 md:py-2 font-medium transition-all duration-200 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
                   >
                     Sign In
                   </button>
@@ -310,7 +369,11 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
               {/* Mobile menu button - responsive */}
               <button
                 onClick={toggleMobileMenu}
-                className="md:hidden p-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-[14px]"
+                className={`md:hidden p-2 transition-all duration-200 rounded-[14px] ${
+                  isInTechSection 
+                    ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                    : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                }`}
                 aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -322,7 +385,9 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
         
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-orange-100 bg-white shadow-lg">
+          <div className={`md:hidden border-t bg-white shadow-lg ${
+            isInTechSection ? 'border-slate-700/50' : 'border-orange-100'
+          }`}>
             <div className="px-6 py-4 space-y-4">
               {/* Mobile Navigation Menu */}
               <div className="space-y-2">

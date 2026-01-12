@@ -106,8 +106,8 @@ function CheckoutSummaryContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
-      <main className="flex-1">
-        <section className="py-16 px-6">
+      <main className="flex-1 flex items-center justify-center pt-20 md:pt-24">
+        <section className="w-full px-6 ">
           <div className="max-w-5xl mx-auto">
             {/* Progress */}
             <div className="flex items-center justify-center gap-3 text-sm text-gray-600">

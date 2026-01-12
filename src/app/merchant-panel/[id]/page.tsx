@@ -609,10 +609,13 @@ export default function MerchantPanel() {
           currentApp={currentApp}
           user={user}
           onLogout={() => setShowLogoutModal(true)}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))?.appSecretKey || currentApp.appSecretKey}
+          onNavigate={(section) => handleSectionChange(section as SectionType)}
         />
 
         {/* Main Layout Container - responsive flex */}
-        <div className="flex pt-16">
+        <div className="flex pt-20 md:pt-24">
           {/* Sidebar - fixed position, responsive width */}
           <MerchantSidebar
             activeSection={activeSection}

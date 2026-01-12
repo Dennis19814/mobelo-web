@@ -103,12 +103,12 @@ const steps = [
 ]
 
 const templates = [
-  { name: 'Fashion & Apparel', color: 'from-[#ec4899] to-[#f472b6]', icon: 'ShoppingBag', desc: 'Trendy clothing stores with size guides, style recommendations, and seasonal collections.' },
-  { name: 'Food & Grocery', color: 'from-[#10b981] to-[#34d399]', icon: 'Utensils', desc: 'Organic groceries, meal kits, and specialty food stores with recipe integration.' },
-  { name: 'Health & Beauty', color: 'from-[#8b5cf6] to-[#a78bfa]', icon: 'Heart', desc: 'Cosmetics, skincare, and wellness products with ingredient lists and tutorials.' },
-  { name: 'Books & Media', color: 'from-[#3b82f6] to-[#60a5fa]', icon: 'BookOpen', desc: 'Digital and physical books, courses, and educational content platforms.' },
-  { name: 'Sports & Fitness', color: 'from-[#f97316] to-[#fb923c]', icon: 'Dumbbell', desc: 'Athletic wear, equipment, and fitness accessories with workout guides.' },
-  { name: 'General Retail', color: 'from-[#64748b] to-[#94a3b8]', icon: 'Package2', desc: 'Electronics, home goods, crafts, and everything else you can imagine selling.' },
+  { name: 'Fashion & Apparel', color: 'from-[#ec4899] to-[#f472b6]', icon: 'ShoppingBag', desc: 'Trendy clothing stores with size guides, style recommendations, and seasonal collections.', image: '/images/mockups/pink.png' },
+  { name: 'Food & Grocery', color: 'from-[#10b981] to-[#34d399]', icon: 'Utensils', desc: 'Organic groceries, meal kits, and specialty food stores with recipe integration.', image: '/images/mockups/green.png' },
+  { name: 'Health & Beauty', color: 'from-[#8b5cf6] to-[#a78bfa]', icon: 'Heart', desc: 'Cosmetics, skincare, and wellness products with ingredient lists and tutorials.', image: '/images/mockups/purple.png' },
+  { name: 'Books & Media', color: 'from-[#3b82f6] to-[#60a5fa]', icon: 'BookOpen', desc: 'Digital and physical books, courses, and educational content platforms.', image: '/images/mockups/blue.png' },
+  { name: 'Sports & Fitness', color: 'from-[#f97316] to-[#fb923c]', icon: 'Dumbbell', desc: 'Athletic wear, equipment, and fitness accessories with workout guides.', image: '/images/mockups/orange.png' },
+  { name: 'General Retail', color: 'from-[#64748b] to-[#94a3b8]', icon: 'Package2', desc: 'Electronics, home goods, crafts, and everything else you can imagine selling.', image: '/images/mockups/gray.png' },
 ]
 
 const techBlocks = [
@@ -358,9 +358,9 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero - responsive padding and grid */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-orange-50 via-white to-amber-50" aria-label="Hero section">
+        <section className="relative bg-gradient-to-b from-orange-50 via-white to-amber-50 min-h-screen flex items-center py-12 md:py-16 lg:py-20 pt-20 md:pt-24" aria-label="Hero section">
           <div className="absolute inset-0" aria-hidden="true" />
-          <div className="relative mx-auto max-w-6xl px-4 md:px-6 py-12 md:py-16 lg:py-20 grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
+          <div className="relative mx-auto max-w-6xl px-4 md:px-6 w-full grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
             <article className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-white via-[#fff4e8] to-white px-4 py-2 shadow-sm text-sm font-semibold text-orange-600 border-2 border-transparent bg-clip-padding" style={{ backgroundImage: 'linear-gradient(white, white), linear-gradient(to right, #fb923c, #fdba74)', backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box' }}>
                 <Sparkles className="w-4 h-4 text-orange-600" aria-hidden="true" />
@@ -450,8 +450,8 @@ export default function HomePage() {
         </section>
 
         {/* Why Choose */}
-        <section id="features" className="bg-white py-12 md:py-16" aria-labelledby="features-heading">
-          <div className="mx-auto max-w-6xl px-4 md:px-6">
+        <section id="features" className="bg-white min-h-screen flex items-center py-12 md:py-16" aria-labelledby="features-heading">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
               <p className="text-slate-600">AI-driven mobile apps, launch-ready builds, and an enterprise-grade merchant panel.</p>
@@ -474,8 +474,8 @@ export default function HomePage() {
         </section>
 
         {/* Launch Features */}
-        <section className="bg-slate-50 py-12 md:py-16" aria-labelledby="launch-features-heading">
-          <div className="mx-auto max-w-6xl px-4 md:px-6">
+        <section className="bg-slate-50 min-h-screen flex items-center py-12 md:py-16" aria-labelledby="launch-features-heading">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="launch-features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Everything You Need to Launch</h2>
               <p className="text-slate-600">Everything you need to build, launch, manage, and scale a production-ready mobile commerce app.</p>
@@ -545,15 +545,21 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Templates */}
-        <section className="bg-white py-12 md:py-16" aria-labelledby="templates-heading">
+
+      {/* Templates */}
+        <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-16 md:py-20" aria-labelledby="templates-heading">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="text-center space-y-3 mb-10">
-              <h2 id="templates-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Built for Every Type of Store</h2>
-              <p className="text-slate-600 max-w-3xl mx-auto">Whether you're selling fashion, food, or anything in between, Mobelo has templates and features tailored to your industry.</p>
+            <div className="text-center space-y-4 mb-16">
+              
+              <h2 id="templates-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">
+                Built for Every Type of Store
+              </h2>
+              <p className="text-slate-600">
+                Whether you're selling fashion, food, or anything in between, Mobelo has templates and features tailored to your industry.
+              </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {templates.map((tpl) => {
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {templates.map((tpl, idx) => {
                 // Map string icon names to components
                 const iconMap: { [key: string]: any } = {
                   ShoppingBag,
@@ -567,62 +573,109 @@ export default function HomePage() {
                 const isEmoji = typeof tpl.icon === 'string' && !iconMap[tpl.icon]
 
                 return (
-                  <div key={tpl.name} className="rounded-2xl border border-slate-200 bg-white/50 p-6 hover:shadow-lg transition">
+                  <div 
+                    key={tpl.name} 
+                    className="group relative rounded-3xl bg-white border-2 border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                    style={{
+                      ['--hover-color' as any]: tpl.color
+                    }}
+                  >
+                    {/* Gradient accent line that changes on hover */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tpl.color}`}></div>
+                    
                     {/* Phone mockup */}
-                    <div className={`relative h-64 rounded-3xl overflow-hidden bg-gradient-to-br ${tpl.color} mb-6 shadow-lg flex items-center justify-center`}>
-                      {/* Phone frame */}
-                      <div className="relative w-36 h-full flex items-center justify-center">
-                        {/* Phone screen */}
-                        <div className="w-full h-56 bg-slate-900 rounded-[2rem] border-8 border-slate-900 shadow-2xl">
-                          {/* Notch */}
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-6 bg-slate-900 rounded-b-2xl z-10" />
-                          {/* Header with gradient */}
-                          <div className={`h-16 bg-gradient-to-r ${tpl.color} flex items-center justify-between px-4 text-white`}>
-                            {Icon ? <Icon className="w-5 h-5" /> : isEmoji ? <span className="text-xl">{tpl.icon}</span> : null}
-                            <ShoppingBag className="w-5 h-5" />
-                          </div>
-                          {/* Content area with product cards */}
-                          <div className="bg-white px-3 py-3 space-y-2">
-                            <div className="flex gap-2">
-                              <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${tpl.color}`} />
-                              <div className="flex-1 space-y-1">
-                                <div className="h-2 bg-slate-200 rounded w-3/4" />
-                                <div className="h-2 bg-slate-100 rounded w-1/2" />
-                                <div className="h-2 bg-orange-100 rounded w-1/4" />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${tpl.color}`} />
-                              <div className="flex-1 space-y-1">
-                                <div className="h-2 bg-slate-200 rounded w-3/4" />
-                                <div className="h-2 bg-slate-100 rounded w-1/2" />
-                                <div className="h-2 bg-orange-100 rounded w-1/4" />
-                              </div>
-                            </div>
-                          </div>
-                          {/* Bottom navigation dots */}
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                          </div>
-                        </div>
+         <div 
+  className="relative h-[400px] overflow-visible bg-slate-50 flex items-center justify-center p-6 transition-all duration-300 group"
+  style={{ background: 'rgb(248 250 252)' }}
+  onMouseEnter={(e) => {
+    const colorMap: { [key: string]: string } = {
+      'from-[#ec4899] to-[#f472b6]': 'linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(244, 114, 182, 0.08))',
+      'from-[#10b981] to-[#34d399]': 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.08))',
+      'from-[#8b5cf6] to-[#a78bfa]': 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08))',
+      'from-[#3b82f6] to-[#60a5fa]': 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(96, 165, 250, 0.08))',
+      'from-[#f97316] to-[#fb923c]': 'linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(251, 146, 60, 0.08))',
+      'from-[#64748b] to-[#94a3b8]': 'linear-gradient(135deg, rgba(100, 116, 139, 0.08), rgba(148, 163, 184, 0.08))',
+    }
+    e.currentTarget.style.background = colorMap[tpl.color] || 'rgb(248 250 252)'
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = 'rgb(248 250 252)'
+  }}
+>
+  {/* iPhone 16 Pro Frame */}
+  <div className="relative aspect-[9/19.5] h-full max-h-[380px] w-auto bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50 transform group-hover:scale-105 transition-transform duration-300"
+       style={{ borderRadius: '18% / 8.5%' }}>
+    
+    {/* Physical Buttons */}
+    <div className="absolute -left-[1.5px] top-[18%] w-[2px] h-[6%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -left-[1.5px] top-[26%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -left-[1.5px] top-[40%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+    <div className="absolute -right-[1.5px] top-[32%] w-[2px] h-[18%] bg-[#1a1a1a] rounded-r-sm"></div>
+
+    {/* Screen Container */}
+    <div className="relative w-full h-full bg-white overflow-hidden flex flex-col shadow-inner ring-1 ring-inset ring-black/5"
+         style={{ borderRadius: '16.5% / 7.8%' }}>
+      
+      {/* 1. REDUCED Top Spacer (Controls the height under the island) */}
+      <div className="h-[5%] w-full flex-shrink-0 bg-white z-20"></div>
+
+      {/* 2. Dynamic Island - Moved slightly up to save space */}
+      <div className="absolute top-[2.2%] left-1/2 -translate-x-1/2 w-[28%] h-[3%] bg-black rounded-full z-50 flex items-center justify-end px-[1.5%]">
+          <div className="w-[12%] aspect-square rounded-full bg-[#1a1a2e]"></div>
+      </div>
+
+      {/* 3. Content Area - Stretches to show full image including bottom tabs */}
+      <div className="flex-1 w-full relative bg-white overflow-hidden"> 
+        {tpl.image && (
+          <img
+            src={tpl.image}
+            alt={`${tpl.name} mockup`}
+            className="w-full h-full object-fill" 
+            style={{ display: 'block' }}
+          />
+        )}
+      </div>
+
+      {/* 4. Home Bar Area */}
+      <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
+        <div className="w-[32%] h-[2.5px] bg-black/15 rounded-full"></div>
+      </div>
+    </div>
+  </div>
+
+  {/* Floating icon badge */}
+  <div className={`absolute top-6 right-8 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg z-40 group-hover:scale-110 transition-transform`}>
+    {Icon ? <Icon className="w-7 h-7" /> : isEmoji ? <span className="text-2xl">{tpl.icon}</span> : null}
+  </div>
+</div>
+                    
+                    {/* Content */}
+                    <div className="p-6 space-y-3">
+                      <h3 className="text-xl font-bold text-slate-900 transition-colors">{tpl.name}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{tpl.desc}</p>
+                      
+                      {/* Learn more link */}
+                      <div className="pt-2">
+                        <button className={`text-sm font-semibold flex items-center gap-1 group/btn transition-colors`}
+                                style={{
+                                  color: tpl.color.includes('ec4899') ? '#ec4899' :
+                                         tpl.color.includes('10b981') ? '#10b981' :
+                                         tpl.color.includes('8b5cf6') ? '#8b5cf6' :
+                                         tpl.color.includes('3b82f6') ? '#3b82f6' :
+                                         tpl.color.includes('f97316') ? '#f97316' :
+                                         '#64748b'
+                                }}>
+                          <span>Explore Template</span>
+                          <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
+                        </button>
                       </div>
                     </div>
-                    {/* Title with icon */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-md`}>
-                        {Icon ? <Icon className="w-5 h-5" /> : isEmoji ? <span className="text-xl">{tpl.icon}</span> : null}
-                      </div>
-                      <div className="text-lg font-bold text-slate-900">{tpl.name}</div>
-                    </div>
-                    {/* Description */}
-                    <div className="text-sm text-slate-600 leading-relaxed">{tpl.desc}</div>
                   </div>
                 )
               })}
             </div>
+            
+            
             <div className="mt-12 text-center">
               <p className="text-slate-600 mb-4">Don't see your niche? Mobelo instantly generates custom code, design, styles, and colors tailored to your needs.</p>
             </div>
@@ -754,8 +807,8 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="bg-gradient-to-br from-orange-500 to-amber-500 py-16" aria-labelledby="cta-heading">
-          <div className="mx-auto max-w-5xl px-6">
+        <section className="bg-gradient-to-br from-orange-500 to-amber-500 min-h-screen flex items-center py-16" aria-labelledby="cta-heading">
+          <div className="mx-auto max-w-5xl px-6 w-full">
             <div className="bg-white rounded-3xl shadow-2xl shadow-orange-300/40 p-8 md:p-10 space-y-8">
               <div className="grid md:grid-cols-2 gap-10">
                 <div className="space-y-4">
