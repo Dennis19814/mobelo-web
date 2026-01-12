@@ -7,9 +7,7 @@
 #
 # What this script does:
 # - Builds the Next.js app locally
-# - Creates compressed archive with build artifacts
-# - Uploads to production server
-# - Keeps only 1 backup (deletes old backups)
+# - Syncs files to production server using rsync
 # - Restarts PM2 and nginx
 # - Verifies deployment health
 #
@@ -17,6 +15,7 @@
 # - nginx configured and running
 # - PM2 installed on server
 # - SSH key access to production server
+# - rsync installed locally and on server
 #
 # Usage: ./deploy.sh
 #####################################################################
@@ -96,41 +95,9 @@ build_web() {
 upload_files() {
     log_info "Uploading files to production server..."
 
-    # Create backup on server and delete old backups (keep only 1)
-    log_info "Managing backups on production server..."
-    ssh -i "$SSH_KEY" $SERVER << 'ENDSSH'
-        set -e
-        cd /var/www/mobelo-web
-
-        # Delete ALL old backups first
-        echo "[SERVER] Deleting old backups..."
-        rm -rf backups/* 2>/dev/null || true
-
-        # Create backup directory if it doesn't exist
-        mkdir -p backups
-
-        # Create new backup if current deployment exists
-        if [ -f "server.js" ]; then
-            echo "[SERVER] Creating backup of current deployment..."
-            tar -czf backups/backup-latest.tar.gz \
-                --exclude='backups' \
-                --exclude='node_modules' \
-                --exclude='*.log' \
-                . 2>/dev/null || true
-            echo "[SERVER] ✓ Backup created: backup-latest.tar.gz"
-        else
-            echo "[SERVER] No existing deployment to backup (first deployment)"
-        fi
-ENDSSH
-
-    # Clean up old local deploy archives
-    log_info "Cleaning up old local temp files..."
-    rm -f /tmp/deploy-*.tar.gz 2>/dev/null || true
-
-    # Create compressed archive locally
-    log_info "Creating compressed archive..."
-    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-    tar -czf /tmp/deploy-$TIMESTAMP.tar.gz \
+    # Use rsync to sync files directly to server
+    log_info "Syncing files to server..."
+    rsync -avz --progress \
         --exclude='.git' \
         --exclude='*.log' \
         --exclude='.env' \
@@ -138,24 +105,11 @@ ENDSSH
         --exclude='deploy.sh' \
         --exclude='production-dennis.pem' \
         --exclude='.next/cache' \
-        .
+        --exclude='node_modules' \
+        -e "ssh -i $SSH_KEY" \
+        ./ $SERVER:$REMOTE_DIR/
 
-    ARCHIVE_NAME="/tmp/deploy-$TIMESTAMP.tar.gz"
-    ARCHIVE_SIZE=$(du -h "$ARCHIVE_NAME" | cut -f1)
-    log_info "✓ Archive created: $(basename $ARCHIVE_NAME) ($ARCHIVE_SIZE)"
-
-    # Upload archive to server
-    log_info "Uploading archive to server..."
-    scp -i "$SSH_KEY" "$ARCHIVE_NAME" $SERVER:/tmp/
-
-    # Extract on server
-    log_info "Extracting archive on server..."
-    ssh -i "$SSH_KEY" $SERVER "cd $REMOTE_DIR && tar -xzf /tmp/$(basename $ARCHIVE_NAME) && rm /tmp/$(basename $ARCHIVE_NAME)"
-
-    # Clean up local archive
-    rm "$ARCHIVE_NAME"
-
-    log_info "✓ Files uploaded and extracted successfully"
+    log_info "✓ Files synced successfully"
 }
 
 # Configure production environment
@@ -262,18 +216,6 @@ verify_deployment() {
         else
             echo "[SERVER] ✗ mobelo-web health check failed"
             echo "[SERVER] Check logs with: pm2 logs mobelo-web"
-        fi
-
-        echo ""
-        echo "[SERVER] Checking backup retention..."
-        BACKUP_COUNT=$(ls -1 /var/www/mobelo-web/backups/*.tar.gz 2>/dev/null | wc -l)
-        echo "[SERVER] Number of backups: $BACKUP_COUNT"
-        if [ "$BACKUP_COUNT" -eq 1 ]; then
-            echo "[SERVER] ✓ Backup retention correct (1 backup)"
-        elif [ "$BACKUP_COUNT" -eq 0 ]; then
-            echo "[SERVER] ℹ️  No backups (first deployment)"
-        else
-            echo "[SERVER] ⚠️  Multiple backups found ($BACKUP_COUNT) - cleanup may have failed"
         fi
 ENDSSH
 
