@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, useMemo, memo, lazy, Suspense, useRef } from 'react'
-import { Plus, RefreshCw, Trash2, Package, Grid3X3, List, SlidersHorizontal } from 'lucide-react'
+import { Plus, RefreshCw, Trash2, Package, Grid3X3, List, SlidersHorizontal, AlertTriangle, Copy, X, XCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import { useMerchantAuth, useCrudOperations } from '@/hooks'
 import { useStaffPermissions } from '@/contexts/StaffUserContext'
@@ -74,6 +74,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showBulkDuplicateModal, setShowBulkDuplicateModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [loadingProductData, setLoadingProductData] = useState(false)
 
@@ -490,7 +491,6 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   const handleBulkDelete = useCallback(async () => {
     if (selectedProducts.length === 0 || !headers) return
 
-    setShowBulkDeleteModal(false)
     const deleteOperations = selectedProducts.map(id =>
       () => apiService.deleteProduct(id)
     )
@@ -506,6 +506,39 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
       }
     )
   }, [selectedProducts, headers, executeOperation, fetchProducts])
+
+  const handleBulkDuplicate = useCallback(async () => {
+    if (selectedProducts.length === 0 || !headers) return
+
+    const duplicateOperations = selectedProducts.map(id => {
+      const product = products.find(p => p.id === id)
+      if (!product) return null
+      
+      const duplicateData = {
+        ...product,
+        name: `${product.name} (Copy)`,
+        sku: `${product.sku}-COPY-${Date.now()}`,
+        status: 'draft' as const
+      }
+
+      delete (duplicateData as any).id
+      delete (duplicateData as any).createdAt
+      delete (duplicateData as any).updatedAt
+
+      return () => apiService.createProduct(duplicateData)
+    }).filter(Boolean) as Array<() => Promise<any>>
+
+    await executeOperation(
+      () => Promise.all(duplicateOperations.map(op => op())),
+      {
+        successMessage: `${selectedProducts.length} product${selectedProducts.length === 1 ? '' : 's'} ${selectedProducts.length === 1 ? 'has' : 'have'} been duplicated successfully! 📋`,
+        onSuccess: () => {
+          setSelectedProducts([])
+          fetchProducts()
+        }
+      }
+    )
+  }, [selectedProducts, products, headers, executeOperation, fetchProducts])
 
   const confirmDelete = useCallback(async () => {
     if (!selectedProduct || !headers) return
@@ -529,6 +562,26 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
       fetchProducts()
     }
   }, [selectedProduct, headers, setSuccessMessage, setError, fetchProducts])
+
+  // Direct delete function that doesn't show a modal (used by ProductGrid which has its own confirmation)
+  const handleDeleteDirect = useCallback(async (productId: number) => {
+    const product = products.find(p => p.id === productId)
+    if (!product || !headers) return
+
+    const productName = product.name
+
+    // Optimistic UI update - remove immediately
+    setProducts(prev => prev.filter(p => p.id !== productId))
+    setSuccessMessage(`Product "${productName}" has been deleted successfully! ✅`)
+
+    try {
+      await apiService.deleteProduct(productId)
+    } catch (error) {
+      // On error, refresh to restore
+      setError('Failed to delete product')
+      fetchProducts()
+    }
+  }, [products, headers, setSuccessMessage, setError, fetchProducts])
 
   const handlePageChange = useCallback((page: number) => {
     setFilters(prev => ({ ...prev, page }))
@@ -636,16 +689,6 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
               />
             </div>
           </div>
-          {selectedProducts.length > 0 && (
-            <button
-              onClick={handleBulkDelete}
-              className="flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Delete Selected</span>
-              <span className="sm:hidden">Delete</span>
-            </button>
-          )}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`relative flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-2 border rounded-lg transition-colors text-sm ${
@@ -738,10 +781,18 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
               >Delete</button>
             )}
             <button
-              onClick={() => selectedProducts.forEach((id) => handleDuplicate(id))}
+              onClick={() => setShowBulkDuplicateModal(true)}
               disabled={crudLoading}
               className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >Duplicate</button>
+            <button
+              onClick={() => setSelectedProducts([])}
+              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+              title="Cancel selection"
+            >
+              <XCircle className="w-4 h-4" />
+              <span>Cancel</span>
+            </button>
           </div>
         </div>
       )}
@@ -773,7 +824,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
             <ProductGrid
               products={products}
               onEdit={canEditProducts ? handleEdit : undefined}
-              onDelete={canDeleteProducts ? handleDelete : undefined}
+              onDelete={canDeleteProducts ? handleDeleteDirect : undefined}
               onView={handleView}
               onDuplicate={handleDuplicate}
               selectedProducts={selectedProducts}
@@ -984,24 +1035,125 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
         </Suspense>
       )}
 
-      {/* Bulk Delete Confirmation Modal - Outside selectedProduct conditional */}
-      <Suspense fallback={null}>
-          <ConfirmationModal
-            isOpen={showBulkDeleteModal}
-            onClose={() => {
-              setShowBulkDeleteModal(false)
-            }}
-            onConfirm={handleBulkDelete}
-            title={selectedProducts.length === 1 ? 'Delete Product' : 'Delete Products'}
-            message={
-              selectedProducts.length === 1
-                ? `Are you sure you want to delete this product? This action cannot be undone.`
-                : `Are you sure you want to delete ${selectedProducts.length} selected products? This action cannot be undone.`
-            }
-            confirmText="Delete"
-            isDestructive={true}
-          />
-      </Suspense>
+      {/* Bulk Delete Confirmation Modal - Custom style matching ProductGrid */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+            <div className="p-6">
+              {/* Icon and Title */}
+              <div className="flex items-start space-x-4 mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {selectedProducts.length === 1 ? 'Delete Product' : 'Delete Products'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {selectedProducts.length === 1 ? (
+                      <>
+                        Are you sure you want to delete <span className="font-medium text-gray-900">"{products.find(p => p.id === selectedProducts[0])?.name || 'this product'}"</span>? This action cannot be undone.
+                      </>
+                    ) : (
+                      <>
+                        Are you sure you want to delete <span className="font-medium text-gray-900">{selectedProducts.length} selected products</span>? This action cannot be undone.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowBulkDeleteModal(false)
+                    await handleBulkDelete()
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete {selectedProducts.length === 1 ? 'Product' : 'Products'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Duplicate Confirmation Modal - Custom style matching ProductGrid */}
+      {showBulkDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+            <div className="p-6">
+              {/* Icon and Title */}
+              <div className="flex items-start space-x-4 mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Copy className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {selectedProducts.length === 1 ? 'Duplicate Product' : 'Duplicate Products'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {selectedProducts.length === 1 ? (
+                      <>
+                        Are you sure you want to duplicate <span className="font-medium text-gray-900">"{products.find(p => p.id === selectedProducts[0])?.name || 'this product'}"</span>? A copy will be created with "(Copy)" added to the name.
+                      </>
+                    ) : (
+                      <>
+                        Are you sure you want to duplicate <span className="font-medium text-gray-900">{selectedProducts.length} selected products</span>? Copies will be created with "(Copy)" added to each name.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowBulkDuplicateModal(false)}
+                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowBulkDuplicateModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowBulkDuplicateModal(false)
+                    await handleBulkDuplicate()
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Duplicate {selectedProducts.length === 1 ? 'Product' : 'Products'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading Overlay for fetching product data */}
       {loadingProductData && (

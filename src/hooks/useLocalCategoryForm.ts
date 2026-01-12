@@ -53,21 +53,42 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
   const { appId, category, onSubmit, onCancel } = options;
 
   // Initial form data
-  const getInitialFormData = useCallback((): LocalCategoryFormData => ({
-    name: category?.name || '',
-    description: category?.description || '',
-    iconName: category?.iconName || '',
-    iconLibrary: category?.iconLibrary || '',
-    iconUrl: category?.iconUrl || '',
-    // Emoji support
-    emojiUnicode: category?.emojiUnicode || '',
-    emojiShortcode: category?.emojiShortcode || '',
-    emojiSource: category?.emojiSource || '',
-    displayType: category?.displayType || 'icon',
-    parentId: category?.parentId,
-    displayOrder: category?.displayOrder || 0,
-    isActive: category?.isActive ?? true,
-  }), [category]);
+  const getInitialFormData = useCallback((): LocalCategoryFormData => {
+    // If editing existing category, use its data
+    if (category) {
+      return {
+        name: category.name || '',
+        description: category.description || '',
+        iconName: category.iconName || '',
+        iconLibrary: category.iconLibrary || '',
+        iconUrl: category.iconUrl || '',
+        // Emoji support
+        emojiUnicode: category.emojiUnicode || '',
+        emojiShortcode: category.emojiShortcode || '',
+        emojiSource: category.emojiSource || '',
+        displayType: category.displayType || 'icon',
+        parentId: category.parentId,
+        displayOrder: category.displayOrder || 0,
+        isActive: category.isActive ?? true,
+      };
+    }
+    // For new categories, set default icon so form is valid by default
+    return {
+      name: '',
+      description: '',
+      iconName: 'Folder',
+      iconLibrary: 'lucide-react',
+      iconUrl: 'lucide-react:Folder',
+      // Emoji support
+      emojiUnicode: '',
+      emojiShortcode: '',
+      emojiSource: '',
+      displayType: 'icon',
+      parentId: undefined,
+      displayOrder: 0,
+      isActive: true,
+    };
+  }, [category]);
 
   const [formData, setFormData] = useState<LocalCategoryFormData>(getInitialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -85,6 +106,22 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
         libraryKey: category.iconLibrary,
         filePath: '',
         title: category.name,
+        description: '',
+        keywords: [],
+        category: '',
+        license: '',
+        website: '',
+        optimized: false
+      };
+    }
+    // For new categories, set default icon
+    if (!category) {
+      return {
+        name: 'Folder',
+        library: 'lucide-react',
+        libraryKey: 'lucide-react',
+        filePath: '',
+        title: 'Folder',
         description: '',
         keywords: [],
         category: '',
@@ -146,9 +183,12 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
   // Set field value
   const setFieldValue = useCallback((field: keyof LocalCategoryFormData, value: any) => {
+    // Ensure description field can be cleared (empty string)
+    const normalizedValue = field === 'description' ? (value || '') : value;
+    
     setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [field]: normalizedValue,
     }));
 
     setIsDirty(true);
@@ -292,8 +332,9 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
     }
 
     // Validate icon/emoji selection - either icon/emoji OR image is required
-    // Skip icon/emoji validation if an image file is uploaded
-    if (!imageFile) {
+    // Skip icon/emoji validation if an image file is uploaded OR if category already has an image
+    const hasImage = imageFile || category?.imageUrl;
+    if (!hasImage) {
       if (formData.displayType === 'icon') {
         if (!formData.iconName) {
           newErrors.iconName = 'Category icon is required';
@@ -330,7 +371,7 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, imageFile]);
+  }, [formData, imageFile, category]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (): Promise<Category | null> => {
@@ -368,8 +409,16 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
           isActive: formData.isActive,
         };
 
-        // Only include icon/emoji data if no image file is being uploaded
-        if (!imageFile) {
+        // Handle icon/emoji/image logic
+        if (imageFile) {
+          // New image file is being uploaded - don't include icon/emoji data
+          // Image will be uploaded separately after category update
+        } else if (category.imageUrl) {
+          // Existing image exists and no new image - preserve the image
+          // Don't send icon/emoji data to avoid overwriting the image
+          // The backend should preserve the existing imageUrl
+        } else {
+          // No image exists - include icon/emoji data
           submitData.iconName = formData.iconName;
           submitData.iconLibrary = formData.iconLibrary;
           submitData.iconUrl = formData.iconUrl;
@@ -405,6 +454,7 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
           submitData.emojiSource = formData.emojiSource;
           submitData.displayType = formData.displayType;
         }
+        // When image is uploaded, don't include icon/emoji fields at all
       }
 
       console.log('[UPLOAD-DEBUG-2] Calling onSubmit with data', {

@@ -1,13 +1,17 @@
 'use client'
 import { logger } from '@/lib/logger'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
 import MediaManager from '../MediaManager'
 import BrandSelectorWithImages from '../../ui/BrandSelectorWithImages'
+import { AddCategoryModal } from './AddCategoryModal'
+import type { Category } from '@/types/category'
+import { useCategories } from '@/hooks/useCategories'
+import { useMerchantAuth } from '@/hooks'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -24,6 +28,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [categories, setCategories] = useState<ProductCategory[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showAddCategory, setShowAddCategory] = useState(false)
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const [isAddModalVisible, setIsAddModalVisible] = useState(true)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryDescription, setNewCategoryDescription] = useState('')
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
@@ -208,6 +214,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
   useEffect(() => {
     if (isOpen) {
+      setIsAddModalVisible(true)
+      setShowAddCategoryModal(false)
       fetchCategories()
       // Sync basePriceInput with formData when modal opens
       if (formData.basePrice === 0) {
@@ -415,6 +423,102 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     }
   }
 
+  // Use the same category creation approach as CategoriesSection
+  const { headers: merchantHeaders } = useMerchantAuth(apiKey, appSecretKey)
+  
+  // Ensure API keys are in localStorage for httpClient interceptors
+  useEffect(() => {
+    if (apiKey && typeof window !== 'undefined') {
+      localStorage.setItem('userApiKey', apiKey)
+    }
+    if (appSecretKey && typeof window !== 'undefined') {
+      localStorage.setItem('appSecretKey', appSecretKey)
+    }
+  }, [apiKey, appSecretKey])
+
+  const { createCategory: createCategoryFromHook, categories: categoriesFromHook } = useCategories({
+    appId,
+    headers: merchantHeaders || undefined
+  })
+
+  // Sync categories from useCategories hook to local state
+  useEffect(() => {
+    if (categoriesFromHook && Array.isArray(categoriesFromHook)) {
+      if (categoriesFromHook.length > 0 || categories.length === 0) {
+        setCategories(categoriesFromHook)
+      }
+    }
+  }, [categoriesFromHook, categories.length])
+
+  // Handle opening Add Category modal
+  const handleOpenAddCategoryModal = () => {
+    setIsAddModalVisible(false)
+    setShowAddCategoryModal(true)
+  }
+
+  // Handle closing Add Category modal and showing Add Product modal again
+  const handleCloseAddCategoryModal = () => {
+    setShowAddCategoryModal(false)
+    setIsAddModalVisible(true)
+  }
+
+  // Handle category creation success
+  const handleCategoryCreated = async (category: Category) => {
+    // Add the newly created category to the list
+    const newCategory: ProductCategory = {
+      id: category.id,
+      name: category.name,
+      parentId: category.parentId
+    }
+
+    setCategories(prev => [...prev, newCategory])
+
+    // Refresh categories list
+    await fetchCategories()
+
+    // Close Add Category modal and show Add Product modal
+    handleCloseAddCategoryModal()
+  }
+
+  // Build category tree for hierarchical structure
+  const getCategoryTree = () => {
+    const tree: (ProductCategory & { children?: ProductCategory[] })[] = []
+    const categoryMap = new Map<number, ProductCategory & { children?: ProductCategory[] }>()
+    
+    categories.forEach(cat => {
+      categoryMap.set(cat.id, { ...cat, children: [] })
+    })
+    
+    categories.forEach(cat => {
+      const category = categoryMap.get(cat.id)!
+      if (cat.parentId && categoryMap.has(cat.parentId)) {
+        categoryMap.get(cat.parentId)!.children?.push(category)
+      } else if (!cat.parentId) {
+        tree.push(category)
+      }
+    })
+    
+    return tree
+  }
+
+  // Get parent categories for AddCategoryModal (same as EditProductModal)
+  const parentCategoriesForModal = useMemo(() => {
+    return getCategoryTree().map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      parentId: cat.parentId,
+      imageUrl: cat.imageUrl,
+      iconUrl: cat.iconUrl,
+      displayType: cat.displayType,
+      isActive: cat.isActive,
+      displayOrder: cat.displayOrder,
+      description: cat.description,
+      createdAt: cat.createdAt,
+      updatedAt: cat.updatedAt,
+      appId: appId
+    } as Category))
+  }, [categories, appId])
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -610,7 +714,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <>
+    <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto ${!isAddModalVisible ? 'hidden' : ''}`}>
       <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] h-[95vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
           <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between bg-white">
@@ -1428,7 +1533,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowAddCategory(!showAddCategory)}
+                    onClick={handleOpenAddCategoryModal}
                     disabled={creatingCategory}
                     className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1437,58 +1542,6 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   </button>
                 </div>
 
-                {/* Add New Category Form */}
-                {showAddCategory && (
-                  <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Category name"
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
-                      />
-                      <input
-                        type="text"
-                        value={newCategoryDescription}
-                        onChange={(e) => setNewCategoryDescription(e.target.value)}
-                        placeholder="Category description (optional)"
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
-                      />
-                      <div className="flex space-x-2">
-                        <button
-                          type="button"
-                          onClick={handleAddCategory}
-                          disabled={creatingCategory || !newCategoryName.trim()}
-                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-                        >
-                          {creatingCategory ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1" />
-                              Creating...
-                            </>
-                          ) : (
-                            'Create'
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddCategory(false)
-                            setNewCategoryName('')
-                            setNewCategoryDescription('')
-                          }}
-                          disabled={creatingCategory}
-                          className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
                   {categories.length === 0 ? (
@@ -1653,5 +1706,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         </div>
       </div>
     </div>
+
+    {/* Add Category Modal */}
+    <AddCategoryModal
+      isOpen={showAddCategoryModal}
+      onClose={handleCloseAddCategoryModal}
+      appId={appId}
+      parentCategories={parentCategoriesForModal}
+      onSuccess={handleCategoryCreated}
+      onSubmit={createCategoryFromHook}
+    />
+    </>
   )
 }

@@ -70,8 +70,15 @@ export function EditCategoryModal({
     const result = await handleSubmit();
     if (result) {
       onSuccess(result);
+      // Reset form will use the updated category data from onSuccess
       resetForm();
-      setImagePreview(null);
+      // Preserve image preview if category still has an image
+      if (result.imageUrl) {
+        setImagePreview(result.imageUrl);
+      } else if (!imageFile) {
+        // Only clear if no new image was uploaded
+        setImagePreview(null);
+      }
       onClose();
     }
   };
@@ -110,7 +117,19 @@ export function EditCategoryModal({
 
   const handleRemoveImage = () => {
     setImageFile(null);
-    setImagePreview(null);
+    // Only clear preview if it was a newly uploaded file
+    // If it's an existing category image, keep it visible
+    if (imageFile) {
+      // New file was removed, restore original image if it exists
+      if (category?.imageUrl) {
+        setImagePreview(category.imageUrl);
+      } else {
+        setImagePreview(null);
+      }
+    } else {
+      // Existing image was removed
+      setImagePreview(null);
+    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -191,7 +210,7 @@ export function EditCategoryModal({
                 Description (Optional)
               </label>
               <textarea
-                value={formData.description}
+                value={formData.description || ''}
                 onChange={(e) => setFieldValue('description', e.target.value)}
                 rows={2}
                 className={`w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${

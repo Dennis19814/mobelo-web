@@ -62,6 +62,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
   const [users, setUsers] = useState<MobileUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userOrderStats, setUserOrderStats] = useState<Record<number, { totalOrders: number; totalSpent: number }>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserDetailsResponse | null>(null);
   const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
@@ -149,9 +150,69 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
     }
   }, [headers, page, searchQuery, sortBy, sortOrder, filters]);
 
+  // Fetch orders to calculate user statistics
+  const fetchUserOrderStats = useCallback(async () => {
+    const staffToken = typeof window !== 'undefined' ? localStorage.getItem('staff_access_token') : null
+    if (!headers && !staffToken) return
+
+    try {
+      const authHeaders: Record<string, string> = headers || (staffToken ? { authorization: `Bearer ${staffToken}` } : {})
+      
+      // Fetch all orders to calculate stats (with high limit)
+      const response = await fetch(`/api/proxy/v1/merchant/orders?limit=10000`, {
+        headers: authHeaders,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const ordersList = data.data || (Array.isArray(data) ? data : []);
+        
+        // Calculate order stats per user
+        const stats: Record<number, { totalOrders: number; totalSpent: number }> = {};
+        
+        ordersList.forEach((order: any) => {
+          if (order.mobileUserId) {
+            const userId = order.mobileUserId;
+            if (!stats[userId]) {
+              stats[userId] = { totalOrders: 0, totalSpent: 0 };
+            }
+            stats[userId].totalOrders += 1;
+            const orderTotal = typeof order.total === 'number' ? order.total : parseFloat(String(order.total || 0));
+            stats[userId].totalSpent += isNaN(orderTotal) ? 0 : orderTotal;
+          }
+        });
+        
+        setUserOrderStats(stats);
+      }
+    } catch (error) {
+      logger.error('Error fetching user order stats:', { error: error instanceof Error ? error.message : String(error) });
+      // Don't set error state here, just log it
+    }
+  }, [headers]);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchUserOrderStats();
+  }, [fetchUsers, fetchUserOrderStats]);
+
+  // Update users when order stats change
+  useEffect(() => {
+    if (Object.keys(userOrderStats).length > 0 && users.length > 0) {
+      setUsers(prevUsers => {
+        return prevUsers.map(user => {
+          const stats = userOrderStats[user.id];
+          if (stats) {
+            return {
+              ...user,
+              totalOrders: stats.totalOrders,
+              totalSpent: stats.totalSpent,
+            };
+          }
+          return user;
+        });
+      });
+    }
+  }, [userOrderStats]);
 
   const fetchUserDetails = useCallback(async (userId: number) => {
     const staffToken = typeof window !== 'undefined' ? localStorage.getItem('staff_access_token') : null
@@ -576,11 +637,11 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
                       <div className="text-xs text-gray-900">
                         <div className="flex items-center">
                           <Package className="h-3 w-3 mr-1 text-gray-400" />
-                          {user.totalOrders} orders
+                          <span className="font-medium">{(userOrderStats[user.id]?.totalOrders ?? user.totalOrders ?? 0)} orders</span>
                         </div>
                         <div className="flex items-center text-[10px] text-gray-500 mt-0.5">
                           <DollarSign className="h-2.5 w-2.5 mr-0.5" />
-                          {formatCurrency(user.totalSpent)}
+                          <span className="font-medium">{formatCurrency(userOrderStats[user.id]?.totalSpent ?? user.totalSpent ?? 0)}</span>
                         </div>
                       </div>
                     </td>
@@ -864,12 +925,14 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
                       <div className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-gray-100">
                           <span className="text-sm text-gray-500">Total Orders</span>
-                          <span className="text-sm font-medium text-gray-900">{selectedUser.totalOrders}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {userOrderStats[selectedUser.id]?.totalOrders ?? selectedUser.totalOrders ?? 0}
+                          </span>
                         </div>
                         <div className="flex justify-between py-2 border-b border-gray-100">
                           <span className="text-sm text-gray-500">Total Spent</span>
                           <span className="text-sm font-medium text-gray-900">
-                            {formatCurrency(selectedUser.totalSpent)}
+                            {formatCurrency(userOrderStats[selectedUser.id]?.totalSpent ?? selectedUser.totalSpent ?? 0)}
                           </span>
                         </div>
                         <div className="flex justify-between py-2 border-b border-gray-100">
