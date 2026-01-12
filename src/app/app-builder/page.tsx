@@ -1878,8 +1878,10 @@ function AppBuilderContent() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 p-1.5 sm:p-2 md:p-3 lg:p-4 max-w-[1800px] mx-auto w-full overflow-y-auto lg:overflow-hidden min-h-0">
 
-        {/* Left Panel: AI Builder */}
-        <div className="w-full lg:w-[280px] xl:w-[360px] min-h-[280px] sm:min-h-[320px] md:min-h-[380px] lg:h-full flex-shrink-0 order-1 lg:order-1">
+        {/* Wrapper for Left + Middle Panels (for tablet layout) */}
+        <div className="flex flex-col md:flex-row lg:contents gap-2 sm:gap-2.5 md:gap-3 md:h-full">
+          {/* Left Panel: AI Builder */}
+          <div className="w-full md:w-[280px] lg:w-[280px] xl:w-[360px] h-[50vh] sm:h-[50vh] md:h-full lg:h-full flex-shrink-0 order-1 md:order-1 lg:order-1">
 
           {/* AI Builder */}
           <div className="h-full bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 flex flex-col">
@@ -2093,137 +2095,124 @@ function AppBuilderContent() {
           </div>
         </div>
 
-        {/* Middle Panel: Live Preview */}
-        <div className="w-full lg:flex-1 bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1.5 sm:p-2 md:p-3 lg:p-4 flex flex-col min-h-[340px] xs:min-h-[360px] sm:min-h-[400px] md:min-h-[480px] lg:h-full lg:min-h-0 order-2 lg:order-2">
-          <div className="flex items-center justify-between mb-1.5 sm:mb-2 md:mb-3 gap-2">
-            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 min-w-0 flex-1">
-              <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">Live Preview</h2>
-            </div>
-            <button
-              onClick={handleReloadApp}
-              disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
-              className="p-1 sm:p-1.5 md:p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-md sm:rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              title="Reload app (fast reload without restart)"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 ${isReloading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+          {/* Middle Panel: Live Preview */}
+          <div className="hidden md:flex w-full md:flex-1 lg:flex-1 bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1.5 sm:p-2 md:p-3 lg:p-4 flex-col h-full min-h-0 overflow-hidden order-2">
+  
+  <div className="flex items-center justify-between mb-2 gap-2 flex-shrink-0">
+    <div className="flex items-center gap-2 min-w-0 flex-1">
+      <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">Live Preview</h2>
+    </div>
+    <button
+      onClick={handleReloadApp}
+      disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
+      className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg disabled:opacity-50 transition-colors"
+    >
+      <RefreshCw className={`w-4 h-4 ${isReloading ? 'animate-spin' : ''}`} />
+    </button>
+  </div>
 
-          {/* Phone Mockup */}
-          <div className="flex-1 flex justify-center items-center min-h-0 overflow-hidden lg:overflow-hidden">
-            <div className="relative flex flex-col items-center w-full h-full max-h-full">
-              {/* Phone Frame */}
-              <div className="w-[160px] h-[320px] sm:w-[180px] sm:h-[360px] md:w-[240px] md:h-[480px] lg:w-[280px] lg:h-[560px] bg-black rounded-[24px] sm:rounded-[28px] md:rounded-[34px] lg:rounded-[40px] p-1 sm:p-1.5 md:p-2 lg:p-2.5 shadow-2xl max-w-full max-h-full">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 sm:w-20 sm:h-4 md:w-28 md:h-5 lg:w-32 lg:h-6 bg-black rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl z-10"></div>
+  {/* Phone Mockup Container */}
+  <div className="flex-1 w-full flex justify-center items-center min-h-0 overflow-hidden p-2 sm:p-4">
+    
+    {/* iPhone 16 Pro Frame (Black Hardware)
+        - The borderRadius uses percentage to scale perfectly without becoming a circle
+    */}
+    <div className="relative aspect-[9/19.5] h-full max-h-full w-auto bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50"
+         style={{ borderRadius: '18% / 8.5%' }}>
+      
+      {/* Side Buttons */}
+      <div className="absolute -left-[2px] top-[18%] w-[3px] h-[6%] bg-[#1a1a1a] rounded-l-sm"></div>
+      <div className="absolute -left-[2px] top-[26%] w-[3px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+      <div className="absolute -left-[2px] top-[40%] w-[3px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
+      <div className="absolute -right-[2px] top-[32%] w-[3px] h-[18%] bg-[#1a1a1a] rounded-r-sm"></div>
 
-                {/* Screen */}
-                <div className="w-full h-full bg-white rounded-[20px] sm:rounded-[24px] md:rounded-[28px] lg:rounded-[32px] overflow-hidden relative">
-                  {/* Status Bar */}
-                  <div className="absolute top-0 left-0 right-0 h-6 sm:h-7 md:h-8 lg:h-10 px-2 sm:px-3 md:px-4 lg:px-5 flex items-center justify-between font-medium z-10 bg-white">
-                    <div className="font-semibold text-[6px] sm:text-[7px] md:text-[8px] lg:text-[9px]">9:59</div>
-                    <div className="flex items-center gap-0.5">
-                      {/* Signal Icon */}
-                      <svg className="w-2.5 h-2 sm:w-3 sm:h-2.5" viewBox="0 0 18 12" fill="currentColor">
-                        <rect x="0" y="9" width="2.5" height="3" rx="0.5"/>
-                        <rect x="4" y="6" width="2.5" height="6" rx="0.5"/>
-                        <rect x="8" y="3" width="2.5" height="9" rx="0.5"/>
-                        <rect x="12" y="0" width="2.5" height="12" rx="0.5"/>
-                      </svg>
-                      {/* WiFi Icon */}
-                      <svg className="w-2.5 h-2 sm:w-3 sm:h-2.5" viewBox="0 0 16 12" fill="currentColor">
-                        <path d="M8 12c.83 0 1.5-.67 1.5-1.5S8.83 9 8 9s-1.5.67-1.5 1.5S7.17 12 8 12zm3.5-3.5c0-1.93-1.57-3.5-3.5-3.5S4.5 6.57 4.5 8.5h1.75c0-1.03.84-1.87 1.87-1.87s1.87.84 1.87 1.87H11.5zM8 1C4.69 1 1.82 2.91.5 5.75l1.44.82C3.05 3.89 5.37 2.5 8 2.5s4.95 1.39 6.06 4.07l1.44-.82C14.18 2.91 11.31 1 8 1z"/>
-                      </svg>
-                      {/* Battery Icon */}
-                      <svg className="w-4 h-2 sm:w-4.5 sm:h-2.5" viewBox="0 0 25 12" fill="none">
+      {/* Screen Area (White Background) */}
+      <div className="relative w-full h-full bg-white overflow-hidden flex flex-col shadow-inner"
+           style={{ borderRadius: '16.5% / 7.8%' }}>
+        
+        {/* Dynamic Island */}
+        <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[28%] h-[3.2%] bg-black rounded-full z-30 flex items-center justify-end px-[1.5%]">
+           <div className="w-[12%] aspect-square rounded-full bg-[#1a1a2e]"></div>
+        </div>
+
+        {/* Status Bar (Dark Icons for White BG) */}
+        <div className="h-[7%] w-full flex items-end justify-between px-[8%] pb-[2.8%] flex-shrink-0 z-20 bg-white">
+          <span className="text-[min(1.4vh,12px)] font-bold text-black">9:41</span>
+          <div className="flex gap-1 items-center">
+            <svg className="w-[min(2.4vh,20px)] h-[min(1.2vh,10px)]" viewBox="0 0 18 12" fill="black">
+               <rect x="0" y="9" width="2.5" height="3" rx="0.5"/><rect x="4" y="6" width="2.5" height="6" rx="0.5"/>
+               <rect x="8" y="3" width="2.5" height="9" rx="0.5"/><rect x="12" y="0" width="2.5" height="12" rx="0.5"/>
+            </svg>
+              <svg className="w-[min(2.4vh,20px)] h-[min(1.2vh,10px)]" viewBox="0 0 25 12" fill="none">
                         <rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="currentColor" strokeOpacity="0.35"/>
                         <path d="M23 4v4" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.5" strokeLinecap="round"/>
                         <rect x="2" y="2" width="18" height="8" rx="1.5" fill="currentColor"/>
                       </svg>
-                    </div>
-                  </div>
-
-                  {/* Expo App Content */}
-                  <div className="pt-6 sm:pt-7 md:pt-8 lg:pt-10 w-full h-full">
-                    {isAppRunning && expoInfo?.webUrl ? (
-                      iframeError ? (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-2 sm:gap-3 px-2 sm:px-4">
-                          <div className="text-center">
-                            <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1 font-medium">Preview failed to load</p>
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-500">The app preview couldn't be displayed</p>
-                          </div>
-                          <button
-                            onClick={handleRefreshIframe}
-                            className="px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 bg-orange-600 text-white text-xs sm:text-sm md:text-base font-medium rounded-lg hover:bg-orange-700 transition-all flex items-center gap-1.5 sm:gap-2"
-                          >
-                            <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span>Refresh Preview</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="relative w-full h-full">
-                          {!iframeLoaded && (
-                            <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
-                              <div className="text-center px-2">
-                                <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-orange-500 animate-spin mx-auto mb-2 sm:mb-3" />
-                                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-700">Loading app preview...</p>
-                                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">This may take 30-60 seconds on first load</p>
-                              </div>
-                            </div>
-                          )}
-                          <iframe
-                            key={`${expoInfo.webUrl}-${iframeKey}`}
-                            src={expoInfo.webUrl}
-                            className="w-full h-full border-0"
-                          style={{ zoom: APP_BUILDER_CONFIG.IFRAME_ZOOM }}
-                          allow="accelerometer; camera; microphone; geolocation"
-                          title="Expo App Preview"
-                          onLoad={handleIframeLoad}
-                          onError={handleIframeError}
-                        />
-                        </div>
-                      )
-                    ) : isAppRunning ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                        <div className="text-center">
-                          <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400 animate-spin mx-auto mb-2" />
-                          <p className="text-xs sm:text-sm text-gray-500">Loading preview...</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-2 sm:gap-3 md:gap-4 px-2 sm:px-4">
-                        <div className="text-center">
-                          <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1 sm:mb-2 font-medium">App is not running</p>
-                          <p className="text-[10px] sm:text-xs md:text-sm text-gray-500">The app has stopped or expired after 15 minutes</p>
-                        </div>
-                        <button
-                          onClick={handleRestartApp}
-                          disabled={isRestarting}
-                          className="px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-orange-600 text-white text-xs sm:text-sm md:text-base font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all flex items-center gap-1.5 sm:gap-2"
-                        >
-                          {isRestarting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 animate-spin" />
-                              <span>Restarting App...</span>
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
-                              <span>Restart App</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
+        {/* Content Area */}
+        <div className="flex-1 w-full relative min-h-0 bg-white">
+          {isAppRunning && expoInfo?.webUrl ? (
+            iframeError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                <p className="text-xs font-medium text-gray-700">Preview failed to load</p>
+                <button onClick={handleRefreshIframe} className="mt-3 px-4 py-1.5 bg-orange-600 text-white text-[10px] rounded-full">Refresh</button>
+              </div>
+            ) : (
+              <>
+                {!iframeLoaded && (
+                  <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
+                    <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                  </div>
+                )}
+                <iframe
+                  key={`${expoInfo.webUrl}-${iframeKey}`}
+                  src={expoInfo.webUrl}
+                  className="w-full h-full border-0"
+                  style={{ zoom: APP_BUILDER_CONFIG.IFRAME_ZOOM }}
+                  onLoad={handleIframeLoad}
+                  onError={handleIframeError}
+                />
+              </>
+            )
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+<div className="text-center">
+  <p className="text-xs font-medium text-gray-700 mb-1">
+    App is not running
+  </p>
+
+  <p className="text-[9px] sm:text-[8px] md:text-[8px] text-gray-500 leading-tight text-center px-2 pb-2">
+    The app has stopped or expired after 15 minutes
+  </p>
+</div>
+               
+               <button 
+                onClick={handleRestartApp} 
+                disabled={isRestarting}
+                className="px-6 py-2.5 bg-[#f05123] text-white text-xs font-bold rounded-full flex items-center gap-2 shadow-lg active:scale-95 transition-all"
+               >
+                 {isRestarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                 <span>{isRestarting ? 'Restarting...' : 'Restart App'}</span>
+               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Home Bar (Dark for White BG) */}
+        <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
+          <div className="w-[35%] h-[4px] bg-black/10 rounded-full"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+
         {/* Right Panel: Expo Connect Screen */}
-        <div className="w-full lg:w-[240px] xl:w-[320px] order-3 lg:order-3">
+        <div className="w-full lg:w-[240px] xl:w-[320px] order-3 md:order-3 lg:order-3">
 
           {/* Expo Connect Screen */}
           <div className="bg-[#1a1a1a] rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-800 overflow-y-auto flex flex-col min-h-[320px] xs:min-h-[350px] sm:min-h-[380px] md:min-h-[450px] lg:h-full items-center pt-1 sm:pt-1.5 md:pt-2 px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4">
