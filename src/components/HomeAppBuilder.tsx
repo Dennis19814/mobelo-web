@@ -267,8 +267,8 @@ export default function HomeAppBuilder() {
 
   return (
     <>
-      <aside className="flex justify-end" aria-label="App builder form">
-        <div className="w-full max-w-md rounded-3xl bg-gradient-to-b from-[#fff8f1] to-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] border-2 border-orange-200 p-6 space-y-4">
+      <aside className="flex justify-end md:justify-center" aria-label="App builder form">
+        <div className="w-full rounded-3xl bg-gradient-to-b from-[#fff8f1] to-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] border-2 border-orange-200 p-6 space-y-4">
           <h2 className="text-xl font-extrabold text-slate-900">Describe Your Mobile Store</h2>
 
           <textarea
