@@ -103,12 +103,12 @@ const steps = [
 ]
 
 const templates = [
-  { name: 'Fashion & Apparel', color: 'from-[#ec4899] to-[#f472b6]', icon: 'ShoppingBag', desc: 'Trendy clothing stores with size guides, style recommendations, and seasonal collections.' },
-  { name: 'Food & Grocery', color: 'from-[#10b981] to-[#34d399]', icon: 'Utensils', desc: 'Organic groceries, meal kits, and specialty food stores with recipe integration.' },
-  { name: 'Health & Beauty', color: 'from-[#8b5cf6] to-[#a78bfa]', icon: 'Heart', desc: 'Cosmetics, skincare, and wellness products with ingredient lists and tutorials.' },
-  { name: 'Books & Media', color: 'from-[#3b82f6] to-[#60a5fa]', icon: 'BookOpen', desc: 'Digital and physical books, courses, and educational content platforms.' },
-  { name: 'Sports & Fitness', color: 'from-[#f97316] to-[#fb923c]', icon: 'Dumbbell', desc: 'Athletic wear, equipment, and fitness accessories with workout guides.' },
-  { name: 'General Retail', color: 'from-[#64748b] to-[#94a3b8]', icon: 'Package2', desc: 'Electronics, home goods, crafts, and everything else you can imagine selling.' },
+  { name: 'Fashion & Apparel', color: 'from-[#ec4899] to-[#f472b6]', icon: 'ShoppingBag', desc: 'Trendy clothing stores with size guides, style recommendations, and seasonal collections.', image: '/images/mockups/pink.png' },
+  { name: 'Food & Grocery', color: 'from-[#10b981] to-[#34d399]', icon: 'Utensils', desc: 'Organic groceries, meal kits, and specialty food stores with recipe integration.', image: '/images/mockups/green.png' },
+  { name: 'Health & Beauty', color: 'from-[#8b5cf6] to-[#a78bfa]', icon: 'Heart', desc: 'Cosmetics, skincare, and wellness products with ingredient lists and tutorials.', image: '/images/mockups/purple.png' },
+  { name: 'Books & Media', color: 'from-[#3b82f6] to-[#60a5fa]', icon: 'BookOpen', desc: 'Digital and physical books, courses, and educational content platforms.', image: '/images/mockups/blue.png' },
+  { name: 'Sports & Fitness', color: 'from-[#f97316] to-[#fb923c]', icon: 'Dumbbell', desc: 'Athletic wear, equipment, and fitness accessories with workout guides.', image: '/images/mockups/orange.png' },
+  { name: 'General Retail', color: 'from-[#64748b] to-[#94a3b8]', icon: 'Package2', desc: 'Electronics, home goods, crafts, and everything else you can imagine selling.', image: '/images/mockups/gray.png' },
 ]
 
 const techBlocks = [
@@ -545,15 +545,21 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Templates */}
-        <section className="bg-white py-12 md:py-16" aria-labelledby="templates-heading">
+
+      {/* Templates */}
+        <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-16 md:py-20" aria-labelledby="templates-heading">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="text-center space-y-3 mb-10">
-              <h2 id="templates-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Built for Every Type of Store</h2>
-              <p className="text-slate-600 max-w-3xl mx-auto">Whether you're selling fashion, food, or anything in between, Mobelo has templates and features tailored to your industry.</p>
+            <div className="text-center space-y-4 mb-16">
+              
+              <h2 id="templates-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">
+                Built for Every Type of Store
+              </h2>
+              <p className="text-slate-600">
+                Whether you're selling fashion, food, or anything in between, Mobelo has templates and features tailored to your industry.
+              </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {templates.map((tpl) => {
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {templates.map((tpl, idx) => {
                 // Map string icon names to components
                 const iconMap: { [key: string]: any } = {
                   ShoppingBag,
@@ -567,62 +573,97 @@ export default function HomePage() {
                 const isEmoji = typeof tpl.icon === 'string' && !iconMap[tpl.icon]
 
                 return (
-                  <div key={tpl.name} className="rounded-2xl border border-slate-200 bg-white/50 p-6 hover:shadow-lg transition">
+                  <div 
+                    key={tpl.name} 
+                    className="group relative rounded-3xl bg-white border-2 border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                    style={{
+                      ['--hover-color' as any]: tpl.color
+                    }}
+                  >
+                    {/* Gradient accent line that changes on hover */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tpl.color}`}></div>
+                    
                     {/* Phone mockup */}
-                    <div className={`relative h-64 rounded-3xl overflow-hidden bg-gradient-to-br ${tpl.color} mb-6 shadow-lg flex items-center justify-center`}>
-                      {/* Phone frame */}
-                      <div className="relative w-36 h-full flex items-center justify-center">
-                        {/* Phone screen */}
-                        <div className="w-full h-56 bg-slate-900 rounded-[2rem] border-8 border-slate-900 shadow-2xl">
-                          {/* Notch */}
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-6 bg-slate-900 rounded-b-2xl z-10" />
-                          {/* Header with gradient */}
-                          <div className={`h-16 bg-gradient-to-r ${tpl.color} flex items-center justify-between px-4 text-white`}>
-                            {Icon ? <Icon className="w-5 h-5" /> : isEmoji ? <span className="text-xl">{tpl.icon}</span> : null}
-                            <ShoppingBag className="w-5 h-5" />
-                          </div>
-                          {/* Content area with product cards */}
-                          <div className="bg-white px-3 py-3 space-y-2">
-                            <div className="flex gap-2">
-                              <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${tpl.color}`} />
-                              <div className="flex-1 space-y-1">
-                                <div className="h-2 bg-slate-200 rounded w-3/4" />
-                                <div className="h-2 bg-slate-100 rounded w-1/2" />
-                                <div className="h-2 bg-orange-100 rounded w-1/4" />
+                    <div className={`relative h-[400px] overflow-visible bg-slate-50 flex items-center justify-center p-6 transition-all duration-300`}
+                         style={{
+                           background: 'rgb(248 250 252)'
+                         }}
+                         onMouseEnter={(e) => {
+                           // Extract color values for hover effect
+                           const colorMap: { [key: string]: string } = {
+                             'from-[#ec4899] to-[#f472b6]': 'linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(244, 114, 182, 0.08))',
+                             'from-[#10b981] to-[#34d399]': 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.08))',
+                             'from-[#8b5cf6] to-[#a78bfa]': 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08))',
+                             'from-[#3b82f6] to-[#60a5fa]': 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(96, 165, 250, 0.08))',
+                             'from-[#f97316] to-[#fb923c]': 'linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(251, 146, 60, 0.08))',
+                             'from-[#64748b] to-[#94a3b8]': 'linear-gradient(135deg, rgba(100, 116, 139, 0.08), rgba(148, 163, 184, 0.08))',
+                           }
+                           e.currentTarget.style.background = colorMap[tpl.color] || 'rgb(248 250 252)'
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'rgb(248 250 252)'
+                         }}
+                    >
+                      {/* iOS Frame */}
+                      <div className="relative transform group-hover:scale-105 transition-transform duration-300">
+                        {/* Device frame */}
+                        <div className="relative w-[160px] h-[320px] bg-slate-900 rounded-[32px] shadow-2xl border-[8px] border-slate-900">
+                          {/* Screen */}
+                          <div className="absolute inset-0 rounded-[24px] overflow-hidden bg-white">
+                            {/* Image content - fills the screen area */}
+                            {tpl.image && (
+                              <div className="absolute inset-0">
+                                <Image
+                                  src={tpl.image}
+                                  alt={`${tpl.name} mobile app mockup`}
+                                  fill
+                                  className="object-contain"
+                                  sizes="160px"
+                                  quality={100}
+                                  loading="lazy"
+                                />
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${tpl.color}`} />
-                              <div className="flex-1 space-y-1">
-                                <div className="h-2 bg-slate-200 rounded w-3/4" />
-                                <div className="h-2 bg-slate-100 rounded w-1/2" />
-                                <div className="h-2 bg-orange-100 rounded w-1/4" />
-                              </div>
-                            </div>
+                            )}
                           </div>
-                          {/* Bottom navigation dots */}
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                            <div className="w-2 h-2 rounded-full bg-slate-300" />
-                          </div>
+                          
+                          {/* Home indicator */}
+                          {/* <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-1 bg-slate-800 rounded-full"></div> */}
                         </div>
                       </div>
-                    </div>
-                    {/* Title with icon */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-md`}>
-                        {Icon ? <Icon className="w-5 h-5" /> : isEmoji ? <span className="text-xl">{tpl.icon}</span> : null}
+                      
+                      {/* Floating icon badge */}
+                      <div className={`absolute top-4 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg shadow-black/10 group-hover:scale-110 transition-transform`}>
+                        {Icon ? <Icon className="w-7 h-7" /> : isEmoji ? <span className="text-2xl">{tpl.icon}</span> : null}
                       </div>
-                      <div className="text-lg font-bold text-slate-900">{tpl.name}</div>
                     </div>
-                    {/* Description */}
-                    <div className="text-sm text-slate-600 leading-relaxed">{tpl.desc}</div>
+                    
+                    {/* Content */}
+                    <div className="p-6 space-y-3">
+                      <h3 className="text-xl font-bold text-slate-900 transition-colors">{tpl.name}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{tpl.desc}</p>
+                      
+                      {/* Learn more link */}
+                      <div className="pt-2">
+                        <button className={`text-sm font-semibold flex items-center gap-1 group/btn transition-colors`}
+                                style={{
+                                  color: tpl.color.includes('ec4899') ? '#ec4899' :
+                                         tpl.color.includes('10b981') ? '#10b981' :
+                                         tpl.color.includes('8b5cf6') ? '#8b5cf6' :
+                                         tpl.color.includes('3b82f6') ? '#3b82f6' :
+                                         tpl.color.includes('f97316') ? '#f97316' :
+                                         '#64748b'
+                                }}>
+                          <span>Explore Template</span>
+                          <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )
               })}
             </div>
+            
+            
             <div className="mt-12 text-center">
               <p className="text-slate-600 mb-4">Don't see your niche? Mobelo instantly generates custom code, design, styles, and colors tailored to your needs.</p>
             </div>
