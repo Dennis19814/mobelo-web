@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Bell, CheckCircle, Info, ShoppingCart, Package, DollarSign, X, AlertTriangle, Truck, Star } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
@@ -75,6 +77,8 @@ export default function NotificationsModal({
   appSecretKey,
   onNavigate
 }: NotificationsModalProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { headers } = useMerchantAuth(apiKey, appSecretKey)
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -460,7 +464,7 @@ export default function NotificationsModal({
     </div>
 
       {/* Notification Detail Modals */}
-      {selectedNotification && (
+      {selectedNotification && typeof window !== 'undefined' && createPortal(
       <>
         {/* Low Stock Alert Modal */}
         {selectedNotification.type === 'warning' && (selectedNotification.productName || (selectedNotification.items && selectedNotification.items.length > 0)) && (
@@ -579,9 +583,9 @@ export default function NotificationsModal({
                         onNavigate('inventory')
                       } else {
                         // Update URL to navigate to inventory section
-                        const currentUrl = new URL(window.location.href)
-                        currentUrl.searchParams.set('section', 'inventory')
-                        window.location.href = currentUrl.pathname + currentUrl.search
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set('section', 'inventory')
+                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
@@ -691,9 +695,9 @@ export default function NotificationsModal({
                         onNavigate('orders')
                       } else {
                         // Update URL to navigate to orders section
-                        const currentUrl = new URL(window.location.href)
-                        currentUrl.searchParams.set('section', 'orders')
-                        window.location.href = currentUrl.pathname + currentUrl.search
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set('section', 'orders')
+                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
@@ -801,9 +805,9 @@ export default function NotificationsModal({
                         onNavigate('orders')
                       } else {
                         // Update URL to navigate to orders section
-                        const currentUrl = new URL(window.location.href)
-                        currentUrl.searchParams.set('section', 'orders')
-                        window.location.href = currentUrl.pathname + currentUrl.search
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set('section', 'orders')
+                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
@@ -889,9 +893,9 @@ export default function NotificationsModal({
                         onNavigate('product-reviews')
                       } else {
                         // Update URL to navigate to product reviews section
-                        const currentUrl = new URL(window.location.href)
-                        currentUrl.searchParams.set('section', 'product-reviews')
-                        window.location.href = currentUrl.pathname + currentUrl.search
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set('section', 'product-reviews')
+                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
@@ -953,7 +957,8 @@ export default function NotificationsModal({
             </div>
           </div>
         )}
-      </>
+      </>,
+      document.body
       )}
     </>
   )
