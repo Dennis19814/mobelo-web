@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/logger'
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import {
   Package,
@@ -14,6 +14,8 @@ import {
   AlertCircle,
   TrendingUp,
   Play,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { StarRating } from "@/components/ui/StarRating";
 import VideoThumbnail from "@/components/ui/VideoThumbnail";
@@ -96,6 +98,12 @@ export default function ProductGrid({
   onPrefetch,
   loading = false,
 }: ProductGridProps) {
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [duplicateConfirmId, setDuplicateConfirmId] = useState<number | null>(null);
+  const [duplicatingProduct, setDuplicatingProduct] = useState<Product | null>(null);
+  const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   // Helper function to handle missing images
   const fixImageUrl = (url: string | null | undefined): string => {
     if (!url) return '/placeholder-product.png'
@@ -166,6 +174,26 @@ export default function ProductGrid({
       currency: currency || "USD",
     }).format(price);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdownId !== null) {
+        const dropdownElement = dropdownRefs.current.get(openDropdownId);
+        if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+          setOpenDropdownId(null);
+        }
+      }
+    };
+
+    if (openDropdownId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
 
   if (viewMode === "list") {
     return (
@@ -358,7 +386,10 @@ export default function ProductGrid({
                       </button>
                     )}
                     <button
-                      onClick={() => onDuplicate(product.id)}
+                      onClick={() => {
+                        setDuplicatingProduct(product);
+                        setDuplicateConfirmId(product.id);
+                      }}
                       className="text-green-400 hover:text-green-600"
                       title="Duplicate"
                     >
@@ -405,10 +436,76 @@ export default function ProductGrid({
                 onChange={() => onSelectProduct(product.id)}
               />
             </div>
-            <div className="dropdown pointer-events-auto">
-              <button className="p-1 bg-white rounded-full shadow-sm hover:shadow-md">
+            <div 
+              className="relative pointer-events-auto"
+              ref={(el) => {
+                if (el) {
+                  dropdownRefs.current.set(product.id, el);
+                } else {
+                  dropdownRefs.current.delete(product.id);
+                }
+              }}
+            >
+              <button 
+                onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
+                className="p-1 bg-white rounded-full shadow-sm hover:shadow-md transition-colors"
+              >
                 <MoreVertical className="h-4 w-4 text-gray-600" />
               </button>
+              
+              {openDropdownId === product.id && (
+                <div className="absolute right-0 top-8 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                  <button
+                    onClick={() => {
+                      onView(product.id);
+                      setOpenDropdownId(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span>View</span>
+                  </button>
+                  {onEdit && (
+                    <button
+                      onClick={() => {
+                        onEdit(product.id);
+                        setOpenDropdownId(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setDuplicatingProduct(product);
+                      setDuplicateConfirmId(product.id);
+                      setOpenDropdownId(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>Duplicate</span>
+                  </button>
+                  {onDelete && (
+                    <>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => {
+                          setDeletingProduct(product);
+                          setDeleteConfirmId(product.id);
+                          setOpenDropdownId(null);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -577,6 +674,128 @@ export default function ProductGrid({
           </div>
         </div>
       ))}
+      
+      {/* Duplicate Confirmation Modal */}
+      {duplicateConfirmId !== null && duplicatingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+            <div className="p-6">
+              {/* Icon and Title */}
+              <div className="flex items-start space-x-4 mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Copy className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    Duplicate Product
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Are you sure you want to duplicate <span className="font-medium text-gray-900">"{duplicatingProduct.name}"</span>? A copy will be created with "(Copy)" added to the name.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDuplicateConfirmId(null);
+                    setDuplicatingProduct(null);
+                  }}
+                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setDuplicateConfirmId(null);
+                    setDuplicatingProduct(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (duplicatingProduct) {
+                      onDuplicate(duplicatingProduct.id);
+                    }
+                    setDuplicateConfirmId(null);
+                    setDuplicatingProduct(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Duplicate Product</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId !== null && deletingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+            <div className="p-6">
+              {/* Icon and Title */}
+              <div className="flex items-start space-x-4 mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    Delete Product
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Are you sure you want to delete <span className="font-medium text-gray-900">"{deletingProduct.name}"</span>? This action cannot be undone.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setDeletingProduct(null);
+                  }}
+                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setDeletingProduct(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (onDelete && deletingProduct) {
+                      onDelete(deletingProduct.id);
+                    }
+                    setDeleteConfirmId(null);
+                    setDeletingProduct(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Product</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

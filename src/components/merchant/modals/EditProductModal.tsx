@@ -1,7 +1,7 @@
 'use client'
 import { logger } from '@/lib/logger'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles } from 'lucide-react'
 import ExtraInfoEditor from '../ExtraInfoEditor'
 import Modal from '@/components/ui/Modal'
@@ -11,6 +11,10 @@ import BrandSelectorWithImages from '../../ui/BrandSelectorWithImages'
 import CharacterCount from '@/components/ui/CharacterCount'
 import { apiService } from '@/lib/api-service'
 import type { Product, UpdateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
+import { AddCategoryModal } from './AddCategoryModal'
+import type { Category } from '@/types/category'
+import { useCategories } from '@/hooks/useCategories'
+import { useMerchantAuth } from '@/hooks'
 
 interface EditProductModalProps {
   isOpen: boolean
@@ -83,6 +87,8 @@ export default function EditProductModal({
   const [newCategoryName, setNewCategoryName] = useState('')
   const [selectedParentCategory, setSelectedParentCategory] = useState<number | null>(null)
   const [showAddCategory, setShowAddCategory] = useState(false)
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const [isEditModalVisible, setIsEditModalVisible] = useState(true)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [editCategoryName, setEditCategoryName] = useState('')
   const [creatingCategory, setCreatingCategory] = useState(false)
@@ -460,6 +466,8 @@ export default function EditProductModal({
 
   useEffect(() => {
     if (isOpen) {
+      setIsEditModalVisible(true)
+      setShowAddCategoryModal(false)
       fetchCategories()
       // Reset form data to product values when modal opens
       setFormData({
@@ -881,9 +889,114 @@ export default function EditProductModal({
     onClose()
   }
 
+  // Get appId from product or URL
+  const getAppId = useCallback(() => {
+    const pathSegments = window.location.pathname.split('/')
+    const merchantPanelIndex = pathSegments.indexOf('merchant-panel')
+    const currentAppId = merchantPanelIndex !== -1 && pathSegments[merchantPanelIndex + 1]
+      ? parseInt(pathSegments[merchantPanelIndex + 1])
+      : product.appId || 0
+    return currentAppId
+  }, [product.appId])
+
+  // Get stable appId value
+  const currentAppId = useMemo(() => getAppId(), [getAppId])
+
+  // Use the same category creation approach as CategoriesSection
+  const { headers: merchantHeaders } = useMerchantAuth(apiKey, appSecretKey)
+  
+  // Ensure API keys are in localStorage for httpClient interceptors
+  useEffect(() => {
+    if (apiKey && typeof window !== 'undefined') {
+      localStorage.setItem('userApiKey', apiKey)
+    }
+    if (appSecretKey && typeof window !== 'undefined') {
+      localStorage.setItem('appSecretKey', appSecretKey)
+    }
+  }, [apiKey, appSecretKey])
+
+  const { createCategory: createCategoryFromHook, categories: categoriesFromHook } = useCategories({
+    appId: currentAppId,
+    headers: merchantHeaders || undefined
+  })
+
+  // Sync categories from useCategories hook to local state when they're available
+  // This ensures categories are available even if fetchCategories hasn't completed yet
+  useEffect(() => {
+    if (categoriesFromHook && Array.isArray(categoriesFromHook)) {
+      // Only update if we have categories or if localCategories is empty
+      if (categoriesFromHook.length > 0 || localCategories.length === 0) {
+        setCategories(categoriesFromHook)
+        setLocalCategories(categoriesFromHook)
+      }
+    }
+  }, [categoriesFromHook, localCategories.length])
+
+  // Handle opening Add Category modal
+  const handleOpenAddCategoryModal = () => {
+    // Ensure API keys are in localStorage before opening modal
+    if (apiKey && typeof window !== 'undefined') {
+      localStorage.setItem('userApiKey', apiKey)
+    }
+    if (appSecretKey && typeof window !== 'undefined') {
+      localStorage.setItem('appSecretKey', appSecretKey)
+    }
+    setIsEditModalVisible(false)
+    setShowAddCategoryModal(true)
+  }
+
+  // Handle closing Add Category modal and showing Edit Product modal again
+  const handleCloseAddCategoryModal = () => {
+    setShowAddCategoryModal(false)
+    setIsEditModalVisible(true)
+  }
+
+  // Handle category creation success
+  const handleCategoryCreated = async (category: Category) => {
+    // Add the newly created category to the list
+    const newCategory: ProductCategory = {
+      id: category.id,
+      name: category.name,
+      parentId: category.parentId
+    }
+
+    setLocalCategories(prev => [...prev, newCategory])
+    setCategories(prev => [...prev, newCategory])
+
+    // Also update the parent categories list if this was fetched from the API
+    if (onCategoriesUpdate) {
+      onCategoriesUpdate([...categories, category])
+    }
+
+    // Refresh categories list
+    await fetchCategories()
+
+    // Close Add Category modal and show Edit Product modal
+    handleCloseAddCategoryModal()
+  }
+
+  // Get parent categories for AddCategoryModal
+  const parentCategoriesForModal = useMemo(() => {
+    return getCategoryTree().map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      parentId: cat.parentId,
+      imageUrl: cat.imageUrl,
+      iconUrl: cat.iconUrl,
+      displayType: cat.displayType,
+      isActive: cat.isActive,
+      displayOrder: cat.displayOrder,
+      description: cat.description,
+      createdAt: cat.createdAt,
+      updatedAt: cat.updatedAt,
+      appId: cat.appId
+    } as Category))
+  }, [categories])
+
   return (
+    <>
     <Modal
-      isOpen={isOpen}
+      isOpen={isOpen && isEditModalVisible}
       onClose={handleClose}
       title="Edit Product"
       size="xl"
@@ -1525,265 +1638,179 @@ export default function EditProductModal({
           )}
 
           {/* Categories Tab */}
-          {currentStepId === 'categories' && (
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Categories *
-                  </label>
+{currentStepId === 'categories' && (
+  <div className="space-y-6">
+
+    {/* Categories Header */}
+    <div className="flex items-center justify-between">
+      <label className="text-sm font-medium text-gray-700">Categories *</label>
+      <button
+        type="button"
+        onClick={handleOpenAddCategoryModal}
+        disabled={creatingCategory}
+        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg shadow hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <FolderPlus className="h-4 w-4" />
+        <span>Add Category</span>
+      </button>
+    </div>
+
+
+    {/* Categories List */}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 max-h-72 overflow-y-auto space-y-1">
+      {localCategories.length === 0 ? (
+        <p className="text-sm text-gray-400">No categories available. Add one above.</p>
+      ) : (
+        <div className="space-y-1">
+          {getCategoryTree().map(category => (
+            <div key={category.id} className="space-y-1">
+              <div className="flex items-center justify-between px-2 py-1 rounded-lg hover:bg-gray-50 transition group">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.categoryIds?.includes(category.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        handleInputChange('categoryIds', [...(formData.categoryIds || []), category.id])
+                      } else {
+                        handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== category.id) || [])
+                      }
+                    }}
+                    className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  {editingCategory === category.id ? (
+                    <input
+                      type="text"
+                      value={editCategoryName}
+                      onChange={(e) => setEditCategoryName(e.target.value)}
+                      onBlur={() => handleUpdateCategory(category.id)}
+                      onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(category.id)}
+                      className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 w-full"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-700">{category.name}</span>
+                  )}
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setShowAddCategory(!showAddCategory)}
-                    disabled={creatingCategory}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => { setEditingCategory(category.id); setEditCategoryName(category.name); }}
+                    className="p-1 text-gray-400 hover:text-orange-600 transition"
                   >
-                    <FolderPlus className="h-3 w-3" />
-                    <span>Add Category</span>
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(category.id)}
+                    className="p-1 text-gray-400 hover:text-red-600 transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
+              </div>
 
-                {/* Add Category Form */}
-                {showAddCategory && (
-                  <div className="mb-3 p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Category name"
-                        maxLength={50}
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
-                      />
-                      <select
-                        value={selectedParentCategory || ""}
-                        onChange={(e) => setSelectedParentCategory(e.target.value ? Number(e.target.value) : null)}
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
-                      >
-                        <option value="">No parent (Top level)</option>
-                        {getCategoriesForDropdown().map(cat => (
-                          <option key={cat.id} value={cat.id}>
-                            {'  '.repeat(cat.depth)}
-                            {cat.depth > 0 ? '└ ' : ''}
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
+              {/* Subcategories */}
+              {category.children && category.children.length > 0 && (
+                <div className="ml-6 space-y-1">
+                  {category.children.map(subcat => (
+                    <div key={subcat.id} className="flex items-center justify-between px-2 py-1 rounded-lg hover:bg-gray-50 transition group">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.categoryIds?.includes(subcat.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleInputChange('categoryIds', [...(formData.categoryIds || []), subcat.id])
+                            } else {
+                              handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== subcat.id) || [])
+                            }
+                          }}
+                          className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                        />
+                        {editingCategory === subcat.id ? (
+                          <input
+                            type="text"
+                            value={editCategoryName}
+                            onChange={(e) => setEditCategoryName(e.target.value)}
+                            onBlur={() => handleUpdateCategory(subcat.id)}
+                            onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(subcat.id)}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 w-full"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="text-sm text-gray-700">— {subcat.name}</span>
+                        )}
+                      </div>
+                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={handleAddCategory}
-                          disabled={creatingCategory || !newCategoryName.trim()}
-                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                          onClick={() => { setEditingCategory(subcat.id); setEditCategoryName(subcat.name); }}
+                          className="p-1 text-gray-400 hover:text-orange-600 transition"
                         >
-                          {creatingCategory ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1" />
-                              Creating...
-                            </>
-                          ) : (
-                            'Add'
-                          )}
+                          <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setShowAddCategory(false);
-                            setNewCategoryName("");
-                            setSelectedParentCategory(null);
-                          }}
-                          disabled={creatingCategory}
-                          className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleDeleteCategory(subcat.id)}
+                          className="p-1 text-gray-400 hover:text-red-600 transition"
                         >
-                          Cancel
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                <div className="border border-gray-300 rounded-md p-3 max-h-60 overflow-y-auto">
-                  {localCategories.length === 0 ? (
-                    <p className="text-sm text-gray-500">No categories available. Add one above.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {getCategoryTree().map((category) => (
-                        <div key={category.id}>
-                          <div className="flex items-center group hover:bg-gray-50 rounded px-1 py-0.5">
-                            <input
-                              type="checkbox"
-                              checked={formData.categoryIds?.includes(category.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  handleInputChange('categoryIds', [...(formData.categoryIds || []), category.id])
-                                } else {
-                                  handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== category.id) || [])
-                                }
-                              }}
-                              className="h-4 w-4 text-orange-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            {editingCategory === category.id ? (
-                              <div className="flex items-center ml-2 flex-1">
-                                <input
-                                  type="text"
-                                  value={editCategoryName}
-                                  onChange={(e) => setEditCategoryName(e.target.value)}
-                                  onBlur={() => handleUpdateCategory(category.id)}
-                                  onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(category.id)}
-                                  className="px-1 py-0.5 text-sm border border-gray-300 rounded"
-                                  autoFocus
-                                />
-                              </div>
-                            ) : (
-                              <>
-                                <span className="ml-2 text-sm text-gray-700 flex-1">
-                                  {category.name}
-                                </span>
-                                <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingCategory(category.id);
-                                      setEditCategoryName(category.name);
-                                    }}
-                                    className="p-1 text-gray-500 hover:text-orange-600"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteCategory(category.id)}
-                                    className="p-1 text-gray-500 hover:text-red-600"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          {/* Render subcategories */}
-                          {category.children && category.children.length > 0 && (
-                            <div className="ml-6">
-                              {category.children.map((subcat) => (
-                                <div key={subcat.id} className="flex items-center group hover:bg-gray-50 rounded px-1 py-0.5">
-                                  <input
-                                    type="checkbox"
-                                    checked={formData.categoryIds?.includes(subcat.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        handleInputChange('categoryIds', [...(formData.categoryIds || []), subcat.id])
-                                      } else {
-                                        handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== subcat.id) || [])
-                                      }
-                                    }}
-                                    className="h-4 w-4 text-orange-600 focus:ring-blue-500 border-gray-300 rounded"
-                                  />
-                                  {editingCategory === subcat.id ? (
-                                    <div className="flex items-center ml-2 flex-1">
-                                      <input
-                                        type="text"
-                                        value={editCategoryName}
-                                        onChange={(e) => setEditCategoryName(e.target.value)}
-                                        onBlur={() => handleUpdateCategory(subcat.id)}
-                                        onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(subcat.id)}
-                                        className="px-1 py-0.5 text-sm border border-gray-300 rounded"
-                                        autoFocus
-                                      />
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <span className="ml-2 text-sm text-gray-600 flex-1">
-                                        — {subcat.name}
-                                      </span>
-                                      <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditingCategory(subcat.id);
-                                            setEditCategoryName(subcat.name);
-                                          }}
-                                          className="p-1 text-gray-500 hover:text-orange-600"
-                                        >
-                                          <Edit2 className="h-3 w-3" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteCategory(subcat.id)}
-                                          className="p-1 text-gray-500 hover:text-red-600"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags
-                </label>
-                <div className="space-y-1">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                      maxLength={20}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Add tag"
-                    />
-                    <button
-                      onClick={addTag}
-                      className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <CharacterCount
-                    current={tagInput.length}
-                    max={20}
-                    className="text-xs"
-                  />
-                </div>
-                {formData.tags && formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700"
-                      >
-                        {tag}
-                        <button
-                          onClick={() => removeTag(tag)}
-                          className="ml-2 text-gray-500 hover:text-gray-700"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          )}
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Tags Section */}
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+          maxLength={20}
+          placeholder="Add tag"
+          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+        />
+        <button
+          onClick={addTag}
+          className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+      <CharacterCount current={tagInput.length} max={20} className="text-xs text-gray-400" />
+      {formData.tags && formData.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {formData.tags.map(tag => (
+            <span key={tag} className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
+              {tag}
+              <button onClick={() => removeTag(tag)} className="ml-1 text-gray-400 hover:text-gray-700 transition">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 
           {/* Extra Info Tab */}
           {currentStepId === 'extras' && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Extra Info</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Extra Info</label>
                 <ExtraInfoEditor
                   metadata={(formData as any).metadata || {}}
                   onChange={(meta: any) => handleInputChange('metadata' as any, meta)}
@@ -1820,7 +1847,7 @@ export default function EditProductModal({
                         </label>
                         <div className="grid grid-cols-4 gap-3">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Length</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Length</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.length || ''}
@@ -1828,7 +1855,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 length: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1836,7 +1863,7 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Width</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Width</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.width || ''}
@@ -1844,7 +1871,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 width: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1852,7 +1879,7 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Height</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
                             <input
                               type="number"
                               value={formData.shippingInfo?.height || ''}
@@ -1860,7 +1887,7 @@ export default function EditProductModal({
                                 ...formData.shippingInfo,
                                 height: e.target.value ? parseFloat(e.target.value) : undefined
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               placeholder="0"
                               step="0.01"
                               min="0"
@@ -1868,14 +1895,14 @@ export default function EditProductModal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Unit</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                             <select
                               value={formData.shippingInfo?.dimensionUnit || 'cm'}
                               onChange={(e) => handleInputChange('shippingInfo', {
                                 ...formData.shippingInfo,
                                 dimensionUnit: e.target.value
                               })}
-                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                               disabled={loading}
                             >
                               <option value="cm">cm</option>
@@ -1899,7 +1926,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               shippingClass: e.target.value
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             disabled={loading}
                           >
                             <option value="standard">Standard Shipping</option>
@@ -1922,7 +1949,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               processingTime: e.target.value
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="1-2 business days"
                             disabled={loading}
                           />
@@ -1973,7 +2000,7 @@ export default function EditProductModal({
                               ...formData.shippingInfo,
                               flatRate: e.target.value ? parseFloat(e.target.value) : undefined
                             })}
-                            className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="0.00"
                             step="0.01"
                             min="0"
@@ -1995,7 +2022,7 @@ export default function EditProductModal({
                   value={formData.returnPolicy || ''}
                   onChange={(e) => handleInputChange('returnPolicy', e.target.value)}
                   rows={2}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Describe your return policy..."
                   disabled={loading}
                 />
@@ -2010,7 +2037,7 @@ export default function EditProductModal({
                   value={formData.warranty || ''}
                   onChange={(e) => handleInputChange('warranty', e.target.value)}
                   rows={2}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Warranty details (e.g., 1 year manufacturer warranty)"
                   disabled={loading}
                 />
@@ -2048,5 +2075,16 @@ export default function EditProductModal({
         </div>
       </div>
     </Modal>
+
+    {/* Add Category Modal */}
+    <AddCategoryModal
+      isOpen={showAddCategoryModal}
+      onClose={handleCloseAddCategoryModal}
+      appId={currentAppId}
+      parentCategories={parentCategoriesForModal}
+      onSuccess={handleCategoryCreated}
+      onSubmit={createCategoryFromHook}
+    />
+    </>
   )
 }

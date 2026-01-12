@@ -21,12 +21,18 @@ interface MerchantHeaderProps {
   currentApp: App
   user: User | null
   onLogout: () => void
+  apiKey?: string
+  appSecretKey?: string
+  onNavigate?: (section: string) => void
 }
 
 export default function MerchantHeader({
   currentApp,
   user,
-  onLogout
+  onLogout,
+  apiKey,
+  appSecretKey,
+  onNavigate
 }: MerchantHeaderProps) {
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -135,6 +141,10 @@ export default function MerchantHeader({
                 <NotificationsModal
                   isOpen={showNotificationsModal}
                   onClose={() => setShowNotificationsModal(false)}
+                  appId={currentApp.id}
+                  apiKey={apiKey}
+                  appSecretKey={appSecretKey}
+                  onNavigate={onNavigate}
                 />
               )}
             </div>

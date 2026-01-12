@@ -54,12 +54,25 @@ export function AddCategoryModal({
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('[AddCategoryModal] Form submitted', {
+      formData,
+      errors,
+      isSubmitting,
+      hasImageFile: !!imageFile,
+      hasIcon: !!formData.iconUrl,
+      hasEmoji: !!formData.emojiUnicode
+    });
+
     const result = await handleSubmit();
+    console.log('[AddCategoryModal] handleSubmit result', { result });
+    
     if (result) {
       onSuccess(result);
       resetForm();
       setImagePreview(null);
       onClose();
+    } else {
+      console.log('[AddCategoryModal] handleSubmit returned null, errors:', errors);
     }
   };
 
