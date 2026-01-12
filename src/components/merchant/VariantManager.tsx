@@ -517,7 +517,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                   type="text"
                   value={label}
                   onChange={(e) => setValue(composeColour(e.target.value, code))}
-                  className={`w-20 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                  className={`w-20 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                     valueError ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Colour name"
@@ -526,7 +526,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                   type="text"
                   value={code}
                   onChange={(e) => setValue(composeColour(label, e.target.value))}
-                  className={`w-16 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                  className={`w-16 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                     valueError ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="#RRGGBB"
@@ -542,7 +542,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                 type="text"
                 value={valueVal}
                 onChange={(e) => setValue(e.target.value)}
-                className={`w-28 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                className={`w-28 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                   valueError ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder={typeDef.placeholder || defaultValuePlaceholder}
@@ -566,7 +566,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
               <div className="relative flex-shrink-0">
                 {isLocked ? (
                   // Display as read-only text if variant is in a group
-                  <div className="w-24 px-3 py-1.5 border border-gray-300 rounded-md bg-gray-50 text-sm text-gray-700 font-medium flex items-center">
+                  <div className="w-24 px-1.5 py-0.5 border border-gray-300 rounded-md bg-gray-50 text-xs text-gray-700 font-medium flex items-center">
                     {nameVal || typeDef.label}
                   </div>
                 ) : (
@@ -575,7 +575,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                     <select
                       value={typeDef.label}
                       onChange={(e) => setName(e.target.value)}
-                      className={`w-24 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                      className={`w-24 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                         nameError ? 'border-red-300' : 'border-gray-300'
                       }`}
                     >
@@ -585,7 +585,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                     </select>
                     {nameError && (
                       <div className="mt-0.5">
-                        <span className="text-xs text-red-600">{nameError}</span>
+                        <span className="text-[10px] text-red-600">{nameError}</span>
                       </div>
                     )}
                   </div>
@@ -597,14 +597,14 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                     type="text"
                     value={nameVal}
                     onChange={(e) => setName(e.target.value)}
-                    className={`w-28 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                    className={`w-28 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                       nameError ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder={defaultNamePlaceholder}
                   />
                   {nameError && (
                     <div className="mt-0.5">
-                      <span className="text-xs text-red-600">{nameError}</span>
+                      <span className="text-[10px] text-red-600">{nameError}</span>
                     </div>
                   )}
                 </div>
@@ -613,7 +613,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                 {renderValueEditor()}
                 {valueError && (
                   <div className="mt-0.5">
-                    <span className="text-xs text-red-600">{valueError}</span>
+                    <span className="text-[10px] text-red-600">{valueError}</span>
                   </div>
                 )}
               </div>
@@ -640,7 +640,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                 type="text"
                 value={editingVariant.sku || ''}
                 onChange={(e) => setEditingVariant({ ...editingVariant, sku: e.target.value })}
-                className="w-28 px-3 py-1.5 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm"
+                className="w-28 px-1.5 py-0.5 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs"
                 placeholder="SKU"
               />
             </div>
@@ -665,7 +665,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                     })
                   }
                 }}
-                className={`w-20 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                className={`w-20 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                   editingErrors.price ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
@@ -673,7 +673,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
               />
               {editingErrors.price && (
                 <div className="mt-0.5">
-                  <span className="text-xs text-red-600">{editingErrors.price}</span>
+                  <span className="text-[10px] text-red-600">{editingErrors.price}</span>
                 </div>
               )}
             </div>
@@ -693,14 +693,14 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                     })
                   }
                 }}
-                className={`w-16 px-3 py-1.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm ${
+                className={`w-16 px-1.5 py-0.5 border rounded-md focus:ring-orange-500 focus:border-orange-500 text-xs ${
                   editingErrors.inventoryQuantity ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="0"
               />
               {editingErrors.inventoryQuantity && (
                 <div className="mt-0.5">
-                  <span className="text-xs text-red-600">{editingErrors.inventoryQuantity}</span>
+                  <span className="text-[10px] text-red-600">{editingErrors.inventoryQuantity}</span>
                 </div>
               )}
             </div>
@@ -755,14 +755,14 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
             className="h-3.5 w-3.5 text-orange-600 focus:ring-orange-500 border-gray-300"
           />
         </td>
-        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
+        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-900">
           {variant.sku || '-'}
         </td>
-        <td className="px-2 py-1.5 text-sm text-gray-900">
+        <td className="px-2 py-1.5 text-xs text-gray-900">
           {parts.length ? (
             <div className="flex flex-wrap gap-0.5">
               {parts.map((part, i) => (
-                <span key={i} className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">
+                <span key={i} className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
                   {part}
                 </span>
               ))}
@@ -771,11 +771,11 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
             '-'
           )}
         </td>
-        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900 font-medium">
+        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-900 font-medium">
           ${typeof variant.price === 'number' ? variant.price.toFixed(2) : parseFloat(variant.price || '0').toFixed(2)}
         </td>
-        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
-          <span className={`px-1.5 py-0.5 rounded text-xs ${
+        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-900">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
             (variant.inventoryQuantity || 0) > 0 
               ? 'bg-green-100 text-green-800' 
               : 'bg-red-100 text-red-800'
@@ -836,8 +836,8 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
       `}</style>
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-          
+        <h3 className="text-base font-medium text-gray-700 flex items-center gap-1.5">
+          <Layers className="w-4 h-4 text-orange-600" />
           Product Variants
         </h3>
         <button
@@ -866,7 +866,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
               <select
                 value={selectedVariantType}
                 onChange={(e) => setSelectedVariantType(e.target.value)}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg  focus:border-orange-500 text-sm bg-white text-gray-700 shadow-sm hover:border-gray-400 transition-colors"
+                className="w-full px-2 py-1 border border-gray-300 rounded-lg  focus:border-orange-500 text-xs bg-white text-gray-700 shadow-sm hover:border-gray-400 transition-colors"
               >
                 <option value="">Select variant type...</option>
                 {VARIANT_TYPES.map((type) => {
@@ -922,7 +922,7 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
       {groupedVariants.length === 0 ? (
         <div className="text-center py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 ">
           <Layers className="w-10 h-5 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-500 mb-1.5 font-medium text-xs">No variants added yet</p>
+          <p className="text-gray-500 mb-1.5 font-medium text-sm">No variants added yet</p>
           <button
             type="button"
             onClick={() => setShowAddGroupForm(true)}
@@ -958,15 +958,15 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                           ) : (
                             <ChevronRight className="w-4 h-4 text-gray-600" />
                           )}
-                          <span className="font-semibold text-sm text-gray-700">{groupDisplayName}</span>
-                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                          <span className="font-semibold text-xs text-gray-700">{groupDisplayName}</span>
+                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full text-[10px] font-medium">
                             {variantCount} {variantCount === 1 ? 'variant' : 'variants'}
                           </span>
                         </button>
                       ) : (
                         <div className="flex items-center space-x-1.5 flex-1">
-                          <span className="font-semibold text-sm text-gray-700">{groupDisplayName}</span>
-                          <span className="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded-full text-xs font-medium">
+                          <span className="font-semibold text-xs text-gray-900">{groupDisplayName}</span>
+                          <span className="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded-full text-[10px] font-medium">
                             {variantCount} {variantCount === 1 ? 'variant' : 'variants'}
                           </span>
                         </div>
@@ -995,22 +995,22 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               Default
                             </th>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               SKU
                             </th>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               Variant Value
                             </th>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               Price
                             </th>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               Inventory
                             </th>
-                            <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-2 py-1.5 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                               Actions
                             </th>
                           </tr>
