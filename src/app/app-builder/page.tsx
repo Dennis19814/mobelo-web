@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Navigation } from '@/components/layout'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { Send, Download, ChevronRight, Loader2, Copy, Check, Bot, Video, HelpCircle, RefreshCw, ExternalLink, MessageCircle } from 'lucide-react'
+import { Send, Download, ChevronRight, Loader2, Copy, Check, Bot, Video, HelpCircle, RefreshCw, ExternalLink, MessageCircle, ArrowUp } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { useJobSocket } from '@/hooks/useJobSocket'
 import { usePublishSocket } from '@/hooks/usePublishSocket'
@@ -1843,7 +1843,7 @@ function AppBuilderContent() {
   }, [iframeLoaded, progressState.status])
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden app-builder-surface text-gray-900">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-y-auto lg:overflow-hidden app-builder-surface text-gray-900">
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap');
         @keyframes shimmer {
@@ -1872,42 +1872,45 @@ function AppBuilderContent() {
         pageTitle="App Builder"
       />
 
+      {/* Spacer for fixed Navigation */}
+      <div className="h-14 md:h-16 lg:h-20 flex-shrink-0"></div>
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-3 lg:gap-4 p-2 md:p-3 lg:p-4 max-w-[1800px] mx-auto w-full overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 p-1.5 sm:p-2 md:p-3 lg:p-4 max-w-[1800px] mx-auto w-full overflow-y-auto lg:overflow-hidden min-h-0">
 
         {/* Left Panel: AI Builder */}
-        <div className="w-full md:w-[280px] lg:w-[360px] h-[320px] md:h-[400px] lg:h-full flex-shrink-0">
+        <div className="w-full lg:w-[280px] xl:w-[360px] min-h-[280px] sm:min-h-[320px] md:min-h-[380px] lg:h-full flex-shrink-0 order-1 lg:order-1">
 
           {/* AI Builder */}
-          <div className="h-full bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+          <div className="h-full bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 flex flex-col">
           {/* Header */}
-          <div className="px-2 md:px-3 py-1.5 md:py-2 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-                <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-[10px] md:text-xs font-semibold flex-shrink-0">AI</div>
+          <div className="px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 md:py-2 border-b border-gray-100">
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 min-w-0 flex-1">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-md sm:rounded-lg md:rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-[9px] sm:text-[10px] md:text-xs font-semibold flex-shrink-0">AI</div>
                 <div className="min-w-0">
-                  <p className="text-xs md:text-sm font-semibold text-gray-900 truncate">AI Developer</p>
-                  <p className="text-[10px] md:text-[11px] text-gray-500 hidden md:block">Chat and build your app</p>
+                  <p className="text-[11px] sm:text-xs md:text-sm font-semibold text-gray-900 truncate">AI Developer</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-[11px] text-gray-500 hidden sm:block">Chat and build your app</p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[9px] md:text-[10px] font-medium border border-green-100 flex-shrink-0">
-                <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500"></div>
-                <span className="hidden md:inline">Ready</span>
+              <span className="inline-flex items-center gap-0.5 sm:gap-1 md:gap-1.5 px-1 sm:px-1.5 md:px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[8px] sm:text-[9px] md:text-[10px] font-medium border border-green-100 flex-shrink-0">
+                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-500"></div>
+                <span className="hidden sm:inline">Ready</span>
               </span>
             </div>
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-3 min-h-0 chat-scroll">
+          <div className="flex-1 overflow-y-auto p-1.5 sm:p-2 space-y-2 sm:space-y-2.5 md:space-y-3 min-h-0 chat-scroll">
             {/* Build Status Bar */}
             {!hideProgressBar && progressState.status !== 'idle' && (
-              <div className={`bg-gray-50 border border-gray-200 rounded-xl p-3 mb-2 sticky top-0 z-10 ${progressState.status === 'running' ? 'animate-[gentlePulse_2s_ease-in-out_infinite]' : ''}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs font-semibold text-gray-800">Build status</span>
+              <div className={`bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 mb-1.5 sm:mb-2 sticky top-0 z-10 ${progressState.status === 'running' ? 'animate-[gentlePulse_2s_ease-in-out_infinite]' : ''}`}>
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 min-w-0">
+                    <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] md:text-xs font-semibold text-gray-800 truncate">Build status</span>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                  <span className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ${
                     progressState.status === 'completed'
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : progressState.status === 'failed'
@@ -1923,7 +1926,7 @@ function AppBuilderContent() {
                       : 'In progress'}
                   </span>
                 </div>
-                <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden relative">
+                <div className="w-full h-2 sm:h-2.5 md:h-3 rounded-full bg-gray-200 overflow-hidden relative">
                   <div
                     className={`h-full rounded-full ${progressState.status === 'failed' ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600'}`}
                     style={{
@@ -1933,25 +1936,25 @@ function AppBuilderContent() {
                     }}
                   />
                 </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-gray-600">
-                  <div className="flex items-center gap-2">
-                    {progressState.status === 'running' && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />}
-                    {progressState.status === 'completed' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                    {progressState.status === 'failed' && <Bot className="w-3.5 h-3.5 text-red-600" />}
-                    <span className="line-clamp-1">{progressState.message || 'Waiting for build to start...'}</span>
+                <div className="mt-1.5 sm:mt-2 flex items-center justify-between text-[10px] sm:text-[11px] text-gray-600 gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 min-w-0 flex-1">
+                    {progressState.status === 'running' && <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 animate-spin flex-shrink-0" />}
+                    {progressState.status === 'completed' && <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 flex-shrink-0" />}
+                    {progressState.status === 'failed' && <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 flex-shrink-0" />}
+                    <span className="line-clamp-1 text-[10px] sm:text-[11px]">{progressState.message || 'Waiting for build to start...'}</span>
                   </div>
-                  <span className="text-[10px] text-gray-500">{Math.round(progressState.percent)}%</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-500 flex-shrink-0">{Math.round(progressState.percent)}%</span>
                 </div>
               </div>
             )}
             {/* Load More History Button */}
             {hasMoreHistory && !isLoadingHistory && (
-              <div className="flex justify-center mb-2">
+              <div className="flex justify-center mb-1.5 sm:mb-2">
                 <button
                   onClick={() => loadChatHistory(true)}
-                  className="text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-3 py-1.5 rounded-md transition-colors border border-orange-200"
+                  className="text-[10px] sm:text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors border border-orange-200 active:bg-orange-100"
                 >
-                  Load More History ({totalHistoryCount - chatMessages.length + 1} more)
+                  Load More ({totalHistoryCount - chatMessages.length + 1})
                 </button>
               </div>
             )}
@@ -1974,62 +1977,61 @@ function AppBuilderContent() {
               </div>
             )}
             {!isLoadingHistory && chatMessages.length === 0 && progressState.status === 'idle' && !isGenerating && !isCreating && (
-              <div className="border border-gray-200 bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-600">
-                <p className="font-semibold text-gray-800 mb-1">No active build</p>
-                <p className="text-gray-500 text-xs">Start a new run to see progress and chat updates here.</p>
+              <div className="border border-gray-200 bg-gray-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 text-center">
+                <p className="font-semibold text-gray-800 mb-0.5 sm:mb-1 text-xs sm:text-sm">No active build</p>
+                <p className="text-gray-500 text-[10px] sm:text-xs">Start a new run to see progress and chat updates here.</p>
               </div>
             )}
-            {chatMessages.map((msg, idx) => {
+  {chatMessages.map((msg, idx) => {
               // Generate unique key based on message content, timestamp, and index
               const uniqueKey = msg.id
                 ? `msg-${msg.id}`
                 : `${msg.role}-${msg.timestamp?.getTime() || Date.now()}-${idx}-${msg.content.substring(0, 20)}`;
 
               return (
-                <div key={uniqueKey} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-[fadeInUp_180ms_ease]`}>
-                  {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center mr-1.5 flex-shrink-0">
-                      <Bot className="w-3.5 h-3.5 text-gray-600" />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1 max-w-[260px]">
-                    <div className="flex items-center gap-2 text-[9px] text-gray-500">
+                <div key={uniqueKey} className={`flex items-end gap-1 sm:gap-1.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-[fadeInUp_180ms_ease]`}>
+                  <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+                    msg.role === 'user' ? 'bg-orange-500' : 'bg-gray-200'
+                  }`}>
+                    {msg.role === 'user' ? (
+                      <span className="text-white text-[10px] sm:text-[11px] font-bold">{getUserInitials(user)}</span>
+                    ) : (
+                      <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-700" />
+                    )}
+                  </div>
+                  <div className={`flex flex-col gap-0.5 sm:gap-1 max-w-[85%] sm:max-w-[220px] md:max-w-[260px] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[8px] sm:text-[9px] text-gray-500 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                      {msg.timestamp && <span className="font-medium">{formatTime(msg.timestamp)}</span>}
                       {getRunLabel(msg.sessionId) && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-[9px] text-gray-600">
+                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[8px] sm:text-[9px] text-blue-600 font-medium">
                           {getRunLabel(msg.sessionId)}
                         </span>
                       )}
-                      {msg.timestamp && <span>{formatTime(msg.timestamp)}</span>}
                     </div>
-                    <div className={`rounded-xl px-3 py-2 border ${
+                    <div className={`rounded-xl px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 shadow-sm ${
                       msg.role === 'user'
-                        ? 'bg-orange-500 border-orange-600 text-white'
+                        ? 'bg-orange-500 text-white'
                         : msg.type === 'stderr'
-                        ? 'bg-red-50 border-red-200 text-red-800'
+                        ? 'bg-red-50 border border-red-200 text-red-900'
                         : msg.type === 'stdout'
-                        ? 'bg-gray-50 border-gray-200 text-gray-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-800'
+                        ? 'bg-gray-100 border border-gray-200 text-gray-900'
+                        : 'bg-white border border-gray-200 text-gray-900'
                     }`}>
-                      <p className={`text-[11px] leading-relaxed whitespace-pre-line ${msg.type ? 'font-mono' : ''}`}>
+                      <p className={`text-[10px] sm:text-[11px] leading-relaxed whitespace-pre-line ${msg.type ? 'font-mono text-[9px] sm:text-[10px]' : ''}`}>
                         {msg.content}
                       </p>
                     </div>
                   </div>
-                  {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center ml-1.5 flex-shrink-0">
-                      <span className="text-white text-[11px] font-semibold">{getUserInitials(user)}</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
             {isClaudeExecuting && (
               <div className="flex justify-start">
-                <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center mr-1.5">
-                  <Loader2 className="w-3.5 h-3.5 text-orange-500 animate-spin" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-orange-100 flex items-center justify-center mr-1 sm:mr-1.5">
+                  <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-500 animate-spin" />
                 </div>
-                <div className="bg-gray-50 rounded-xl px-3 py-2">
-                  <p className="text-[9.5px] text-gray-500">Analyzing your change request...</p>
+                <div className="bg-gray-50 rounded-lg sm:rounded-xl px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2">
+                  <p className="text-[9px] sm:text-[9.5px] text-gray-500">Analyzing your change request...</p>
                 </div>
               </div>
             )}
@@ -2037,99 +2039,103 @@ function AppBuilderContent() {
           </div>
 
           {/* Input Box */}
-          <div className="p-1.5 md:p-2 border-t border-gray-100">
-            <div className="relative">
-              <textarea
-                rows={1}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                disabled={isGenerating}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault()
-                    if (historyIndex < commandHistory.length - 1) {
-                      const newIndex = historyIndex + 1
-                      setHistoryIndex(newIndex)
-                      setUserInput(commandHistory[newIndex])
-                    }
-                  } else if (e.key === 'ArrowDown') {
-                    e.preventDefault()
-                    if (historyIndex > 0) {
-                      const newIndex = historyIndex - 1
-                      setHistoryIndex(newIndex)
-                      setUserInput(commandHistory[newIndex])
-                    } else if (historyIndex === 0) {
-                      setHistoryIndex(-1)
-                      setUserInput('')
-                    }
-                  }
-                }}
-                placeholder="Describe change..."
-                className="w-full px-2 md:px-3 py-1.5 md:py-2 pr-8 md:pr-10 rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-[10px] md:text-[10.5px] resize-none"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!userInput.trim() || isClaudeExecuting || isGenerating}
-                className="absolute right-1 md:right-1.5 top-1 md:top-1.5 p-1 md:p-1.5 bg-blue-400 text-white rounded-md md:rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-3 h-3 md:w-4 md:h-4" />
-              </button>
-            </div>
-            {/* Powered by Claude Sonnet 4.5 & GPT-5 */}
-            <div className="hidden md:flex items-center justify-center gap-1.5 mt-1">
-              <span className="text-[10.5px] text-gray-400">Powered by</span>
-              <span className="text-[10.5px] font-semibold text-gray-400">Claude Sonnet 4.5 & GPT-5</span>
-            </div>
-          </div>
+ <div className="p-1 sm:p-1.5 md:p-2 border-t border-gray-100">
+      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+        <textarea
+          rows={1}
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          disabled={isGenerating}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              handleSendMessage()
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              if (historyIndex < commandHistory.length - 1) {
+                const newIndex = historyIndex + 1
+                setHistoryIndex(newIndex)
+                setUserInput(commandHistory[newIndex])
+              }
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              if (historyIndex > 0) {
+                const newIndex = historyIndex - 1
+                setHistoryIndex(newIndex)
+                setUserInput(commandHistory[newIndex])
+              } else if (historyIndex === 0) {
+                setHistoryIndex(-1)
+                setUserInput('')
+              }
+            }
+          }}
+          placeholder="Describe change..."
+          className="flex-1 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 rounded-md sm:rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-[9.5px] sm:text-[10px] md:text-[10.5px] resize-none"
+        />
+        <button
+          onClick={handleSendMessage}
+          disabled={!userInput.trim() || isClaudeExecuting || isGenerating}
+          className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-6 sm:h-7 md:h-8 w-6 sm:w-7 md:w-8 rounded-lg flex-shrink-0"
+        >
+          {isGenerating || isClaudeExecuting ? (
+            <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0 text-white animate-spin" />
+          ) : (
+            <ArrowUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0 text-white" />
+          )}
+        </button>
+      </div>
+      {/* Powered by Claude Sonnet 4.5 & GPT-5 */}
+      <div className="hidden sm:flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
+        <span className="text-[9px] sm:text-[10px] md:text-[10.5px] text-gray-400">Powered by</span>
+        <span className="text-[9px] sm:text-[10px] md:text-[10.5px] font-semibold text-gray-400">Claude Sonnet 4.5 & GPT-5</span>
+      </div>
+    </div>
           </div>
         </div>
 
         {/* Middle Panel: Live Preview */}
-        <div className="w-full md:flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 p-2 md:p-3 lg:p-4 flex flex-col h-[400px] md:h-[500px] lg:h-full">
-          <div className="flex items-center justify-between mb-2 md:mb-3">
-            <div className="flex items-center gap-1.5 md:gap-2">
-              <h2 className="text-sm md:text-base lg:text-lg font-bold text-gray-900">Live Preview</h2>
-              <button
-                onClick={handleReloadApp}
-                disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
-                className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Reload app (fast reload without restart)"
-              >
-                <RefreshCw className={`w-4 h-4 ${isReloading ? 'animate-spin' : ''}`} />
-              </button>
+        <div className="w-full lg:flex-1 bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1.5 sm:p-2 md:p-3 lg:p-4 flex flex-col min-h-[340px] xs:min-h-[360px] sm:min-h-[400px] md:min-h-[480px] lg:h-full lg:min-h-0 order-2 lg:order-2">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2 md:mb-3 gap-2">
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 min-w-0 flex-1">
+              <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">Live Preview</h2>
             </div>
+            <button
+              onClick={handleReloadApp}
+              disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
+              className="p-1 sm:p-1.5 md:p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-md sm:rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              title="Reload app (fast reload without restart)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 ${isReloading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
 
           {/* Phone Mockup */}
-          <div className="flex-1 flex justify-center items-center min-h-0">
-            <div className="relative flex flex-col items-center">
+          <div className="flex-1 flex justify-center items-center min-h-0 overflow-hidden lg:overflow-hidden">
+            <div className="relative flex flex-col items-center w-full h-full max-h-full">
               {/* Phone Frame */}
-              <div className="w-[200px] h-[400px] md:w-[240px] md:h-[480px] lg:w-[280px] lg:h-[560px] bg-black rounded-[28px] md:rounded-[34px] lg:rounded-[40px] p-1.5 md:p-2 lg:p-2.5 shadow-2xl">
+              <div className="w-[160px] h-[320px] sm:w-[180px] sm:h-[360px] md:w-[240px] md:h-[480px] lg:w-[280px] lg:h-[560px] bg-black rounded-[24px] sm:rounded-[28px] md:rounded-[34px] lg:rounded-[40px] p-1 sm:p-1.5 md:p-2 lg:p-2.5 shadow-2xl max-w-full max-h-full">
                 {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 md:w-28 md:h-5 lg:w-32 lg:h-6 bg-black rounded-b-2xl md:rounded-b-3xl z-10"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 sm:w-20 sm:h-4 md:w-28 md:h-5 lg:w-32 lg:h-6 bg-black rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl z-10"></div>
 
                 {/* Screen */}
-                <div className="w-full h-full bg-white rounded-[24px] md:rounded-[28px] lg:rounded-[32px] overflow-hidden relative">
+                <div className="w-full h-full bg-white rounded-[20px] sm:rounded-[24px] md:rounded-[28px] lg:rounded-[32px] overflow-hidden relative">
                   {/* Status Bar */}
-                  <div className="absolute top-0 left-0 right-0 h-7 md:h-8 lg:h-10 px-3 md:px-4 lg:px-5 flex items-center justify-between font-medium z-10 bg-white">
-                    <div className="font-semibold text-[7px] md:text-[8px] lg:text-[9px]">9:59</div>
+                  <div className="absolute top-0 left-0 right-0 h-6 sm:h-7 md:h-8 lg:h-10 px-2 sm:px-3 md:px-4 lg:px-5 flex items-center justify-between font-medium z-10 bg-white">
+                    <div className="font-semibold text-[6px] sm:text-[7px] md:text-[8px] lg:text-[9px]">9:59</div>
                     <div className="flex items-center gap-0.5">
                       {/* Signal Icon */}
-                      <svg className="w-3 h-2.5" viewBox="0 0 18 12" fill="currentColor">
+                      <svg className="w-2.5 h-2 sm:w-3 sm:h-2.5" viewBox="0 0 18 12" fill="currentColor">
                         <rect x="0" y="9" width="2.5" height="3" rx="0.5"/>
                         <rect x="4" y="6" width="2.5" height="6" rx="0.5"/>
                         <rect x="8" y="3" width="2.5" height="9" rx="0.5"/>
                         <rect x="12" y="0" width="2.5" height="12" rx="0.5"/>
                       </svg>
                       {/* WiFi Icon */}
-                      <svg className="w-3 h-2.5" viewBox="0 0 16 12" fill="currentColor">
+                      <svg className="w-2.5 h-2 sm:w-3 sm:h-2.5" viewBox="0 0 16 12" fill="currentColor">
                         <path d="M8 12c.83 0 1.5-.67 1.5-1.5S8.83 9 8 9s-1.5.67-1.5 1.5S7.17 12 8 12zm3.5-3.5c0-1.93-1.57-3.5-3.5-3.5S4.5 6.57 4.5 8.5h1.75c0-1.03.84-1.87 1.87-1.87s1.87.84 1.87 1.87H11.5zM8 1C4.69 1 1.82 2.91.5 5.75l1.44.82C3.05 3.89 5.37 2.5 8 2.5s4.95 1.39 6.06 4.07l1.44-.82C14.18 2.91 11.31 1 8 1z"/>
                       </svg>
                       {/* Battery Icon */}
-                      <svg className="w-4.5 h-2.5" viewBox="0 0 25 12" fill="none">
+                      <svg className="w-4 h-2 sm:w-4.5 sm:h-2.5" viewBox="0 0 25 12" fill="none">
                         <rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="currentColor" strokeOpacity="0.35"/>
                         <path d="M23 4v4" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.5" strokeLinecap="round"/>
                         <rect x="2" y="2" width="18" height="8" rx="1.5" fill="currentColor"/>
@@ -2138,19 +2144,19 @@ function AppBuilderContent() {
                   </div>
 
                   {/* Expo App Content */}
-                  <div className="pt-7 md:pt-8 lg:pt-10 w-full h-full">
+                  <div className="pt-6 sm:pt-7 md:pt-8 lg:pt-10 w-full h-full">
                     {isAppRunning && expoInfo?.webUrl ? (
                       iframeError ? (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3 px-4">
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-2 sm:gap-3 px-2 sm:px-4">
                           <div className="text-center">
-                            <p className="text-base text-gray-700 mb-1 font-medium">Preview failed to load</p>
-                            <p className="text-sm text-gray-500">The app preview couldn't be displayed</p>
+                            <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1 font-medium">Preview failed to load</p>
+                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-500">The app preview couldn't be displayed</p>
                           </div>
                           <button
                             onClick={handleRefreshIframe}
-                            className="px-5 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2"
+                            className="px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 bg-orange-600 text-white text-xs sm:text-sm md:text-base font-medium rounded-lg hover:bg-orange-700 transition-all flex items-center gap-1.5 sm:gap-2"
                           >
-                            <RefreshCw className="w-4 h-4" />
+                            <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span>Refresh Preview</span>
                           </button>
                         </div>
@@ -2158,10 +2164,10 @@ function AppBuilderContent() {
                         <div className="relative w-full h-full">
                           {!iframeLoaded && (
                             <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-3" />
-                                <p className="text-sm font-medium text-gray-700">Loading app preview...</p>
-                                <p className="text-xs text-gray-500 mt-1">This may take 30-60 seconds on first load</p>
+                              <div className="text-center px-2">
+                                <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-orange-500 animate-spin mx-auto mb-2 sm:mb-3" />
+                                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-700">Loading app preview...</p>
+                                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">This may take 30-60 seconds on first load</p>
                               </div>
                             </div>
                           )}
@@ -2180,29 +2186,29 @@ function AppBuilderContent() {
                     ) : isAppRunning ? (
                       <div className="w-full h-full flex items-center justify-center bg-gray-50">
                         <div className="text-center">
-                          <Loader2 className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
-                          <p className="text-sm text-gray-500">Loading preview...</p>
+                          <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400 animate-spin mx-auto mb-2" />
+                          <p className="text-xs sm:text-sm text-gray-500">Loading preview...</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-4">
-                        <div className="text-center px-4">
-                          <p className="text-base text-gray-700 mb-2 font-medium">App is not running</p>
-                          <p className="text-sm text-gray-500">The app has stopped or expired after 15 minutes</p>
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-2 sm:gap-3 md:gap-4 px-2 sm:px-4">
+                        <div className="text-center">
+                          <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1 sm:mb-2 font-medium">App is not running</p>
+                          <p className="text-[10px] sm:text-xs md:text-sm text-gray-500">The app has stopped or expired after 15 minutes</p>
                         </div>
                         <button
                           onClick={handleRestartApp}
                           disabled={isRestarting}
-                          className="px-6 py-3 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all flex items-center gap-2"
+                          className="px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-orange-600 text-white text-xs sm:text-sm md:text-base font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all flex items-center gap-1.5 sm:gap-2"
                         >
                           {isRestarting ? (
                             <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <Loader2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 animate-spin" />
                               <span>Restarting App...</span>
                             </>
                           ) : (
                             <>
-                              <RefreshCw className="w-5 h-5" />
+                              <RefreshCw className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
                               <span>Restart App</span>
                             </>
                           )}
@@ -2217,13 +2223,13 @@ function AppBuilderContent() {
         </div>
 
         {/* Right Panel: Expo Connect Screen */}
-        <div className="w-full md:w-[240px] lg:w-[320px]">
+        <div className="w-full lg:w-[240px] xl:w-[320px] order-3 lg:order-3">
 
           {/* Expo Connect Screen */}
-          <div className="bg-[#1a1a1a] rounded-2xl shadow-sm border border-gray-800 overflow-y-auto flex flex-col h-[350px] md:h-[500px] lg:h-full items-center pt-1.5 md:pt-2 px-3 md:px-4 pb-3 md:pb-4">
+          <div className="bg-[#1a1a1a] rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-800 overflow-y-auto flex flex-col min-h-[320px] xs:min-h-[350px] sm:min-h-[380px] md:min-h-[450px] lg:h-full items-center pt-1 sm:pt-1.5 md:pt-2 px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4">
             {/* Expo Logo */}
             <div className="mb-0">
-              <svg className="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20" viewBox="0 -183.5 512 512" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid">
+              <svg className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-20 lg:h-20" viewBox="0 -183.5 512 512" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid">
                 <g fill="white">
                   <path d="M66.6783973,46.5413294 C67.8291061,44.8451711 69.0888057,44.6294864 70.1107072,44.6294864 C71.1326087,44.6294864 72.8350272,44.8451711 73.9861863,46.5413294 C83.0567441,59.0000603 98.0290194,83.8184395 109.073572,102.125744 C116.275973,114.064741 121.807933,123.234382 122.942878,124.401304 C127.203428,128.782104 133.046597,126.05193 136.441976,121.082939 C139.784661,116.190963 140.712434,112.755951 140.712434,109.091247 C140.712434,106.595268 92.2849333,16.5289974 87.4078196,9.03209576 C82.7176116,1.82134459 81.1899387,0 73.16245,0 L67.1553447,0 C59.1517259,0 57.9951622,1.82134459 53.3045039,9.03209576 C48.4278405,16.5289974 0,106.595268 0,109.091247 C0,112.755951 0.927977482,116.190963 4.27073475,121.082939 C7.66608684,126.05193 13.5092105,128.782104 17.7696253,124.401304 C18.9047061,123.234382 24.4366655,114.064741 31.6391568,102.125744 C42.6835292,83.8184395 57.6078395,59.0000603 66.6783973,46.5413294 Z"/>
                   <path d="M387.841898,39.3946846 C407.787668,39.3946846 423.649434,57.4016785 423.649434,79.673636 C423.649434,101.945594 407.787668,120.110579 387.841898,120.110579 C377.1626,120.110579 368.838765,115.687894 363.499115,107.632032 L363.499115,107.632032 L363.499115,144.120084 L341.355065,144.120084 L341.355065,40.9742858 L363.499115,40.9742858 L363.499115,51.8733221 C368.838765,43.8175048 377.1626,39.3946846 387.841898,39.3946846 Z M471.952632,39.3946846 C494.565974,39.3946846 512,56.769802 512,79.8317177 C512,102.893183 494.565974,120.110579 471.952632,120.110579 C449.179406,120.110579 431.903462,102.893183 431.903462,79.8317177 C431.903462,56.769802 449.179406,39.3946846 471.952632,39.3946846 Z M241.752323,7.96128353 L241.752323,30.3911426 L197.620952,30.3911426 L197.620952,50.2938561 L236.883767,50.2938561 L236.883767,72.7234449 L197.620952,72.7234449 L197.620952,96.1010737 L241.752323,96.1010737 L241.752323,118.531113 L174.377535,118.531113 L174.377535,7.96128353 L241.752323,7.96128353 Z M277.784596,40.9742858 L290.505896,59.2973079 L303.383926,40.9742858 L329.768711,40.9742858 L303.698288,78.409883 L331.653081,118.531113 L304.954385,118.531113 L290.348715,97.5229084 L275.743045,118.531113 L249.358711,118.531113 L277.156323,78.5679647 L251.0859,40.9742858 L277.784596,40.9742858 Z M382.816611,60.5610609 C371.979682,60.5610609 363.499115,68.9326363 363.499115,79.673636 C363.499115,90.5727174 371.979682,98.7866614 382.816611,98.7866614 C393.49591,98.7866614 402.133657,90.4146357 402.133657,79.673636 C402.133657,69.0907181 393.49591,60.5610609 382.816611,60.5610609 Z M471.952632,60.7186923 C461.427362,60.7186923 453.577321,68.7745546 453.577321,79.8317177 C453.577321,90.5727174 461.427362,98.7866614 471.952632,98.7866614 C482.315766,98.7866614 490.327942,90.5727174 490.327942,79.8317177 C490.327942,68.7745546 482.315766,60.7186923 471.952632,60.7186923 Z"/>
@@ -2232,62 +2238,62 @@ function AppBuilderContent() {
             </div>
 
             {/* App Status */}
-            <div className="mb-2 md:mb-3 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-gray-800 flex items-center justify-between w-full">
-              <span className="text-[10px] md:text-xs text-gray-400">App Status</span>
-              <div className="flex items-center gap-1 md:gap-1.5">
-                <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${isAppRunning ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                <span className="text-[10px] md:text-xs text-gray-300">
+            <div className="mb-1.5 sm:mb-2 md:mb-3 px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-md sm:rounded-lg bg-gray-800 flex items-center justify-between w-full">
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400">App Status</span>
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isAppRunning ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-300">
                   {isAppRunning ? 'Running' : 'Stopped'}
                 </span>
               </div>
             </div>
 
             {/* Instructions */}
-            <div className="space-y-0.5 md:space-y-1 mb-2 md:mb-3 text-gray-400 text-[10px] md:text-xs">
+            <div className="space-y-0.5 sm:space-y-1 mb-1.5 sm:mb-2 md:mb-3 text-gray-400 text-[9px] sm:text-[10px] md:text-xs">
               <p>1. Install Expo Go</p>
               <p>2. Scan this QR code</p>
             </div>
 
 
             {/* QR Code or Restart Button */}
-            <div className="bg-white p-2 md:p-3 rounded-lg mb-3 md:mb-4">
+            <div className="bg-white p-1.5 sm:p-2 md:p-3 rounded-md sm:rounded-lg mb-2 sm:mb-3 md:mb-4">
               {isAppRunning && expoInfo?.qrCode && iframeLoaded ? (
                 <QRCode
                   value={expoInfo.qrCode}
                   size={144}
                   level="M"
-                  className="w-24 h-24 md:w-32 md:h-32 lg:w-36 lg:h-36"
+                  className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36"
                 />
               ) : isAppRunning && expoInfo?.qrCode ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 lg:w-36 lg:h-36 bg-blue-50 flex items-center justify-center rounded-lg border border-blue-100">
+                <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 bg-blue-50 flex items-center justify-center rounded-md sm:rounded-lg border border-blue-100">
                   <div className="text-center">
-                    <Loader2 className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-blue-500 animate-spin mx-auto mb-1.5 md:mb-2" />
-                    <p className="text-[10px] md:text-xs text-blue-600 font-medium">Preparing QR...</p>
+                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-blue-500 animate-spin mx-auto mb-1 sm:mb-1.5 md:mb-2" />
+                    <p className="text-[9px] sm:text-[10px] md:text-xs text-blue-600 font-medium">Preparing QR...</p>
                   </div>
                 </div>
               ) : isAppRunning ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 lg:w-36 lg:h-36 bg-gray-100 flex items-center justify-center rounded-lg">
+                <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 bg-gray-100 flex items-center justify-center rounded-md sm:rounded-lg">
                   <div className="text-center">
-                    <Loader2 className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-gray-400 animate-spin mx-auto mb-1.5 md:mb-2" />
-                    <p className="text-[10px] md:text-xs text-gray-500">Waiting for Expo...</p>
+                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-gray-400 animate-spin mx-auto mb-1 sm:mb-1.5 md:mb-2" />
+                    <p className="text-[9px] sm:text-[10px] md:text-xs text-gray-500">Waiting for Expo...</p>
                   </div>
                 </div>
               ) : (
-                <div className="w-24 h-24 md:w-32 md:h-32 lg:w-36 lg:h-36 flex flex-col items-center justify-center gap-1.5 md:gap-2">
-                  <p className="text-[9px] md:text-[10px] lg:text-xs text-gray-600 text-center px-2">App stopped or expired</p>
+                <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 flex flex-col items-center justify-center gap-1 sm:gap-1.5 md:gap-2">
+                  <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-gray-600 text-center px-1 sm:px-2">App stopped or expired</p>
                   <button
                     onClick={handleRestartApp}
                     disabled={isRestarting || isGenerating}
-                    className="px-2 py-1.5 md:px-3 md:py-2 lg:px-4 lg:py-2 bg-orange-600 text-white text-[10px] md:text-xs lg:text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                    className="px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-3 md:py-2 lg:px-4 lg:py-2 bg-orange-600 text-white text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium rounded-md sm:rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all flex items-center gap-1 sm:gap-1.5"
                   >
                     {isRestarting ? (
                       <>
-                        <Loader2 className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4 animate-spin" />
+                        <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4 animate-spin" />
                         <span>Restarting...</span>
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" />
+                        <RefreshCw className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" />
                         <span>Restart</span>
                       </>
                     )}
@@ -2297,93 +2303,93 @@ function AppBuilderContent() {
             </div>
 
             {/* Divider */}
-            <div className="w-full border-t border-gray-700 mb-2 md:mb-3 lg:mb-4"></div>
+            <div className="w-full border-t border-gray-700 mb-1.5 sm:mb-2 md:mb-3 lg:mb-4"></div>
 
             {/* Quick Links */}
             <div className="w-full">
-              <h4 className="text-white font-semibold text-xs md:text-sm mb-2 md:mb-3 text-center">Quick Links</h4>
+              <h4 className="text-white font-semibold text-[10px] sm:text-xs md:text-sm mb-1.5 sm:mb-2 md:mb-3 text-center">Quick Links</h4>
 
-              <div className="space-y-1.5 md:space-y-2">
+              <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
                 {/* Access Merchant Panel */}
                 <a
                   href={`/merchant-panel/${hashedAppId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 lg:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-md sm:rounded-lg transition-colors group active:bg-gray-600"
                 >
-                  <div className="flex items-center gap-1.5 md:gap-2.5">
-                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
-                      <ExternalLink className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">
+                      <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-blue-400" />
                     </div>
-                    <span className="font-medium text-white text-[10px] md:text-xs">Access Merchant Panel</span>
+                    <span className="font-medium text-white text-[9px] sm:text-[10px] md:text-xs truncate">Access Merchant Panel</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300" />
+                  <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                 </a>
 
                 {/* Publish to App Store */}
                 <button
                   onClick={() => setShowAppStoreModal(true)}
-                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 lg:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-md sm:rounded-lg transition-colors group active:bg-gray-600"
                 >
-                  <div className="flex items-center gap-1.5 md:gap-2.5">
-                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">
                       <Image
                         src="/images/app-store-icon.webp"
                         alt="Apple App Store"
                         width={20}
                         height={20}
-                        className="w-4 h-4 md:w-5 md:h-5"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5"
                         unoptimized
                       />
                     </div>
-                    <span className="font-medium text-white text-[10px] md:text-xs">Publish to App Store</span>
+                    <span className="font-medium text-white text-[9px] sm:text-[10px] md:text-xs truncate">Publish to App Store</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300" />
+                  <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                 </button>
 
                 {/* Publish to Google Play Store */}
                 <button
                   onClick={() => setShowPlayModal(true)}
-                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 lg:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-md sm:rounded-lg transition-colors group active:bg-gray-600"
                 >
-                  <div className="flex items-center gap-1.5 md:gap-2.5">
-                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">
                       <Image
                         src="/images/app-store-icon.png"
                         alt="Google Play Store"
                         width={20}
                         height={20}
-                        className="w-4 h-4 md:w-5 md:h-5"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5"
                       />
                     </div>
-                    <span className="font-medium text-white text-[10px] md:text-xs">Publish to Google Play Store</span>
+                    <span className="font-medium text-white text-[9px] sm:text-[10px] md:text-xs truncate">Publish to Google Play Store</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300" />
+                  <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                 </button>
 
                 {/* Download Source */}
                 <button
                   onClick={handleDownloadSourceClick}
-                  className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-purple-900 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 lg:py-2.5 bg-gray-800 hover:bg-purple-900 rounded-md sm:rounded-lg transition-colors group active:bg-purple-800"
                 >
-                  <div className="flex items-center gap-1.5 md:gap-2.5">
-                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
-                      <Download className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">
+                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-purple-400" />
                     </div>
-                    <span className="font-medium text-white text-[10px] md:text-xs">Download Source</span>
+                    <span className="font-medium text-white text-[9px] sm:text-[10px] md:text-xs truncate">Download Source</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300" />
+                  <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                 </button>
 
                 {/* Talk to a Human */}
-                <button className="w-full flex items-center justify-between px-2 md:px-3 py-1.5 md:py-2.5 bg-gray-800 hover:bg-blue-900 rounded-lg transition-colors group">
-                  <div className="flex items-center gap-1.5 md:gap-2.5">
-                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
-                      <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
+                <button className="w-full flex items-center justify-between px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 lg:py-2.5 bg-gray-800 hover:bg-blue-900 rounded-md sm:rounded-lg transition-colors group active:bg-blue-800">
+                  <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">
+                      <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-400" />
                     </div>
-                    <span className="font-medium text-white text-[10px] md:text-xs">Talk to a Human</span>
+                    <span className="font-medium text-white text-[9px] sm:text-[10px] md:text-xs truncate">Talk to a Human</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300" />
+                  <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                 </button>
               </div>
             </div>
