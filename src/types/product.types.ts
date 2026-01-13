@@ -4,6 +4,14 @@ export interface ProductCategory {
   description?: string
   parentId?: number
   productCount?: number
+  imageUrl?: string
+  iconUrl?: string
+  displayType?: string
+  isActive?: boolean
+  displayOrder?: number
+  createdAt?: string
+  updatedAt?: string
+  appId?: number
 }
 
 export interface ProductVariant {

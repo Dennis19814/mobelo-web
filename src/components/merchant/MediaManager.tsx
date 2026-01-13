@@ -2,19 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Upload, Trash2, Star, Loader2, GripVertical, AlertCircle, Play, Clock, X, Check, Image } from 'lucide-react'
-
-interface ProductMedia {
-  id?: number
-  url: string
-  type?: 'image' | 'video'
-  altText?: string
-  isPrimary?: boolean
-  isListingThumbnail?: boolean
-  isDetailThumbnail?: boolean
-  displayOrder?: number
-  duration?: number
-  isUploading?: boolean
-}
+import { ProductMedia } from '@/types/product.types'
 
 interface MediaManagerProps {
   productId?: number
