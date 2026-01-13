@@ -323,7 +323,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
   }
 
   return (
-    <div className="">
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
@@ -332,7 +332,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
       </div>
 
       {/* Stats Cards - Grouped by Category */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 mt-4">
         {/* Order Status Card */}
         <div className="bg-white rounded-lg border border-gray-200 p-2">
           <div className="flex items-center mb-1.5">
@@ -694,7 +694,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
       </div>
 
       {/* Search and Filter Toggle */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 mt-4">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
@@ -876,7 +876,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-4">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">

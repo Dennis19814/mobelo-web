@@ -182,7 +182,7 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
   );
 
   return (
-    <div className="">
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Brands</h2>

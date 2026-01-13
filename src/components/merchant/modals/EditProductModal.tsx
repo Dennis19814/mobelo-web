@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles } from 'lucide-react'
+import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles, Check, XCircle } from 'lucide-react'
 import ExtraInfoEditor from '../ExtraInfoEditor'
 import Modal from '@/components/ui/Modal'
 import VariantManager from '../VariantManager'
@@ -91,6 +91,7 @@ export default function EditProductModal({
   const [isEditModalVisible, setIsEditModalVisible] = useState(true)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [editCategoryName, setEditCategoryName] = useState('')
+  const [originalCategoryName, setOriginalCategoryName] = useState<string>('')
   const [creatingCategory, setCreatingCategory] = useState(false)
 
   // Sync formData with product prop when it changes
@@ -365,28 +366,65 @@ export default function EditProductModal({
     }
   }
 
-  const handleUpdateCategory = (categoryId: number) => {
+  const handleUpdateCategory = async (categoryId: number) => {
     if (!editCategoryName.trim()) return
     
-    setLocalCategories(prev => 
-      prev.map(cat => 
-        cat.id === categoryId 
-          ? { ...cat, name: editCategoryName.trim() }
-          : cat
-      )
-    )
-    setCategories(prev => 
-      prev.map(cat => 
-        cat.id === categoryId 
-          ? { ...cat, name: editCategoryName.trim() }
-          : cat
-      )
-    )
-    setEditingCategory(null)
-    setEditCategoryName('')
+    // Find the original category to check if name has changed
+    const originalCategory = localCategories.find(cat => cat.id === categoryId)
+    if (!originalCategory || editCategoryName.trim() === originalCategoryName) {
+      // No change, just cancel editing
+      setEditingCategory(null)
+      setEditCategoryName('')
+      setOriginalCategoryName('')
+      return
+    }
     
-    // Note: In production, you would call an API to persist this
-    // await apiService.put(`/categories/${categoryId}`, { name: editCategoryName });
+    try {
+      const headers: any = {}
+      if (apiKey) headers['x-api-key'] = apiKey
+      if (appSecretKey) headers['x-app-secret'] = appSecretKey
+      
+      // Use the hook's updateCategory method which handles API call and global refresh
+      const updatedCategory = await updateCategoryFromHook(categoryId, {
+        name: editCategoryName.trim()
+      })
+      
+      if (updatedCategory) {
+        // Update local state
+        const updatedLocalCategories = localCategories.map(cat => 
+          cat.id === categoryId 
+            ? { ...cat, name: editCategoryName.trim() }
+            : cat
+        )
+        const updatedCategoriesList = categories.map(cat => 
+          cat.id === categoryId 
+            ? { ...cat, name: editCategoryName.trim() }
+            : cat
+        )
+        
+        setLocalCategories(updatedLocalCategories)
+        setCategories(updatedCategoriesList)
+        
+        // Refresh categories globally to ensure all components see the update
+        await refetchCategories()
+        await fetchCategories()
+        
+        // Notify parent component about category update
+        if (onCategoriesUpdate) {
+          onCategoriesUpdate(updatedCategoriesList)
+        }
+        
+        setEditingCategory(null)
+        setEditCategoryName('')
+        setOriginalCategoryName('')
+      }
+    } catch (error) {
+      logger.error('Failed to update category:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+      // Revert local state on error
+      setEditingCategory(null)
+      setEditCategoryName('')
+      setOriginalCategoryName('')
+    }
   }
 
   const handleDeleteCategory = (categoryId: number) => {
@@ -915,7 +953,7 @@ export default function EditProductModal({
     }
   }, [apiKey, appSecretKey])
 
-  const { createCategory: createCategoryFromHook, categories: categoriesFromHook } = useCategories({
+  const { createCategory: createCategoryFromHook, updateCategory: updateCategoryFromHook, refetch: refetchCategories, categories: categoriesFromHook } = useCategories({
     appId: currentAppId,
     headers: merchantHeaders || undefined
   })
@@ -1524,7 +1562,7 @@ export default function EditProductModal({
 
           {/* Media Tab */}
           {currentStepId === 'media' && (
-            <div className="space-y-4">
+            <div className="h-full flex flex-col">
               <MediaManager
                 productId={product.id}
                 media={productMedia}
@@ -1737,16 +1775,37 @@ export default function EditProductModal({
                               className="h-4 w-4 text-orange-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                             {editingCategory === category.id ? (
-                              <div className="flex items-center ml-2 flex-1">
+                              <div className="flex items-center ml-2 flex-1 space-x-2">
                                 <input
                                   type="text"
                                   value={editCategoryName}
                                   onChange={(e) => setEditCategoryName(e.target.value)}
-                                  onBlur={() => handleUpdateCategory(category.id)}
-                                  onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(category.id)}
-                                  className="px-1 py-0.5 text-sm border border-gray-300 rounded"
+                                  onKeyPress={(e) => e.key === "Enter" && editCategoryName.trim() !== originalCategoryName && editCategoryName.trim() !== '' && handleUpdateCategory(category.id)}
+                                  className="px-1 py-0.5 text-sm border border-gray-300 rounded flex-1"
                                   autoFocus
                                 />
+                                {editCategoryName.trim() !== originalCategoryName && editCategoryName.trim() !== '' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateCategory(category.id)}
+                                    className="p-1 hover:bg-green-100 rounded text-green-600"
+                                    title="Save changes"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCategory(null)
+                                    setEditCategoryName('')
+                                    setOriginalCategoryName('')
+                                  }}
+                                  className="p-1 hover:bg-red-100 rounded text-red-600"
+                                  title="Cancel editing"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
                               </div>
                             ) : (
                               <>
@@ -1759,6 +1818,7 @@ export default function EditProductModal({
                                     onClick={() => {
                                       setEditingCategory(category.id);
                                       setEditCategoryName(category.name);
+                                      setOriginalCategoryName(category.name);
                                     }}
                                     className="p-1 text-gray-500 hover:text-orange-600"
                                   >
@@ -1793,16 +1853,36 @@ export default function EditProductModal({
                                     className="h-4 w-4 text-orange-600 focus:ring-blue-500 border-gray-300 rounded"
                                   />
                                   {editingCategory === subcat.id ? (
-                                    <div className="flex items-center ml-2 flex-1">
+                                    <div className="flex items-center ml-2 flex-1 space-x-2">
                                       <input
                                         type="text"
                                         value={editCategoryName}
                                         onChange={(e) => setEditCategoryName(e.target.value)}
-                                        onBlur={() => handleUpdateCategory(subcat.id)}
-                                        onKeyPress={(e) => e.key === "Enter" && handleUpdateCategory(subcat.id)}
-                                        className="px-1 py-0.5 text-sm border border-gray-300 rounded"
+                                        onKeyPress={(e) => e.key === "Enter" && editCategoryName.trim() !== originalCategoryName && editCategoryName.trim() !== '' && handleUpdateCategory(subcat.id)}
+                                        className="px-1 py-0.5 text-sm border border-gray-300 rounded flex-1"
                                         autoFocus
                                       />
+                                      {editCategoryName.trim() !== originalCategoryName && editCategoryName.trim() !== '' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateCategory(subcat.id)}
+                                          className="p-1 hover:bg-green-100 rounded text-green-600"
+                                          title="Save changes"
+                                        >
+                                          <Check className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingCategory(null)
+                                          setEditCategoryName('')
+                                        }}
+                                        className="p-1 hover:bg-red-100 rounded text-red-600"
+                                        title="Cancel editing"
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
                                     </div>
                                   ) : (
                                     <>
@@ -1815,6 +1895,7 @@ export default function EditProductModal({
                                           onClick={() => {
                                             setEditingCategory(subcat.id);
                                             setEditCategoryName(subcat.name);
+                                            setOriginalCategoryName(subcat.name);
                                           }}
                                           className="p-1 text-gray-500 hover:text-orange-600"
                                         >

@@ -104,7 +104,7 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
         name: category.iconName,
         library: category.iconLibrary,
         libraryKey: category.iconLibrary,
-        filePath: '',
+        filePath: category.iconUrl || '',
         title: category.name,
         description: '',
         keywords: [],
@@ -426,6 +426,26 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
           submitData.emojiShortcode = formData.emojiShortcode;
           submitData.emojiSource = formData.emojiSource;
           submitData.displayType = formData.displayType;
+
+          // Set metadata with full icon/emoji URL for external app access
+          const baseUrl = process.env.NEXT_PUBLIC_WEB_URL || '';
+
+          // Determine the URL to use based on display type
+          let fullAssetUrl = '';
+          if (formData.displayType === 'emoji' && selectedEmoji?.filePath) {
+            fullAssetUrl = selectedEmoji.filePath.startsWith('http')
+              ? selectedEmoji.filePath
+              : `${baseUrl}/${selectedEmoji.filePath}`;
+          } else if (formData.iconUrl) {
+            fullAssetUrl = formData.iconUrl.startsWith('http')
+              ? formData.iconUrl
+              : `${baseUrl}${formData.iconUrl}`;
+          }
+
+          submitData.metadata = {
+            iconUrl: fullAssetUrl,
+            displayType: formData.displayType
+          };
         }
 
         // Only include parentId if it has changed
@@ -453,6 +473,26 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
           submitData.emojiShortcode = formData.emojiShortcode;
           submitData.emojiSource = formData.emojiSource;
           submitData.displayType = formData.displayType;
+
+          // Set metadata with full icon/emoji URL for external app access
+          const baseUrl = process.env.NEXT_PUBLIC_WEB_URL || '';
+
+          // Determine the URL to use based on display type
+          let fullAssetUrl = '';
+          if (formData.displayType === 'emoji' && selectedEmoji?.filePath) {
+            fullAssetUrl = selectedEmoji.filePath.startsWith('http')
+              ? selectedEmoji.filePath
+              : `${baseUrl}/${selectedEmoji.filePath}`;
+          } else if (formData.iconUrl) {
+            fullAssetUrl = formData.iconUrl.startsWith('http')
+              ? formData.iconUrl
+              : `${baseUrl}${formData.iconUrl}`;
+          }
+
+          submitData.metadata = {
+            iconUrl: fullAssetUrl,
+            displayType: formData.displayType
+          };
         }
         // When image is uploaded, don't include icon/emoji fields at all
       }

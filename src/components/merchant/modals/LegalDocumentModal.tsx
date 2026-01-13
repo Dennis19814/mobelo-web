@@ -282,7 +282,7 @@ export function LegalDocumentModal({
                 </label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <ReactQuill
-                    ref={(el) => {
+                    ref={(el: any) => {
                       quillRef.current = el;
                       // Try to focus immediately when ReactQuill is mounted
                       if (el && isOpen && !loading && !hasFocused) {
