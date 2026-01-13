@@ -269,9 +269,9 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 -mt-3 md:-mt-4 lg:-mt-9">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Product Reviews</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Product Reviews</h1>
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />

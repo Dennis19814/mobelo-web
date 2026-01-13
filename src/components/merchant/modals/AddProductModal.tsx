@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight, FolderPlus } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
@@ -32,6 +32,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [isAddModalVisible, setIsAddModalVisible] = useState(true)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryDescription, setNewCategoryDescription] = useState('')
+  const [selectedParentCategory, setSelectedParentCategory] = useState<number | null>(null)
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
@@ -104,20 +105,35 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
     setCreatingCategory(true)
     try {
-      const response = await apiService.createCategory({
+      const categoryData = {
         name: newCategoryName.trim(),
-        description: newCategoryDescription.trim(),
+        parentId: selectedParentCategory || undefined,
         appId: appId,
+        isActive: true,
+        displayOrder: 0,
         iconName: 'Folder',
         iconLibrary: 'lucide-react',
         iconUrl: 'lucide-react:Folder',
         displayType: 'icon' as const
-      })
+      }
 
-      if (response.ok) {
+      const response = await apiService.createCategory(categoryData)
+
+      if (response.ok && response.data) {
+        // Add the newly created category with the real ID from the backend
+        const newCategory: ProductCategory = {
+          id: response.data.id,
+          name: response.data.name,
+          parentId: response.data.parentId
+        }
+
+        setCategories(prev => [...prev, newCategory])
         await fetchCategories()
+        
+        // Clear form and close
         setNewCategoryName('')
         setNewCategoryDescription('')
+        setSelectedParentCategory(null)
         setShowAddCategory(false)
       }
     } catch (error) {
@@ -130,22 +146,43 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const handleUpdateCategory = async (categoryId: number) => {
     if (!editingCategoryName.trim()) return
     
+    // Find the original category to check if name has changed
+    const originalCategory = categories.find(cat => cat.id === categoryId)
+    if (!originalCategory || editingCategoryName.trim() === originalCategory.name) {
+      // No change, just cancel editing
+      setEditingCategoryId(null)
+      setEditingCategoryName('')
+      return
+    }
+    
     try {
-      const headers: any = {}
-      if (apiKey) headers['x-api-key'] = apiKey
-      if (appSecretKey) headers['x-app-secret'] = appSecretKey
-      
-      const response = await apiService.updateCategory(categoryId, {
+      // Use the hook's updateCategory method which handles API call and global refresh
+      const updatedCategory = await updateCategoryFromHook(categoryId, {
         name: editingCategoryName.trim()
       })
       
-      if (response.ok) {
+      if (updatedCategory) {
+        // Update local state immediately
+        setCategories(prev => 
+          prev.map(cat => 
+            cat.id === categoryId 
+              ? { ...cat, name: editingCategoryName.trim() }
+              : cat
+          )
+        )
+        
+        // Refresh categories globally to ensure all components see the update
+        await refetchCategories()
         await fetchCategories()
+        
         setEditingCategoryId(null)
         setEditingCategoryName('')
       }
     } catch (error) {
       logger.error('Failed to update category:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+      // Revert on error
+      setEditingCategoryId(null)
+      setEditingCategoryName('')
     }
   }
 
@@ -436,7 +473,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     }
   }, [apiKey, appSecretKey])
 
-  const { createCategory: createCategoryFromHook, categories: categoriesFromHook } = useCategories({
+  const { createCategory: createCategoryFromHook, updateCategory: updateCategoryFromHook, refetch: refetchCategories, categories: categoriesFromHook } = useCategories({
     appId,
     headers: merchantHeaders || undefined
   })
@@ -499,6 +536,31 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     })
     
     return tree
+  }
+
+  // Helper function to get categories with proper nesting indication for dropdown
+  const getCategoriesForDropdown = () => {
+    const result: Array<{ id: number; name: string; depth: number }> = []
+    
+    const addCategoryWithDepth = (category: ProductCategory & { children?: ProductCategory[] }, depth: number = 0) => {
+      result.push({
+        id: category.id,
+        name: category.name,
+        depth
+      })
+      
+      if (category.children) {
+        category.children.forEach(child => {
+          addCategoryWithDepth(child, depth + 1)
+        })
+      }
+    }
+    
+    getCategoryTree().forEach(category => {
+      addCategoryWithDepth(category)
+    })
+    
+    return result
   }
 
   // Get parent categories for AddCategoryModal (same as EditProductModal)
@@ -1536,39 +1598,47 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     type="button"
                     onClick={() => setShowAddCategory(!showAddCategory)}
                     disabled={creatingCategory}
-                    className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-1 px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Plus className="w-3 h-3" />
+                    <FolderPlus className="h-3 w-3" />
                     <span>Add Category</span>
                   </button>
                 </div>
 
-                {/* Add New Category Form */}
+                {/* Add Category Form */}
                 {showAddCategory && (
-                  <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="mb-3 p-3 bg-gray-50 rounded-md border border-gray-200">
                     <div className="space-y-2">
                       <input
                         type="text"
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
                         placeholder="Category name"
+                        maxLength={50}
                         disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
+                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
                       />
-                      <input
-                        type="text"
-                        value={newCategoryDescription}
-                        onChange={(e) => setNewCategoryDescription(e.target.value)}
-                        placeholder="Category description (optional)"
+                      <select
+                        value={selectedParentCategory || ""}
+                        onChange={(e) => setSelectedParentCategory(e.target.value ? Number(e.target.value) : null)}
                         disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:bg-gray-100"
-                      />
-                      <div className="flex space-x-2">
+                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
+                      >
+                        <option value="">No parent (Top level)</option>
+                        {getCategoriesForDropdown().map(cat => (
+                          <option key={cat.id} value={cat.id}>
+                            {'  '.repeat(cat.depth)}
+                            {cat.depth > 0 ? '└ ' : ''}
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={handleAddCategory}
                           disabled={creatingCategory || !newCategoryName.trim()}
-                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                         >
                           {creatingCategory ? (
                             <>
@@ -1576,18 +1646,18 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               Creating...
                             </>
                           ) : (
-                            'Create'
+                            'Add'
                           )}
                         </button>
                         <button
                           type="button"
                           onClick={() => {
-                            setShowAddCategory(false)
-                            setNewCategoryName('')
-                            setNewCategoryDescription('')
+                            setShowAddCategory(false);
+                            setNewCategoryName("");
+                            setSelectedParentCategory(null);
                           }}
                           disabled={creatingCategory}
-                          className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancel
                         </button>
@@ -1623,16 +1693,20 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 type="text"
                                 value={editingCategoryName}
                                 onChange={(e) => setEditingCategoryName(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && handleUpdateCategory(category.id)}
                                 className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
                                 autoFocus
                               />
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateCategory(category.id)}
-                                className="p-1 hover:bg-green-100 rounded text-green-600"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
+                              {editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateCategory(category.id)}
+                                  className="p-1 hover:bg-green-100 rounded text-green-600"
+                                  title="Save changes"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1640,6 +1714,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                   setEditingCategoryName('')
                                 }}
                                 className="p-1 hover:bg-red-100 rounded text-red-600"
+                                title="Cancel editing"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>

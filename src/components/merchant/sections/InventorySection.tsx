@@ -348,13 +348,13 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
   }, [])
 
   return (
-    <div className="">
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-4">
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-            <p className="text-gray-600 mt-1">Track and manage your product stock levels</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Management</h1>
+            <p className="text-gray-600">Track and manage your product stock levels</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
@@ -387,151 +387,160 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
             </button>
           </div>
         </div>
-
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search products by name or SKU..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-          />
-        </div>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-          <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-          <span className="text-red-600">{error}</span>
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Failed to load inventory</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Products View - Grid or List based on viewMode */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow-sm -mt-4">
+        <div className="p-4 border-b border-gray-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <input
+              type="text"
+              placeholder="Search products by name or SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+        </div>
+
         {loading ? (
-          <div className="col-span-full flex justify-center py-12">
+          <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="col-span-full bg-white rounded-lg shadow-sm p-12 text-center">
+          <div className="text-center py-12">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No products with inventory tracking</h3>
             <p className="text-gray-500">Enable inventory tracking for products to manage stock here.</p>
           </div>
-        ) : (
-          filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className={`
-                bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer
-                ${selectedProduct?.id === product.id ? 'ring-2 ring-blue-500' : ''}
-              `}
-              onClick={() => {
-                setSelectedProduct(product)
-                setSelectedVariant(null)
-              }}
-            >
-              <div className="p-4">
-                {/* Product Image - Always render to maintain consistent layout */}
-                <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                  {product.thumbnailUrl ? (
-                    <Image
-                      src={product.thumbnailUrl}
-                      alt={product.name}
-                      width={300}
-                      height={128}
-                      className="object-contain max-w-full max-h-full"
-                    />
-                  ) : (
-                    <Package className="w-12 h-12 text-gray-400" />
-                  )}
-                </div>
-                
-                {/* Product Info */}
-                <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
-                {product.sku && (
-                  <p className="text-xs text-gray-500 mt-1">SKU: {product.sku}</p>
-                )}
-                
-                {/* Stock Info */}
-                <div className="mt-3 flex items-center justify-between">
-                  <span
-                    className={`
-                      inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                      ${getStockStatusColor(product.inventoryQuantity)}
-                    `}
-                  >
-                    Stock: {product.inventoryQuantity || 0}
-                  </span>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-1">
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className={`
+                  bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer border border-gray-200 overflow-hidden flex flex-col h-full
+                  ${selectedProduct?.id === product.id ? 'ring-2 ring-blue-500' : ''}
+                `}
+                onClick={() => {
+                  setSelectedProduct(product)
+                  setSelectedVariant(null)
+                }}
+              >
+                <div className="p-4 flex-1 flex flex-col min-h-0">
+                  {/* Product Image - Always render to maintain consistent layout */}
+                  <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {product.thumbnailUrl ? (
+                      <Image
+                        src={product.thumbnailUrl}
+                        alt={product.name}
+                        width={300}
+                        height={128}
+                        className="object-contain max-w-full max-h-full"
+                      />
+                    ) : (
+                      <Package className="w-12 h-12 text-gray-400" />
+                    )}
+                  </div>
                   
-                  {product.variants && product.variants.length > 0 && (
-                    <span className="text-xs text-gray-500">
-                      {product.variants.length} variants
+                  {/* Product Info */}
+                  <div className="flex-shrink-0">
+                    <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
+                    {product.sku && (
+                      <p className="text-xs text-gray-500 mt-1">SKU: {product.sku}</p>
+                    )}
+                  </div>
+                  
+                  {/* Stock Info */}
+                  <div className="mt-3 flex items-center justify-between flex-shrink-0">
+                    <span
+                      className={`
+                        inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                        ${getStockStatusColor(product.inventoryQuantity)}
+                      `}
+                    >
+                      Stock: {product.inventoryQuantity || 0}
                     </span>
-                  )}
-                </div>
-                
-                {/* Quick Actions */}
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedProduct(product)
-                      setAdjustment({
-                        ...adjustment,
-                        productId: product.id,
-                        movementType: 'in'
-                      })
-                      setShowAddStock(true)
-                    }}
-                    className="flex-1 flex items-center justify-center px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
-                    title="Add Stock"
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedProduct(product)
-                      setAdjustment({
-                        ...adjustment,
-                        productId: product.id,
-                        movementType: 'out'
-                      })
-                      setShowAddStock(true)
-                    }}
-                    className="flex-1 flex items-center justify-center px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
-                    title="Remove Stock"
-                  >
-                    <Minus className="w-3 h-3 mr-1" />
-                    Remove
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setHistoryProduct(product)
-                      setShowHistoryModal(true)
-                    }}
-                    className="flex-1 flex items-center justify-center px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-xs"
-                    title="View History"
-                  >
-                    <History className="w-3 h-3 mr-1" />
-                    History
-                  </button>
+                    
+                    {product.variants && product.variants.length > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {product.variants.length} variants
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Spacer to push buttons to bottom */}
+                  <div className="flex-1"></div>
+                  
+                  {/* Quick Actions - Ensure buttons stay at bottom and are contained */}
+                  <div className="mt-3 flex gap-2 flex-shrink-0 w-full">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedProduct(product)
+                        setAdjustment({
+                          ...adjustment,
+                          productId: product.id,
+                          movementType: 'in'
+                        })
+                        setShowAddStock(true)
+                      }}
+                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium min-w-0"
+                      title="Add Stock"
+                    >
+                      <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">Add</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedProduct(product)
+                        setAdjustment({
+                          ...adjustment,
+                          productId: product.id,
+                          movementType: 'out'
+                        })
+                        setShowAddStock(true)
+                      }}
+                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium min-w-0"
+                      title="Remove Stock"
+                    >
+                      <Minus className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">Remove</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setHistoryProduct(product)
+                        setShowHistoryModal(true)
+                      }}
+                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 text-xs font-medium min-w-0"
+                      title="View History"
+                    >
+                      <History className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">History</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
-      ) : (
-        /* List View */
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            ))}
+          </div>
+        ) : (
+          /* List View */
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -545,134 +554,116 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <div className="flex justify-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                {filteredProducts.map((product) => (
+                  <tr
+                    key={product.id}
+                    className={`hover:bg-gray-50 cursor-pointer ${selectedProduct?.id === product.id ? 'bg-orange-50' : ''}`}
+                    onClick={() => {
+                      setSelectedProduct(product)
+                      setSelectedVariant(null)
+                    }}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {product.thumbnailUrl && (
+                          <div className="flex-shrink-0 h-10 w-10 mr-3">
+                            <Image
+                              src={product.thumbnailUrl}
+                              alt={product.name}
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-lg object-contain"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {product.sku || '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">
+                        {product.inventoryQuantity || 0}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`
+                          inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                          ${getStockStatusColor(product.inventoryQuantity)}
+                        `}
+                      >
+                        {!product.inventoryQuantity || product.inventoryQuantity === 0
+                          ? 'Out of Stock'
+                          : product.inventoryQuantity < 10
+                          ? 'Low Stock'
+                          : 'In Stock'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {product.variants && product.variants.length > 0 ? (
+                        <span>{product.variants.length} variants</span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProduct(product)
+                            setAdjustment({
+                              ...adjustment,
+                              productId: product.id,
+                              movementType: 'in'
+                            })
+                            setShowAddStock(true)
+                          }}
+                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                          title="Add Stock"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProduct(product)
+                            setAdjustment({
+                              ...adjustment,
+                              productId: product.id,
+                              movementType: 'out'
+                            })
+                            setShowAddStock(true)
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="Remove Stock"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setHistoryProduct(product)
+                            setShowHistoryModal(true)
+                          }}
+                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          title="View History"
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
-                ) : filteredProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No products with inventory tracking</h3>
-                      <p className="text-gray-500">Enable inventory tracking for products to manage stock here.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProducts.map((product) => (
-                    <tr
-                      key={product.id}
-                      className={`hover:bg-gray-50 cursor-pointer ${selectedProduct?.id === product.id ? 'bg-orange-50' : ''}`}
-                      onClick={() => {
-                        setSelectedProduct(product)
-                        setSelectedVariant(null)
-                      }}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {product.thumbnailUrl && (
-                            <div className="flex-shrink-0 h-10 w-10 mr-3">
-                              <Image
-                                src={product.thumbnailUrl}
-                                alt={product.name}
-                                width={40}
-                                height={40}
-                                className="h-10 w-10 rounded-lg object-contain"
-                              />
-                            </div>
-                          )}
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.sku || '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-900">
-                          {product.inventoryQuantity || 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`
-                            inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                            ${getStockStatusColor(product.inventoryQuantity)}
-                          `}
-                        >
-                          {!product.inventoryQuantity || product.inventoryQuantity === 0
-                            ? 'Out of Stock'
-                            : product.inventoryQuantity < 10
-                            ? 'Low Stock'
-                            : 'In Stock'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.variants && product.variants.length > 0 ? (
-                          <span>{product.variants.length} variants</span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedProduct(product)
-                              setAdjustment({
-                                ...adjustment,
-                                productId: product.id,
-                                movementType: 'in'
-                              })
-                              setShowAddStock(true)
-                            }}
-                            className="p-1 text-green-600 hover:bg-green-50 rounded"
-                            title="Add Stock"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedProduct(product)
-                              setAdjustment({
-                                ...adjustment,
-                                productId: product.id,
-                                movementType: 'out'
-                              })
-                              setShowAddStock(true)
-                            }}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            title="Remove Stock"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setHistoryProduct(product)
-                              setShowHistoryModal(true)
-                            }}
-                            className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                            title="View History"
-                          >
-                            <History className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Stock Adjustment Modal */}
       {showAddStock && selectedProduct && (

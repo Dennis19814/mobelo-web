@@ -115,7 +115,7 @@ export default function TemplatesSection({ appId, apiKey, appSecretKey }: Templa
   }
 
   return (
-    <div className="">
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">OTP Templates</h2>

@@ -270,7 +270,7 @@ export default function HelpFaqSection({ onNavigate }: HelpFaqSectionProps) {
   const totalFAQs = categories.reduce((sum, cat) => sum + cat.faqs.length, 0)
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {/* Breadcrumb */}
       <button
         onClick={() => onNavigate && onNavigate('help-center')}

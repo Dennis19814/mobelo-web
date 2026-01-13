@@ -50,7 +50,10 @@ export default function MediaManager({
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const MAX_MEDIA = 10
 
   const isVideoFile = (type: string) => type.startsWith('video/')
   const isImageFile = (type: string) => type.startsWith('image/')
@@ -90,9 +93,21 @@ export default function MediaManager({
     const files = e.target.files
     if (!files || !onUpload) return
     setError(null)
+    
+    // Check max media limit
+    const currentCount = media.length
+    const filesToUpload = Array.from(files)
+    if (currentCount + filesToUpload.length > MAX_MEDIA) {
+      setError(`Maximum ${MAX_MEDIA} media files allowed. You can upload ${MAX_MEDIA - currentCount} more file(s).`)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+    
     setUploading(true)
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = filesToUpload.map(async (file) => {
         if (!isImageFile(file.type) && !isVideoFile(file.type)) {
           throw new Error(`${file.name} is not supported. Only images and videos allowed.`)
         }
@@ -120,7 +135,6 @@ export default function MediaManager({
 
   const handleDelete = async (mediaId: number) => {
     if (!onDelete || !mediaId) return
-    if (!confirm('Delete this media file?')) return
     setDeletingId(mediaId)
     setError(null)
     try {
@@ -134,7 +148,12 @@ export default function MediaManager({
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
+      setConfirmDeleteId(null)
     }
+  }
+
+  const handleDeleteClick = (mediaId: number) => {
+    setConfirmDeleteId(mediaId)
   }
 
   const handleSetListingThumbnail = async (mediaId: number) => {
@@ -200,39 +219,71 @@ export default function MediaManager({
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="mb-4">
-        <h2 className="text-sm font-medium text-gray-700 mb-1">Media Gallery</h2>
-        <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
+      <div className="mb-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-medium text-gray-700 mb-0.5">Media Gallery</h2>
+            <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
+          </div>
+          <div className="text-xs text-gray-500">
+            <span className={media.length >= MAX_MEDIA ? 'text-orange-600 font-medium' : ''}>
+              {media.length}/{MAX_MEDIA}
+            </span>
+          </div>
+        </div>
       </div>
+
+      {/* Delete Confirmation Toolbar */}
+      {confirmDeleteId !== null && (
+        <div className="mb-3 flex items-center justify-between p-3 rounded-lg border border-orange-200 bg-orange-50 text-blue-800 flex-shrink-0">
+          <span className="text-sm">Delete this media file?</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void handleDelete(confirmDeleteId)}
+              disabled={deletingId !== null}
+              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setConfirmDeleteId(null)}
+              disabled={deletingId !== null}
+              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between">
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between flex-shrink-0">
           <div className="flex items-start space-x-2">
-            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-red-600">{error}</p>
           </div>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start flex-1 min-h-0">
         {/* Left Side - Upload & Info */}
-        <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-4">
+        <div className="lg:col-span-1 space-y-2 flex flex-col h-full">
           {/* Upload Zone */}
           <div 
-            className={`relative border-2 border-dashed rounded-xl p-4 transition-all duration-300 ${
+            className={`relative border-2 border-dashed rounded-lg p-2.5 transition-all duration-300 flex-shrink-0 ${
               isDraggingOver
                 ? 'border-orange-500 bg-orange-50'
                 : 'border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-orange-400'
             }`}
             onDragEnter={(e) => {
               e.preventDefault()
-              if (!disabled && !uploading) setIsDraggingOver(true)
+              if (!disabled && !uploading && media.length < MAX_MEDIA) setIsDraggingOver(true)
             }}
             onDragLeave={(e) => {
               e.preventDefault()
@@ -247,6 +298,12 @@ export default function MediaManager({
               if (disabled || uploading || !onUpload) return
               const files = Array.from(e.dataTransfer.files)
               if (files.length > 0) {
+                // Check max media limit
+                const currentCount = media.length
+                if (currentCount + files.length > MAX_MEDIA) {
+                  setError(`Maximum ${MAX_MEDIA} media files allowed. You can upload ${MAX_MEDIA - currentCount} more file(s).`)
+                  return
+                }
                 const event = { target: { files } } as any
                 handleFileSelect(event as React.ChangeEvent<HTMLInputElement>)
               }
@@ -263,34 +320,34 @@ export default function MediaManager({
             />
             
             <div className="text-center">
-              <div className="mb-3 flex justify-center">
+              <div className="mb-1.5 flex justify-center">
                 {uploading ? (
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 text-orange-600 animate-spin" />
+                  <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 text-orange-600 animate-spin" />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-md">
-                    <Upload className="w-6 h-6 text-white" />
+                  <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-md">
+                    <Upload className="w-4 h-4 text-white" />
                   </div>
                 )}
               </div>
               
-              <h3 className="text-sm font-medium text-gray-700 mb-1">
+              <h3 className="text-xs font-medium text-gray-700 mb-0.5">
                 {uploading ? 'Uploading...' : 'Upload Media'}
               </h3>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-500 mb-1.5">
                 Drag & drop or click
               </p>
               
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || uploading}
-                className="w-full px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow font-medium"
+                disabled={disabled || uploading || media.length >= MAX_MEDIA}
+                className="w-full px-2.5 py-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow font-medium"
               >
-                Choose Files
+                {media.length >= MAX_MEDIA ? 'Max Reached' : 'Choose Files'}
               </button>
               
-              <div className="mt-3 space-y-1 text-xs text-gray-500">
+              <div className="mt-1.5 space-y-0.5 text-xs text-gray-500">
                 <div className="flex items-center justify-center space-x-1">
                   <Image className="w-3 h-3" />
                   <span>Images: 5MB</span>
@@ -304,11 +361,11 @@ export default function MediaManager({
           </div>
 
           {/* Info Cards */}
-          <div className="space-y-2">
-            <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 bg-blue-500 rounded-md flex items-center justify-center flex-shrink-0">
-                  <Star className="w-3.5 h-3.5 text-white fill-current" />
+          <div className="space-y-1 flex-shrink-0">
+            <div className="p-1.5 bg-blue-50 border border-blue-100 rounded-lg">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-5 h-5 bg-blue-500 rounded-md flex items-center justify-center flex-shrink-0">
+                  <Star className="w-2.5 h-2.5 text-white fill-current" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-blue-900">Listing Thumbnail</p>
@@ -317,10 +374,10 @@ export default function MediaManager({
               </div>
             </div>
             
-            <div className="p-2.5 bg-green-50 border border-green-100 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
-                  <Star className="w-3.5 h-3.5 text-white fill-current" />
+            <div className="p-1.5 bg-green-50 border border-green-100 rounded-lg">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-5 h-5 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
+                  <Star className="w-2.5 h-2.5 text-white fill-current" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-green-900">Detail Thumbnail</p>
@@ -329,10 +386,10 @@ export default function MediaManager({
               </div>
             </div>
             
-            <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 bg-gray-600 rounded-md flex items-center justify-center flex-shrink-0">
-                  <GripVertical className="w-3.5 h-3.5 text-white" />
+            <div className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-5 h-5 bg-gray-600 rounded-md flex items-center justify-center flex-shrink-0">
+                  <GripVertical className="w-2.5 h-2.5 text-white" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-900">Drag to Reorder</p>
@@ -344,9 +401,9 @@ export default function MediaManager({
         </div>
 
         {/* Right Side - Media Grid */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 h-full flex flex-col min-h-0">
           {media.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-2.5 flex-1 content-start">
               {media.map((item, index) => (
                 <div
                   key={item.id || index}
@@ -475,7 +532,7 @@ export default function MediaManager({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                item.id && handleDelete(item.id)
+                                item.id && handleDeleteClick(item.id)
                               }}
                               className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-red-50 text-red-600 transition-all shadow-md"
                               title="Delete"

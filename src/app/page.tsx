@@ -377,7 +377,12 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => setShowSigninModal(true)}
+                  onClick={() => {
+                    // Only show sign-in modal if user is not authenticated
+                    if (!isOwnerAuthenticated()) {
+                      setShowSigninModal(true)
+                    }
+                  }}
                   className="rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-3 text-white font-semibold shadow-[0_10px_20px_rgba(251,146,60,0.25)] hover:from-orange-700 hover:to-orange-600 transition flex items-center gap-2"
                   aria-label="Start building your mobile app for free"
                 >
@@ -705,7 +710,12 @@ export default function HomePage() {
             </div>
               <div className="mt-10 flex justify-center">
                 <button
-                  onClick={() => setShowSigninModal(true)}
+                  onClick={() => {
+                    // Only show sign-in modal if user is not authenticated
+                    if (!isOwnerAuthenticated()) {
+                      setShowSigninModal(true)
+                    }
+                  }}
                   className="rounded-[14px] bg-orange-500 px-8 py-3 text-white font-semibold shadow-lg shadow-orange-400/30 hover:bg-orange-600 transition flex items-center gap-2"
                   aria-label="Launch your mobile app now"
                 >

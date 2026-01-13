@@ -218,7 +218,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   }
 
   return (
-    <div>
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Coupons & Discounts</h1>
