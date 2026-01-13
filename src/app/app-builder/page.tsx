@@ -192,7 +192,7 @@ function AppBuilderContent() {
   }, [hashedAppId, appId, router])
 
   // Connect to Socket.io for real-time Expo updates and Claude output
-  const { socket, expoInfo: socketExpoInfo, appTimeoutEvent, appRestartedEvent, appReloadedEvent, claudeOutputEvent, lastEvent } = useJobSocket(userId)
+  const { socket, expoInfo: socketExpoInfo, appTimeoutEvent, appRestartedEvent, appReloadedEvent, claudeOutputEvent, claudeCodeProgressEvent, lastEvent } = useJobSocket(userId)
 
   // Publish socket hook for Google Play publishing progress
   const { publishProgress: socketPublishProgress, publishComplete, publishFailed } = usePublishSocket(userId)
@@ -950,6 +950,8 @@ function AppBuilderContent() {
   }, [appTimeoutEvent, appId])
 
   // Monitor app restart event
+  // Note: The actual iframe reload is handled by the socketExpoInfo effect above
+  // This effect only tracks that a restart event was received for deduplication
   useEffect(() => {
     logger.debug('[AppBuilder] appRestartedEvent changed:', { appRestartedEvent, appId })
     if (appRestartedEvent && appRestartedEvent.appId === Number(appId)) {
@@ -959,26 +961,10 @@ function AppBuilderContent() {
         return
       }
 
-      logger.debug('[AppBuilder] ✅ App restart event matches current app, updating state:', { appRestartedEvent })
+      logger.debug('[AppBuilder] ✅ App restart event matches current app:', { appRestartedEvent })
 
       // Mark this event as processed
       lastProcessedRestartTimestampRef.current = appRestartedEvent.timestamp
-
-      logger.debug('[AppBuilder] Setting isAppRunning=true, isRestarting=false')
-      setIsAppRunning(true)
-      setIsRestarting(false)
-      setHasObservedExpiration(false)
-
-      // Wait 2 seconds for Expo server to fully start before refreshing iframe
-      logger.debug('[AppBuilder] Waiting 2 seconds for Expo server to fully start...')
-      timeouts.setTimeout(() => {
-        logger.debug('[AppBuilder] Incrementing iframe key to refresh')
-        setIframeKey(prev => {
-          const newKey = prev + 1
-          logger.debug('[AppBuilder] iframe key incremented:', { prev, newKey })
-          return newKey
-        })
-      }, APP_BUILDER_CONFIG.EXPO_SERVER_STARTUP_DELAY_MS)
     } else if (appRestartedEvent) {
       logger.debug('[AppBuilder] ⚠️ App restart event for different app, ignoring:', {
         eventAppId: appRestartedEvent.appId,
@@ -987,7 +973,7 @@ function AppBuilderContent() {
     }
     // Only depend on timestamp to avoid re-running when object reference changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appRestartedEvent?.timestamp, appId, timeouts])
+  }, [appRestartedEvent?.timestamp, appId])
 
   // Monitor app reload event
   useEffect(() => {
@@ -1338,12 +1324,25 @@ function AppBuilderContent() {
       logger.debug('[AppBuilder] ✅ Socket.io Expo info received, setting isAppRunning=true:', { socketExpoInfo })
       setIsAppRunning(true)
       setApiExpoInfo(socketExpoInfo)
+      setIsRestarting(false)
+      setHasObservedExpiration(false)
+
+      // Wait 2 seconds for Expo server to fully start before refreshing iframe
+      logger.debug('[AppBuilder] Waiting 2 seconds for Expo server to fully start...')
+      timeouts.setTimeout(() => {
+        logger.debug('[AppBuilder] Incrementing iframe key to refresh')
+        setIframeKey(prev => {
+          const newKey = prev + 1
+          logger.debug('[AppBuilder] iframe key incremented:', { prev, newKey })
+          return newKey
+        })
+      }, APP_BUILDER_CONFIG.EXPO_SERVER_STARTUP_DELAY_MS)
     } else if (socketExpoInfo === null) {
       logger.debug('[AppBuilder] ⚠️ Socket.io Expo info cleared (null), setting isAppRunning=false')
       setIsAppRunning(false)
       setApiExpoInfo(null)
     }
-  }, [socketExpoInfo])
+  }, [socketExpoInfo, timeouts])
 
   // Handle publish progress events
   useEffect(() => {
@@ -1614,6 +1613,83 @@ function AppBuilderContent() {
     // Save assistant message to database
     saveChatMessage(assistantMessage)
   }, [claudeSessionId, saveChatMessage])
+
+  // Memoize Claude Code progress handler for git operations
+  const handleClaudeCodeProgress = useCallback((data: {
+    sessionId: string
+    appId: number
+    type: string
+    message: string
+    timestamp: string
+  }) => {
+    logger.debug('[AppBuilder][GitProgress] 📨 Received claude-code-progress event', {
+      appId: data.appId,
+      expectedAppId: appId,
+      type: data.type,
+      message: data.message,
+      timestamp: data.timestamp,
+      matches: data.appId === appId
+    })
+
+    // Only show messages for the current app
+    if (data.appId !== appId) {
+      logger.warn('[AppBuilder][GitProgress] ⚠️ App ID mismatch, ignoring event', {
+        received: data.appId,
+        expected: appId
+      })
+      return
+    }
+
+    logger.debug('[AppBuilder][GitProgress] ✅ Processing git progress', {
+      type: data.type,
+      messagePreview: data.message.substring(0, 100)
+    })
+
+    const progressMessage: ChatMessage = {
+      role: 'assistant' as const,
+      content: data.message,
+      timestamp: new Date(data.timestamp),
+      sessionId: data.sessionId
+    }
+
+    setChatMessages(prev => {
+      const newMessages = [...prev, progressMessage]
+      logger.debug('[AppBuilder][GitProgress] 📝 Messages updated, total count:', { count: newMessages.length })
+      return newMessages
+    })
+
+    // Save progress message to database
+    saveChatMessage(progressMessage)
+  }, [appId, saveChatMessage])
+
+  // Listen for git operation progress via Socket.io
+  useEffect(() => {
+    logger.debug('[AppBuilder][GitProgress] 🔄 Effect triggered', {
+      hasSocket: !!socket,
+      appId,
+      socketConnected: socket?.connected,
+      timestamp: new Date().toISOString()
+    })
+
+    if (!socket) {
+      logger.warn('[AppBuilder][GitProgress] ⚠️ No socket available, skipping listener setup')
+      return
+    }
+
+    if (!appId) {
+      logger.debug('[AppBuilder][GitProgress] ℹ️ No app ID, listener not attached')
+      return
+    }
+
+    logger.debug('[AppBuilder][GitProgress] ✅ Attaching claude-code-progress listener for app:', { appId })
+    socket.on('claude-code-progress', handleClaudeCodeProgress)
+    logger.debug('[AppBuilder][GitProgress] 🎧 Listener attached successfully')
+
+    return () => {
+      logger.debug('[AppBuilder][GitProgress] 🧹 Cleaning up claude-code-progress listener for app:', { appId })
+      socket.off('claude-code-progress', handleClaudeCodeProgress)
+    }
+  }, [socket, appId, handleClaudeCodeProgress])
 
   // Listen for Claude Code output via Socket.io
   useEffect(() => {
