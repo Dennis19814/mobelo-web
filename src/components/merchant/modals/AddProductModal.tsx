@@ -1,8 +1,8 @@
 'use client'
 import { logger } from '@/lib/logger'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight, FolderPlus } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, LayoutGrid, AlertCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
@@ -12,6 +12,10 @@ import { AddCategoryModal } from './AddCategoryModal'
 import type { Category } from '@/types/category'
 import { useCategories } from '@/hooks/useCategories'
 import { useMerchantAuth } from '@/hooks'
+import { UnifiedAssetPicker } from '@/components/ui/UnifiedAssetPicker'
+import { UnifiedAssetData } from '@/lib/unified-asset-loader'
+import { CategoryIcon } from '@/components/ui/icons/LocalCategoryIcon'
+import { LocalEmoji } from '@/components/ui/emojis/LocalEmoji'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -33,7 +37,20 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryDescription, setNewCategoryDescription] = useState('')
   const [selectedParentCategory, setSelectedParentCategory] = useState<number | null>(null)
+  // Category display feature state
+  const [categoryDisplayMode, setCategoryDisplayMode] = useState<'image' | 'icon'>('image')
+  const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null)
+  const [categoryImagePreview, setCategoryImagePreview] = useState<string | null>(null)
+  const [categorySelectedIcon, setCategorySelectedIcon] = useState<any>(null)
+  const [categorySelectedEmoji, setCategorySelectedEmoji] = useState<any>(null)
+  const [isCategoryIconPickerOpen, setIsCategoryIconPickerOpen] = useState(false)
+  const [categorySelectedAsset, setCategorySelectedAsset] = useState<UnifiedAssetData | undefined>()
+  const categoryFileInputRef = useRef<HTMLInputElement>(null)
+  const availableCategoriesRef = useRef<HTMLDivElement>(null)
+  const [categoryReplacementWarning, setCategoryReplacementWarning] = useState<string | null>(null)
+  const [showCategoryReplacementWarning, setShowCategoryReplacementWarning] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
+  const [newlyCreatedCategoryId, setNewlyCreatedCategoryId] = useState<number | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
   const [creatingCategory, setCreatingCategory] = useState(false)
@@ -100,41 +117,167 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
+  // Auto-hide replacement warning after 5 seconds
+  useEffect(() => {
+    if (categoryReplacementWarning) {
+      setShowCategoryReplacementWarning(true);
+      const timer = setTimeout(() => {
+        setShowCategoryReplacementWarning(false);
+      }, 5000); // Hide after 5 seconds
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowCategoryReplacementWarning(false);
+    }
+  }, [categoryReplacementWarning]);
+
+  // Category image/icon handlers
+  const handleCategoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB');
+      return;
+    }
+
+    // Only show warning if user actually selected an icon/emoji (not default)
+    const hadIconOrEmoji = (categorySelectedIcon && categorySelectedIcon.name !== 'Folder') || 
+                           categorySelectedEmoji;
+
+    if (hadIconOrEmoji) {
+      setCategoryReplacementWarning('Uploading an image will replace the currently selected icon or emoji.');
+    } else {
+      setCategoryReplacementWarning(null);
+    }
+
+    // Clear icon/emoji when image is selected
+    setCategorySelectedIcon(null);
+    setCategorySelectedEmoji(null);
+
+    setCategoryImageFile(file);
+    setCategoryDisplayMode('image');
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCategoryImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCategoryModeSwitch = (mode: 'image' | 'icon') => {
+    setCategoryDisplayMode(mode);
+    // Don't clear imageFile or imagePreview when switching tabs
+    // They will be cleared when user actually selects icon/emoji
+    // Don't clear icon/emoji fields when switching tabs either
+    // They will be cleared when user actually uploads an image
+    
+    // If switching to image mode and we have imageFile but no preview, recreate preview
+    if (mode === 'image' && categoryImageFile && !categoryImagePreview) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCategoryImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(categoryImageFile);
+    }
+    
+    // When switching tabs, don't show warnings - warnings will show when user actually uploads/selects
+    setCategoryReplacementWarning(null);
+  };
+
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || creatingCategory) return
 
     setCreatingCategory(true)
     try {
-      const categoryData = {
+      // Prepare category data based on display mode
+      let categoryData: any = {
         name: newCategoryName.trim(),
+        description: newCategoryDescription.trim() || undefined,
         parentId: selectedParentCategory || undefined,
         appId: appId,
         isActive: true,
         displayOrder: 0,
-        iconName: 'Folder',
-        iconLibrary: 'lucide-react',
-        iconUrl: 'lucide-react:Folder',
-        displayType: 'icon' as const
+      }
+
+      if (categoryDisplayMode === 'image' && categoryImageFile) {
+        // Will upload image after category creation
+        categoryData.displayType = 'image';
+      } else if (categoryDisplayMode === 'icon') {
+        if (categorySelectedIcon) {
+          categoryData.iconName = categorySelectedIcon.name;
+          categoryData.iconLibrary = categorySelectedIcon.libraryKey;
+          categoryData.iconUrl = categorySelectedIcon.filePath;
+          categoryData.displayType = 'icon';
+        } else if (categorySelectedEmoji) {
+          categoryData.emojiUnicode = categorySelectedEmoji.unicode;
+          categoryData.emojiShortcode = categorySelectedEmoji.shortcode;
+          categoryData.emojiSource = categorySelectedEmoji.sourceKey;
+          categoryData.displayType = 'emoji';
+        } else {
+          // Default icon
+          categoryData.iconName = 'Folder';
+          categoryData.iconLibrary = 'lucide-react';
+          categoryData.iconUrl = 'lucide-react:Folder';
+          categoryData.displayType = 'icon';
+        }
       }
 
       const response = await apiService.createCategory(categoryData)
 
       if (response.ok && response.data) {
-        // Add the newly created category with the real ID from the backend
-        const newCategory: ProductCategory = {
-          id: response.data.id,
-          name: response.data.name,
-          parentId: response.data.parentId
+        const newCategoryId = response.data.id;
+
+        // Upload image if provided
+        if (categoryImageFile && newCategoryId) {
+          try {
+            await apiService.uploadCategoryImage(newCategoryId, categoryImageFile, appId);
+          } catch (uploadError) {
+            logger.error('Failed to upload category image:', { error: uploadError instanceof Error ? uploadError.message : String(uploadError) });
+          }
         }
 
-        setCategories(prev => [...prev, newCategory])
+        // Refresh categories list to include the newly created category
+        // First refresh from hook to ensure global state is updated
+        await refetchCategories()
+        // Then fetch categories to update local state
         await fetchCategories()
         
-        // Clear form and close
+        // Set newly created category ID for highlighting
+        setNewlyCreatedCategoryId(response.data.id)
+        
+        // Clear form and collapse
         setNewCategoryName('')
         setNewCategoryDescription('')
         setSelectedParentCategory(null)
-        setShowAddCategory(false)
+        setCategoryDisplayMode('image')
+        setCategoryImageFile(null)
+        setCategoryImagePreview(null)
+        setCategorySelectedIcon(null)
+        setCategorySelectedEmoji(null)
+        setCategoryReplacementWarning(null)
+        setShowCategoryReplacementWarning(false)
+        setShowAddCategory(false) // Collapse the form
+        if (categoryFileInputRef.current) {
+          categoryFileInputRef.current.value = '';
+        }
+        
+        // Scroll to Available Categories section after a short delay
+        setTimeout(() => {
+          if (availableCategoriesRef.current) {
+            availableCategoriesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 100)
+        
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+          setNewlyCreatedCategoryId(null)
+        }, 3000)
       }
     } catch (error) {
       logger.error('Failed to add category:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
@@ -191,18 +334,18 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     
     setDeletingCategoryId(categoryId)
     try {
-      const headers: any = {}
-      if (apiKey) headers['x-api-key'] = apiKey
-      if (appSecretKey) headers['x-app-secret'] = appSecretKey
-      
       const response = await apiService.deleteCategory(categoryId)
       
       if (response.ok) {
+        // Refresh categories from both hook and local fetch
+        await refetchCategories()
         await fetchCategories()
         // Remove the deleted category from selected categories
         if (formData.categoryIds?.includes(categoryId)) {
           handleInputChange('categoryIds', formData.categoryIds.filter(id => id !== categoryId))
         }
+      } else {
+        alert('Failed to delete category. It may have products assigned to it.')
       }
     } catch (error) {
       logger.error('Failed to delete category:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
@@ -569,14 +712,14 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
       id: cat.id,
       name: cat.name,
       parentId: cat.parentId,
-      imageUrl: cat.imageUrl,
-      iconUrl: cat.iconUrl,
-      displayType: cat.displayType,
-      isActive: cat.isActive,
-      displayOrder: cat.displayOrder,
-      description: cat.description,
-      createdAt: cat.createdAt,
-      updatedAt: cat.updatedAt,
+      imageUrl: (cat as any).imageUrl,
+      iconUrl: (cat as any).iconUrl,
+      displayType: (cat as any).displayType,
+      isActive: (cat as any).isActive ?? true,
+      displayOrder: (cat as any).displayOrder ?? 0,
+      description: (cat as any).description,
+      createdAt: (cat as any).createdAt,
+      updatedAt: (cat as any).updatedAt,
       appId: appId
     } as Category))
   }, [categories, appId])
@@ -1588,91 +1731,361 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   
           {/* Categories Step */}
           {currentStepId === 'categories' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Selected Categories List */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Product Categories
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selected Categories
                   </label>
+                {formData.categoryIds && formData.categoryIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.categoryIds.map(categoryId => {
+                      const category = categories.find(c => c.id === categoryId);
+                      return category ? (
+                        <div key={categoryId} className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-lg">
+                          <span className="text-xs text-gray-700">{category.name}</span>
                   <button
                     type="button"
-                    onClick={() => setShowAddCategory(!showAddCategory)}
-                    disabled={creatingCategory}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== categoryId))}
+                            className="text-gray-400 hover:text-red-600"
                   >
-                    <FolderPlus className="h-3 w-3" />
-                    <span>Add Category</span>
+                            <X className="w-3 h-3" />
+                  </button>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No categories selected. Add categories below.</p>
+                )}
+                </div>
+
+              {/* Add Category Card */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 flex items-center justify-between border-b border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <FolderPlus className="w-4 h-4 text-orange-600" />
+                    <h3 className="text-sm font-medium text-gray-700">Add New Category</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddCategory(!showAddCategory);
+                      if (showAddCategory) {
+                        // Reset form when closing
+                        setNewCategoryName('');
+                        setNewCategoryDescription('');
+                        setSelectedParentCategory(null);
+                        setCategoryDisplayMode('image');
+                        setCategoryImageFile(null);
+                        setCategoryImagePreview(null);
+                          setCategorySelectedIcon(null);
+                          setCategorySelectedEmoji(null);
+                          setCategoryReplacementWarning(null);
+                          setShowCategoryReplacementWarning(false);
+                          if (categoryFileInputRef.current) {
+                            categoryFileInputRef.current.value = '';
+                          }
+                        }
+                      }}
+                    className="text-xs text-gray-600 hover:text-gray-900"
+                  >
+                    {showAddCategory ? 'Cancel' : 'Add'}
                   </button>
                 </div>
 
-                {/* Add Category Form */}
                 {showAddCategory && (
-                  <div className="mb-3 p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Category name"
-                        maxLength={50}
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
-                      />
-                      <select
-                        value={selectedParentCategory || ""}
-                        onChange={(e) => setSelectedParentCategory(e.target.value ? Number(e.target.value) : null)}
-                        disabled={creatingCategory}
-                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-100"
-                      >
-                        <option value="">No parent (Top level)</option>
-                        {getCategoriesForDropdown().map(cat => (
-                          <option key={cat.id} value={cat.id}>
-                            {'  '.repeat(cat.depth)}
-                            {cat.depth > 0 ? '└ ' : ''}
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
+                  <div className="p-4 space-y-4 bg-white">
+                    {/* Replacement Warning - Sticky at top */}
+                    {showCategoryReplacementWarning && categoryReplacementWarning && (
+                      <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 px-4 pt-4 animate-in slide-in-from-top duration-300 bg-white">
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm px-3 py-2 flex items-center gap-2">
+                          <div className="flex-shrink-0">
+                            <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <p className="text-xs text-amber-800 flex-1">{categoryReplacementWarning}</p>
+                          <button
+                            type="button"
+                            onClick={() => setShowCategoryReplacementWarning(false)}
+                            className="flex-shrink-0 p-0.5 hover:bg-amber-100 rounded transition-colors"
+                            aria-label="Close warning"
+                          >
+                            <X className="w-3.5 h-3.5 text-amber-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Parent Category and Category Name - One Row on Large Screens */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Parent Category *
+                        </label>
+                        <select
+                          value={selectedParentCategory || ""}
+                          onChange={(e) => setSelectedParentCategory(e.target.value ? Number(e.target.value) : null)}
+                          disabled={creatingCategory}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:bg-gray-100"
+                        >
+                          <option value="">No parent (Top level)</option>
+                          {getCategoriesForDropdown().map(cat => (
+                            <option key={cat.id} value={cat.id}>
+                              {'  '.repeat(cat.depth)}
+                              {cat.depth > 0 ? '└ ' : ''}
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Category Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Enter category name"
+                          maxLength={30}
+                          disabled={creatingCategory}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:bg-gray-100"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Category Display */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Category Display
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">Choose one: Upload image OR select icon/emoji</p>
+                      
+                      {/* Display Mode Toggle */}
+                      <div className="grid grid-cols-2 gap-2 mb-3">
                         <button
                           type="button"
-                          onClick={handleAddCategory}
-                          disabled={creatingCategory || !newCategoryName.trim()}
-                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                          onClick={() => handleCategoryModeSwitch('image')}
+                          className={`relative flex items-center justify-center space-x-2 p-2.5 border rounded-lg transition-all ${
+                            categoryDisplayMode === 'image'
+                              ? 'border-orange-500 bg-orange-50 shadow-sm'
+                              : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+                          }`}
                         >
-                          {creatingCategory ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1" />
-                              Creating...
-                            </>
-                          ) : (
-                            'Add'
+                          {categoryDisplayMode === 'image' && (
+                            <div className="absolute top-1 right-1">
+                              <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            </div>
                           )}
+                          <ImageIcon className={`w-4 h-4 ${categoryDisplayMode === 'image' ? 'text-orange-600' : 'text-gray-400'}`} />
+                          <span className={`text-xs font-medium ${categoryDisplayMode === 'image' ? 'text-orange-600' : 'text-gray-700'}`}>
+                            Upload Image
+                          </span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryModeSwitch('icon')}
+                          className={`relative flex items-center justify-center space-x-2 p-2.5 border rounded-lg transition-all ${
+                            categoryDisplayMode === 'icon'
+                              ? 'border-orange-500 bg-orange-50 shadow-sm'
+                              : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+                          }`}
+                        >
+                          {categoryDisplayMode === 'icon' && (
+                            <div className="absolute top-1 right-1">
+                              <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            </div>
+                          )}
+                          <Tags className={`w-4 h-4 ${categoryDisplayMode === 'icon' ? 'text-orange-600' : 'text-gray-400'}`} />
+                          <span className={`text-xs font-medium ${categoryDisplayMode === 'icon' ? 'text-orange-600' : 'text-gray-700'}`}>
+                            Icon/Emoji
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Image Upload Section */}
+                      {categoryDisplayMode === 'image' && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                          <input
+                            ref={categoryFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCategoryImageChange}
+                            className="hidden"
+                          />
+                          {!categoryImagePreview ? (
+                            <button
+                              type="button"
+                              onClick={() => categoryFileInputRef.current?.click()}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white"
+                            >
+                              <Upload className="w-5 h-5 text-orange-500" />
+                              <span className="text-sm font-medium text-gray-700">Click to upload</span>
+                              <span className="text-xs text-gray-500">• Max 5MB</span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <div className="relative inline-block">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={categoryImagePreview}
+                                  alt="Category preview"
+                                  className="w-24 h-24 object-cover rounded-lg border-2 border-orange-300"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCategoryImageFile(null);
+                                    setCategoryImagePreview(null);
+                                    if (categoryFileInputRef.current) {
+                                      categoryFileInputRef.current.value = '';
+                                    }
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  title="Remove image"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="flex flex-col">
+                                <div className="flex items-center space-x-2 text-xs text-gray-600 mb-1">
+                                  <span className="truncate">{categoryImageFile?.name}</span>
+                                  <span className="text-gray-400">•</span>
+                                  <span>{(categoryImageFile?.size ? (categoryImageFile.size / 1024).toFixed(1) : '0')} KB</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => categoryFileInputRef.current?.click()}
+                                  className="text-xs text-orange-600 hover:text-orange-700 font-medium text-left"
+                                >
+                                  Change image
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Icon/Emoji Selection Section */}
+                      {categoryDisplayMode === 'icon' && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                          {(categorySelectedIcon || categorySelectedEmoji) ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2 p-2 bg-white rounded-lg border border-orange-200">
+                                <div className="flex items-center justify-center w-10 h-10 border border-orange-200 rounded-lg bg-white">
+                                  {categorySelectedIcon ? (
+                                    <CategoryIcon iconUrl={categorySelectedIcon.filePath} size={24} />
+                                  ) : categorySelectedEmoji ? (
+                                    <LocalEmoji emojiData={categorySelectedEmoji} size={24} />
+                                  ) : null}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-700 truncate">
+                                    {categorySelectedIcon?.name || categorySelectedEmoji?.name || 'Selected'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {categorySelectedIcon ? 'Icon' : 'Emoji'} selected
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setIsCategoryIconPickerOpen(true)}
+                                className="w-full px-3 py-1.5 text-sm font-medium text-orange-600 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
+                              >
+                                Change Selection
+                        </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsCategoryIconPickerOpen(true)}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white"
+                            >
+                              <Tags className="w-5 h-5 text-orange-500" />
+                              <span className="text-sm font-medium text-gray-700">Click to select</span>
+                              <span className="text-xs text-gray-500">• Browse library</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200">
                         <button
                           type="button"
                           onClick={() => {
                             setShowAddCategory(false);
-                            setNewCategoryName("");
+                          setNewCategoryName('');
+                          setNewCategoryDescription('');
                             setSelectedParentCategory(null);
-                          }}
-                          disabled={creatingCategory}
-                          className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                          setCategoryDisplayMode('image');
+                          setCategoryImageFile(null);
+                          setCategoryImagePreview(null);
+                          setCategorySelectedIcon(null);
+                          setCategorySelectedEmoji(null);
+                          setCategoryReplacementWarning(null);
+                          setShowCategoryReplacementWarning(false);
+                          if (categoryFileInputRef.current) {
+                            categoryFileInputRef.current.value = '';
+                          }
+                        }}
+                        disabled={creatingCategory}
+                        className="px-3 py-1.5 text-xs text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddCategory}
+                        disabled={creatingCategory || !newCategoryName.trim()}
+                        className="px-3 py-1.5 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        {creatingCategory ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Creating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3 h-3" />
+                            <span>Create Category</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 )}
+              </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+              {/* Available Categories List */}
+              <div ref={availableCategoriesRef} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-700">Available Categories</h3>
+                </div>
+                <div className="max-h-64 overflow-y-auto p-3 bg-white">
                   {categories.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No categories available. Click "Add Category" to create one.</p>
+                    <p className="text-xs text-gray-500 text-center py-4">No categories available. Create one above.</p>
                   ) : (
-                    categories.map(category => (
-                      <div key={category.id} className="flex items-center justify-between group hover:bg-gray-50 p-1 rounded">
-                        <label className="flex items-center flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
+                      {categories.map(category => (
+                        <div 
+                          key={category.id} 
+                          className={`flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-all ${
+                            newlyCreatedCategoryId === category.id 
+                              ? 'bg-green-50 border border-green-300 animate-pulse' 
+                              : ''
+                          }`}
+                        >
+                          <label className="flex items-center flex-1 cursor-pointer">
                           <input
                             type="checkbox"
                             value={category.id}
@@ -1696,6 +2109,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 onKeyPress={(e) => e.key === "Enter" && editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && handleUpdateCategory(category.id)}
                                 className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
                                 autoFocus
+                                maxLength={30}
                               />
                               {editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && (
                                 <button
@@ -1721,7 +2135,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             </div>
                           ) : (
                             <>
-                              <span className="ml-2 text-sm text-gray-700 flex-1">{category.name}</span>
+                              <span className="ml-2 text-sm text-gray-700 flex-1 truncate">{category.name}</span>
                               <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
                                 <button
                                   type="button"
@@ -1749,21 +2163,23 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             </>
                           )}
                         </label>
-                      </div>
-                    ))
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
 
+              {/* Tags Section */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tags
+                  Product Tags
                 </label>
                 <input
                   type="text"
                   value={formData.tags?.join(', ')}
                   onChange={(e) => handleInputChange('tags', e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
                   placeholder="Enter tags separated by commas"
                 />
                 <p className="mt-1 text-xs text-gray-500">Separate tags with commas</p>
@@ -1844,6 +2260,72 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
       parentCategories={parentCategoriesForModal}
       onSuccess={handleCategoryCreated}
       onSubmit={createCategoryFromHook}
+    />
+
+    {/* Unified Asset Picker for Category Icon/Emoji */}
+    <UnifiedAssetPicker
+      isOpen={isCategoryIconPickerOpen}
+      onClose={() => setIsCategoryIconPickerOpen(false)}
+      onSelect={(asset) => {
+        // Only show warning if image is actually uploaded (not null)
+        if (categoryImageFile) {
+          setCategoryReplacementWarning('Selecting an icon/emoji will replace the currently uploaded image.');
+        } else {
+          setCategoryReplacementWarning(null);
+        }
+
+        if (asset.type === 'icon') {
+          setCategorySelectedIcon({
+            name: asset.name,
+            library: asset.libraryKey,
+            libraryKey: asset.libraryKey,
+            filePath: asset.filePath,
+            title: asset.title,
+            description: asset.description || '',
+            keywords: asset.keywords,
+            category: asset.category,
+            license: asset.license || '',
+            website: asset.website || '',
+            optimized: asset.optimized || false
+          });
+          setCategorySelectedEmoji(null);
+          setCategorySelectedAsset(asset);
+          // Clear image when icon is selected
+          setCategoryImageFile(null);
+          setCategoryImagePreview(null);
+          if (categoryFileInputRef.current) {
+            categoryFileInputRef.current.value = '';
+          }
+        } else if (asset.type === 'emoji') {
+          setCategorySelectedEmoji({
+            name: asset.name,
+            unicode: asset.unicode || '',
+            shortcode: asset.shortcode || '',
+            category: asset.category,
+            sourceKey: asset.libraryKey || '',
+            source: asset.library || '',
+            subcategory: '',
+            keywords: asset.keywords || [],
+            tags: [],
+            version: '',
+            license: asset.license || '',
+            website: asset.website || '',
+            filePath: asset.filePath || '',
+            optimized: asset.optimized || false
+          });
+          setCategorySelectedIcon(null);
+          setCategorySelectedAsset(asset);
+          // Clear image when emoji is selected
+          setCategoryImageFile(null);
+          setCategoryImagePreview(null);
+          if (categoryFileInputRef.current) {
+            categoryFileInputRef.current.value = '';
+          }
+        }
+        setIsCategoryIconPickerOpen(false);
+      }}
+      selectedAsset={categorySelectedAsset}
+      title="Select Category Icon or Emoji"
     />
     </>
   )
