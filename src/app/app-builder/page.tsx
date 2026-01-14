@@ -158,6 +158,7 @@ function AppBuilderContent() {
   const reloadTimeoutIdRef = useRef<number | undefined>(undefined)
   const lastProcessedReloadTimestampRef = useRef<string | null>(null)
   const lastProcessedRestartTimestampRef = useRef<string | null>(null)
+  const previousSocketExpoInfoRef = useRef<ExpoInfo | null>(null)
 
   // Centralized request cancellation with automatic cleanup
   const abortController = useAbortController()
@@ -1319,9 +1320,24 @@ function AppBuilderContent() {
   }
 
   // Monitor socketExpoInfo changes and update isAppRunning
+  // Only trigger when actual values change (not just object reference)
   useEffect(() => {
+    // Deep equality check: only trigger if values actually changed
+    const previousInfo = previousSocketExpoInfoRef.current
+    const hasValuesChanged =
+      socketExpoInfo?.webUrl !== previousInfo?.webUrl ||
+      socketExpoInfo?.qrCode !== previousInfo?.qrCode ||
+      socketExpoInfo?.port !== previousInfo?.port ||
+      (socketExpoInfo === null && previousInfo !== null) ||
+      (socketExpoInfo !== null && previousInfo === null)
+
+    if (!hasValuesChanged) {
+      logger.debug('[AppBuilder] socketExpoInfo object reference changed but values are identical, skipping update')
+      return
+    }
+
     if (socketExpoInfo && socketExpoInfo.webUrl) {
-      logger.debug('[AppBuilder] ✅ Socket.io Expo info received, setting isAppRunning=true:', { socketExpoInfo })
+      logger.debug('[AppBuilder] ✅ Socket.io Expo info received with new values, setting isAppRunning=true:', { socketExpoInfo })
       setIsAppRunning(true)
       setApiExpoInfo(socketExpoInfo)
       setIsRestarting(false)
@@ -1342,6 +1358,9 @@ function AppBuilderContent() {
       setIsAppRunning(false)
       setApiExpoInfo(null)
     }
+
+    // Update ref with current values
+    previousSocketExpoInfoRef.current = socketExpoInfo
   }, [socketExpoInfo, timeouts])
 
   // Handle publish progress events

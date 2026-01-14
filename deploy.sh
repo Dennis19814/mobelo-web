@@ -128,7 +128,7 @@ configure_production() {
             cat > .env << 'EOF'
 # Production Environment Configuration
 NODE_ENV=production
-PORT=5173
+PORT=3001
 
 # Stripe Configuration (update with your keys)
 NEXT_PUBLIC_STRIPE_PUBLIC_KEY=your_stripe_public_key_here
@@ -140,7 +140,7 @@ EOF
         else
             echo "[SERVER] .env exists, ensuring production values..."
             sed -i 's/NODE_ENV=.*/NODE_ENV=production/' .env
-            sed -i 's/PORT=.*/PORT=5173/' .env
+            sed -i 's/PORT=.*/PORT=3001/' .env
             echo "[SERVER] ✓ .env updated for production"
         fi
 
@@ -171,7 +171,7 @@ restart_services() {
 
         # Start new process from standalone build
         cd .next/standalone
-        NODE_ENV=production PORT=5173 pm2 start server.js --name "mobelo-web" --update-env
+        NODE_ENV=production PORT=3001 pm2 start server.js --name "mobelo-web" --update-env
         cd ../..
 
         # Save PM2 configuration
@@ -211,7 +211,7 @@ verify_deployment() {
         echo "[SERVER] Checking service health..."
 
         # Check if app is responding
-        if curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 | grep -q "200\|301\|302"; then
+        if curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 | grep -q "200\|301\|302"; then
             echo "[SERVER] ✓ mobelo-web is healthy and responding"
         else
             echo "[SERVER] ✗ mobelo-web health check failed"
@@ -252,7 +252,7 @@ main() {
     log_info "════════════════════════════════════════════════════════════"
     echo ""
     log_info "Production URL: https://mobelo.dev (or configured domain)"
-    log_info "App running on: http://localhost:5173"
+    log_info "App running on: http://localhost:3001"
     echo ""
     log_info "Monitor logs: ssh -i $SSH_KEY $SERVER 'pm2 logs mobelo-web'"
     log_info "Check status:  ssh -i $SSH_KEY $SERVER 'pm2 status'"
