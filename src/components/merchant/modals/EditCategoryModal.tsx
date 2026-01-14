@@ -153,28 +153,33 @@ export function EditCategoryModal({
 
   const handleModeSwitch = (mode: 'image' | 'icon') => {
     setDisplayMode(mode);
-    if (mode === 'icon') {
-      // Clear image when switching to icon mode
-      setImageFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      // Restore original image preview if it exists
-      if (category?.imageUrl && !imageFile) {
-        setImagePreview(category.imageUrl);
-      } else {
-        setImagePreview(null);
-      }
-    } else {
-      // Clear icon/emoji when switching to image mode
-      setFieldValue('iconUrl', '');
-      setFieldValue('iconName', '');
-      setFieldValue('iconLibrary', '');
-      setFieldValue('emojiUnicode', '');
-      setFieldValue('emojiShortcode', '');
-      setFieldValue('emojiSource', '');
-      setFieldValue('displayType', 'icon');
+    // Don't clear imageFile or imagePreview when switching tabs
+    // They will be cleared by the hook when user actually selects icon/emoji
+    // Don't clear icon/emoji fields when switching tabs either
+    // They will be cleared by the hook when user actually uploads an image
+    
+    // If switching to image mode and we have imageFile but no preview, recreate preview
+    if (mode === 'image' && imageFile && !imagePreview) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(imageFile);
     }
+    
+    // When switching to icon mode, only restore original category image if:
+    // 1. No new file was uploaded AND
+    // 2. No icon/emoji has been selected (user hasn't made a choice yet)
+    // This prevents showing the image when user has already chosen icon/emoji
+    const hasIconOrEmojiSelected = (formData.iconUrl && formData.iconUrl !== 'lucide-react:Folder') || formData.emojiUnicode;
+    if (mode === 'icon' && !imageFile && category?.imageUrl && !hasIconOrEmojiSelected) {
+      setImagePreview(category.imageUrl);
+    } else if (mode === 'icon' && hasIconOrEmojiSelected) {
+      // If icon/emoji is selected, ensure image preview is cleared
+      setImagePreview(null);
+    }
+    
+    // When switching to image mode, don't clear icon/emoji - let the hook handle it when image is uploaded
   };
 
   const handleRemoveImage = () => {
@@ -567,6 +572,11 @@ export function EditCategoryModal({
             });
             setSelectedAsset(asset);
             setDisplayMode('icon'); // Ensure we're in icon mode
+            // Clear image preview when icon is selected (hook will clear imageFile)
+            // This ensures the backend image is not displayed after icon selection
+            setImagePreview(null);
+            // Also clear imageUrl in formData to signal backend to remove the image
+            // The hook's handleSubmit will handle sending icon data instead of preserving image
           } else if (asset.type === 'emoji') {
             // Convert to emoji format expected by form
             setSelectedEmoji({
@@ -587,6 +597,10 @@ export function EditCategoryModal({
             });
             setSelectedAsset(asset);
             setDisplayMode('icon'); // Ensure we're in icon mode
+            // Clear image preview when emoji is selected (hook will clear imageFile)
+            // This ensures the backend image is not displayed after emoji selection
+            setImagePreview(null);
+            // The hook's handleSubmit will handle sending emoji data instead of preserving image
           }
           setIsIconPickerOpen(false);
         }}

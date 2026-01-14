@@ -152,31 +152,29 @@ export function AddCategoryModal({
 
   const handleModeSwitch = (mode: 'image' | 'icon') => {
     setDisplayMode(mode);
+    // Don't clear imageFile or imagePreview when switching tabs
+    // They will be cleared by the hook when user actually selects icon/emoji
+    // Don't clear icon/emoji fields when switching tabs either
+    // They will be cleared by the hook when user actually uploads an image
+    
+    // If switching to image mode and we have imageFile but no preview, recreate preview
+    if (mode === 'image' && imageFile && !imagePreview) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(imageFile);
+    }
+    
     if (mode === 'icon') {
-      // Clear image when switching to icon mode
-      setImageFile(null);
-      setImagePreview(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      // Clear default icon so it shows "Click to select"
+      // Clear default icon so it shows "Click to select" (only if it's the default)
       if (formData.iconUrl === 'lucide-react:Folder' && selectedIcon?.name === 'Folder') {
         setFieldValue('iconUrl', '');
         setFieldValue('iconName', '');
         setFieldValue('iconLibrary', '');
       }
-    } else {
-      // Clear icon/emoji when switching to image mode
-      // The form hook's setImageFile will handle clearing when image is uploaded
-      // For now, just clear the form fields
-      setFieldValue('iconUrl', '');
-      setFieldValue('iconName', '');
-      setFieldValue('iconLibrary', '');
-      setFieldValue('emojiUnicode', '');
-      setFieldValue('emojiShortcode', '');
-      setFieldValue('emojiSource', '');
-      setFieldValue('displayType', 'icon');
     }
+    // When switching to image mode, don't clear icon/emoji - let the hook handle it when image is uploaded
   };
 
   if (!isOpen) return null;
@@ -531,6 +529,8 @@ export function AddCategoryModal({
             });
             setSelectedAsset(asset);
             setDisplayMode('icon'); // Ensure we're in icon mode
+            // Clear image preview when icon is selected (hook will clear imageFile)
+            setImagePreview(null);
           } else if (asset.type === 'emoji') {
             // Convert to emoji format expected by form
             setSelectedEmoji({
@@ -551,6 +551,8 @@ export function AddCategoryModal({
             });
             setSelectedAsset(asset);
             setDisplayMode('icon'); // Ensure we're in icon mode
+            // Clear image preview when emoji is selected (hook will clear imageFile)
+            setImagePreview(null);
           }
           setIsIconPickerOpen(false);
         }}
