@@ -205,11 +205,12 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
   // Set selected icon and update form data
   const setSelectedIcon = useCallback((icon: LocalIconData) => {
-    // Check if image exists before clearing
-    const hadImage = imageFile !== null || formData.iconUrl?.startsWith('http');
+    // Check if user has uploaded an image file (not just formData)
+    // Only show warning if user actually uploaded an image
+    const hadImage = imageFile !== null;
 
     if (hadImage) {
-      setReplacementWarning('Selecting an icon will replace the currently uploaded image.');
+      setReplacementWarning('Selecting an icon/emoji will replace the currently uploaded image.');
     } else {
       setReplacementWarning(null);
     }
@@ -247,11 +248,12 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
   // Set selected emoji and update form data
   const setSelectedEmoji = useCallback((emoji: LocalEmojiData) => {
-    // Check if image exists before clearing
-    const hadImage = imageFile !== null || formData.iconUrl?.startsWith('http');
+    // Check if user has uploaded an image file (not just formData)
+    // Only show warning if user actually uploaded an image
+    const hadImage = imageFile !== null;
 
     if (hadImage) {
-      setReplacementWarning('Selecting an emoji will replace the currently uploaded image.');
+      setReplacementWarning('Selecting an icon/emoji will replace the currently uploaded image.');
     } else {
       setReplacementWarning(null);
     }
@@ -292,10 +294,14 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
     setImageFileState(file);
     if (file) {
       // Clear icon/emoji when image is selected
-      const hadIconOrEmoji = selectedIcon || selectedEmoji || formData.iconUrl || formData.emojiUnicode;
+      // Only show warning if user actually selected an icon/emoji (not default Folder icon)
+      const hadIconOrEmoji = (selectedIcon && selectedIcon.name !== 'Folder') || 
+                             selectedEmoji || 
+                             (formData.iconUrl && formData.iconUrl !== 'lucide-react:Folder') || 
+                             formData.emojiUnicode;
 
       if (hadIconOrEmoji) {
-        setReplacementWarning('Uploading an image will replace the currently selected icon or emoji.');
+        setReplacementWarning('Uploading an image will replace the currently selected icon/emoji.');
       } else {
         setReplacementWarning(null);
       }
@@ -375,6 +381,9 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
   // Handle form submission
   const handleSubmit = useCallback(async (): Promise<Category | null> => {
+    // Capture current selectedIcon and selectedEmoji for use in the callback
+    const currentSelectedIcon = selectedIcon;
+    const currentSelectedEmoji = selectedEmoji;
     if (!onSubmit) {
       logger.warn('No onSubmit handler provided for category form');
       return null;
@@ -414,9 +423,50 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
           // New image file is being uploaded - don't include icon/emoji data
           // Image will be uploaded separately after category update
         } else if (category.imageUrl) {
-          // Existing image exists and no new image - preserve the image
-          // Don't send icon/emoji data to avoid overwriting the image
-          // The backend should preserve the existing imageUrl
+          // Existing image exists - check if user has selected icon/emoji to replace it
+          // If category originally had an image, and now has icon/emoji data, user wants to replace image
+          const hasNonDefaultIcon = formData.iconUrl && formData.iconUrl !== 'lucide-react:Folder';
+          const hasEmoji = !!formData.emojiUnicode;
+          // If category originally had icon/emoji, check if it changed
+          const iconChanged = category.iconUrl && formData.iconUrl !== category.iconUrl;
+          const emojiChanged = category.emojiUnicode && formData.emojiUnicode !== category.emojiUnicode;
+          
+          // Replace image if: user selected icon/emoji (hasNonDefaultIcon or hasEmoji) 
+          // AND (category had no icon/emoji originally OR icon/emoji changed)
+          if ((hasNonDefaultIcon || hasEmoji) && (!category.iconUrl && !category.emojiUnicode || iconChanged || emojiChanged)) {
+            // User has selected icon/emoji to replace the image - send icon/emoji data
+            submitData.iconName = formData.iconName;
+            submitData.iconLibrary = formData.iconLibrary;
+            submitData.iconUrl = formData.iconUrl;
+            submitData.emojiUnicode = formData.emojiUnicode;
+            submitData.emojiShortcode = formData.emojiShortcode;
+            submitData.emojiSource = formData.emojiSource;
+            submitData.displayType = formData.displayType;
+            
+            // Set metadata with full icon/emoji URL for external app access
+            const baseUrl = process.env.NEXT_PUBLIC_WEB_URL || '';
+            
+            // Determine the URL to use based on display type
+            let fullAssetUrl = '';
+            if (formData.displayType === 'emoji' && currentSelectedEmoji?.filePath) {
+              fullAssetUrl = currentSelectedEmoji.filePath.startsWith('http')
+                ? currentSelectedEmoji.filePath
+                : `${baseUrl}/${currentSelectedEmoji.filePath}`;
+            } else if (formData.iconUrl) {
+              fullAssetUrl = formData.iconUrl.startsWith('http')
+                ? formData.iconUrl
+                : `${baseUrl}${formData.iconUrl}`;
+            }
+            
+            submitData.metadata = {
+              iconUrl: fullAssetUrl,
+              displayType: formData.displayType
+            };
+          } else {
+            // No icon/emoji selected or no change - preserve the existing image
+            // Don't send icon/emoji data to avoid overwriting the image
+            // The backend should preserve the existing imageUrl
+          }
         } else {
           // No image exists - include icon/emoji data
           submitData.iconName = formData.iconName;
@@ -609,7 +659,7 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, appId, category, onSubmit, validateForm, imageFile]);
+  }, [formData, appId, category, onSubmit, validateForm, imageFile, selectedIcon, selectedEmoji]);
 
   // Handle cancel
   const handleCancel = useCallback(() => {
