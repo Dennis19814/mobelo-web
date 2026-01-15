@@ -1696,7 +1696,7 @@ export default function EditProductModal({
 
           {/* Media Tab */}
           {currentStepId === 'media' && (
-            <div className="h-full flex flex-col">
+            <div className="space-y-3">
               <MediaManager
                 productId={product.id}
                 media={productMedia}
