@@ -379,7 +379,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     
     setDeletingCategoryId(categoryId)
     try {
-      const response = await apiService.deleteCategory(categoryId)
+      const response = await apiService.deleteCategory(categoryId, appId)
       
       if (response.ok) {
         // Refresh categories from both hook and local fetch
