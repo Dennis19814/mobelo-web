@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -85,6 +85,36 @@ export default function NotificationsModal({
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set())
+  const previousLowStockProductIds = useRef<Set<number>>(new Set())
+  const [lowStockProductsKey, setLowStockProductsKey] = useState(0) // Force re-render when low stock products change
+
+  // Load read status and previous low stock product IDs from localStorage when modal opens
+  useEffect(() => {
+    if (isOpen && appId && typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`read-notifications-${appId}`)
+      if (stored) {
+        try {
+          const readIds = JSON.parse(stored)
+          setReadNotificationIds(new Set(readIds))
+        } catch (error) {
+          console.error('Error loading read notifications from localStorage:', error)
+        }
+      }
+      
+      // Load previous low stock product IDs
+      const lowStockStored = localStorage.getItem(`low-stock-products-${appId}`)
+      if (lowStockStored) {
+        try {
+          const productIds = JSON.parse(lowStockStored)
+          previousLowStockProductIds.current = new Set(productIds)
+          // Trigger re-render to ensure notifications are calculated correctly
+          setLowStockProductsKey(prev => prev + 1)
+        } catch (error) {
+          console.error('Error loading previous low stock products:', error)
+        }
+      }
+    }
+  }, [isOpen, appId])
 
   // Fetch data when modal opens
   useEffect(() => {
@@ -130,6 +160,16 @@ export default function NotificationsModal({
       p.inventoryQuantity < 10
     )
     
+    // Get current low stock product IDs
+    const currentLowStockProductIds = new Set(lowStockProducts.map(p => p.id).filter((id): id is number => id !== undefined))
+    
+    // Check if there are NEW products that became low stock (weren't in previous set)
+    const newLowStockProducts = Array.from(currentLowStockProductIds).filter(id => !previousLowStockProductIds.current.has(id))
+    const hasNewLowStockProducts = newLowStockProducts.length > 0
+    
+    // If there are new low stock products, mark notification as unread (even if it was previously read)
+    const lowStockNotificationRead = readNotificationIds.has('low-stock-grouped') && !hasNewLowStockProducts
+    
     if (lowStockProducts.length > 0) {
       const items: NotificationItem[] = lowStockProducts.map(product => {
         let createdAt = ''
@@ -164,7 +204,7 @@ export default function NotificationsModal({
           : `${lowStockProducts.length} products are running low on stock.`,
         type: 'warning',
         time: latestUpdate.getTime() > 0 ? formatTimeAgo(latestUpdate) : 'Recently',
-        read: false,
+        read: lowStockNotificationRead,
         icon: <Package className="w-5 h-5" />,
         items: items,
         count: lowStockProducts.length,
@@ -312,11 +352,19 @@ export default function NotificationsModal({
         })
 
         // Apply read status from state (if marked as read, override default)
-        return sorted.map(notif => ({
-          ...notif,
-          read: readNotificationIds.has(notif.id) || notif.read
-        }))
-      }, [products, orders, readNotificationIds])
+        // Note: For low-stock-grouped, the read status is already calculated above based on new products
+        return sorted.map(notif => {
+          // For low stock, use the calculated read status (already accounts for new products)
+          if (notif.id === 'low-stock-grouped') {
+            return notif
+          }
+          // For other notifications, use the standard read status
+          return {
+            ...notif,
+            read: readNotificationIds.has(notif.id) || notif.read
+          }
+        })
+      }, [products, orders, readNotificationIds, appId, lowStockProductsKey])
 
   const handleNotificationClick = (notification: Notification) => {
     setSelectedNotification(notification)
@@ -329,6 +377,23 @@ export default function NotificationsModal({
       // Save to localStorage
       if (appId && typeof window !== 'undefined') {
         localStorage.setItem(`read-notifications-${appId}`, JSON.stringify(Array.from(newReadIds)))
+        
+        // If this is a low stock notification, store the current low stock product IDs
+        // so we can detect new products that become low stock later
+        if (notification.id === 'low-stock-grouped') {
+          const lowStockProducts = products.filter(p => 
+            p.trackInventory && 
+            p.inventoryQuantity !== undefined && 
+            p.inventoryQuantity > 0 && 
+            p.inventoryQuantity < 10
+          )
+          const currentLowStockProductIds = lowStockProducts.map(p => p.id).filter((id): id is number => id !== undefined)
+          // Update the ref immediately so the notification shows as read
+          previousLowStockProductIds.current = new Set(currentLowStockProductIds)
+          localStorage.setItem(`low-stock-products-${appId}`, JSON.stringify(currentLowStockProductIds))
+          // Force re-render to update notification read status
+          setLowStockProductsKey(prev => prev + 1)
+        }
       }
     }
   }
@@ -341,6 +406,20 @@ export default function NotificationsModal({
     // Save to localStorage
     if (appId && typeof window !== 'undefined') {
       localStorage.setItem(`read-notifications-${appId}`, JSON.stringify(Array.from(allNotificationIds)))
+      
+      // Store current low stock product IDs when marking all as read
+      const lowStockProducts = products.filter(p => 
+        p.trackInventory && 
+        p.inventoryQuantity !== undefined && 
+        p.inventoryQuantity > 0 && 
+        p.inventoryQuantity < 10
+      )
+      const currentLowStockProductIds = lowStockProducts.map(p => p.id).filter((id): id is number => id !== undefined)
+      // Update the ref immediately so notifications show as read
+      previousLowStockProductIds.current = new Set(currentLowStockProductIds)
+      localStorage.setItem(`low-stock-products-${appId}`, JSON.stringify(currentLowStockProductIds))
+      // Force re-render to update notification read status
+      setLowStockProductsKey(prev => prev + 1)
     }
   }
 
@@ -468,8 +547,18 @@ export default function NotificationsModal({
       <>
         {/* Low Stock Alert Modal */}
         {selectedNotification.type === 'warning' && (selectedNotification.productName || (selectedNotification.items && selectedNotification.items.length > 0)) && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeDetailModal()
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0">
@@ -576,16 +665,26 @@ export default function NotificationsModal({
                     Close
                   </button>
                   <button
-                    onClick={() => {
-                      closeDetailModal()
-                      onClose()
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      
+                      // Navigate first, then close modal after navigation completes
                       if (onNavigate) {
                         onNavigate('inventory')
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 300)
                       } else {
-                        // Update URL to navigate to inventory section
                         const params = new URLSearchParams(searchParams.toString())
                         params.set('section', 'inventory')
-                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+                        const targetUrl = `${window.location.pathname}?${params.toString()}`
+                        router.push(targetUrl)
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 500)
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
@@ -600,8 +699,18 @@ export default function NotificationsModal({
 
         {/* Order Detail Modal */}
         {(selectedNotification.type === 'order' || selectedNotification.title.includes('Order')) && (selectedNotification.orderId || (selectedNotification.items && selectedNotification.items.length > 0)) && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeDetailModal()
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0">
@@ -688,16 +797,32 @@ export default function NotificationsModal({
                     Close
                   </button>
                   <button
-                    onClick={() => {
-                      closeDetailModal()
-                      onClose()
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      
+                      // Navigate first, then close modal after navigation completes
                       if (onNavigate) {
                         onNavigate('orders')
+                        // Close modal after a short delay to ensure navigation starts
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 300)
                       } else {
                         // Update URL to navigate to orders section
                         const params = new URLSearchParams(searchParams.toString())
                         params.set('section', 'orders')
-                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+                        const targetUrl = `${window.location.pathname}?${params.toString()}`
+                        
+                        // Use router.push and wait for navigation
+                        router.push(targetUrl)
+                        
+                        // Close modal after navigation completes (longer delay for router.push)
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 500)
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
@@ -711,9 +836,19 @@ export default function NotificationsModal({
         )}
 
         {/* Payment Detail Modal */}
-        {selectedNotification.title === 'Payment Received' && selectedNotification.paymentAmount && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+        {selectedNotification.title === 'Payment Received' && (selectedNotification.paymentAmount || (selectedNotification.items && selectedNotification.items.length > 0)) && (
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeDetailModal()
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0">
@@ -798,16 +933,26 @@ export default function NotificationsModal({
                     Close
                   </button>
                   <button
-                    onClick={() => {
-                      closeDetailModal()
-                      onClose()
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      
+                      // Navigate first, then close modal after navigation completes
                       if (onNavigate) {
                         onNavigate('orders')
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 300)
                       } else {
-                        // Update URL to navigate to orders section
                         const params = new URLSearchParams(searchParams.toString())
                         params.set('section', 'orders')
-                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+                        const targetUrl = `${window.location.pathname}?${params.toString()}`
+                        router.push(targetUrl)
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 500)
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
@@ -822,8 +967,18 @@ export default function NotificationsModal({
 
         {/* Review Detail Modal */}
         {selectedNotification.title === 'New Customer Review' && selectedNotification.reviewRating && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeDetailModal()
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0">
@@ -886,16 +1041,26 @@ export default function NotificationsModal({
                     Close
                   </button>
                   <button
-                    onClick={() => {
-                      closeDetailModal()
-                      onClose()
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      
+                      // Navigate first, then close modal after navigation completes
                       if (onNavigate) {
                         onNavigate('product-reviews')
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 300)
                       } else {
-                        // Update URL to navigate to product reviews section
                         const params = new URLSearchParams(searchParams.toString())
                         params.set('section', 'product-reviews')
-                        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+                        const targetUrl = `${window.location.pathname}?${params.toString()}`
+                        router.push(targetUrl)
+                        setTimeout(() => {
+                          closeDetailModal()
+                          onClose()
+                        }, 500)
                       }
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
@@ -910,8 +1075,18 @@ export default function NotificationsModal({
 
         {/* System Update Modal */}
         {selectedNotification.title === 'System Update' && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95">
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeDetailModal()
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all animate-in fade-in-0 zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0">

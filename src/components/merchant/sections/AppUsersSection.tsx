@@ -391,7 +391,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
-    <div className="">
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}
@@ -411,7 +411,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-4">
         <div className="p-4 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}

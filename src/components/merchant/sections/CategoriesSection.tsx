@@ -291,7 +291,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   );
 
   return (
-    <div>
+    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -328,7 +328,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       )}
 
       {/* Categories Table with Hierarchical Drag & Drop */}
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-white rounded-lg shadow-sm -mt-4">
         <div className="p-4 border-b border-gray-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />

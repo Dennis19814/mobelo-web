@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Grid3x3, ChevronDown, LogOut, Settings, CreditCard, Bell } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { NotificationsModal } from '@/components/modals'
+import { useMerchantAuth } from '@/hooks'
+import { apiService } from '@/lib/api-service'
 import type { User } from '@/types'
+import type { Product } from '@/types/product.types'
+import type { Order } from '@/types/order.types'
 
 interface App {
   id: number
@@ -38,10 +42,136 @@ export default function MerchantHeader({
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
   const notificationsRef = useRef<HTMLDivElement>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [previousUnreadCount, setPreviousUnreadCount] = useState<number | null>(null)
+  const [hasNewNotification, setHasNewNotification] = useState(false)
+  const previousLowStockProductIds = useRef<Set<number>>(new Set())
+  const { headers } = useMerchantAuth(apiKey, appSecretKey)
 
   // Staff user context
   const { staffUser } = useStaffUser()
   const { role, isAdmin } = useStaffPermissions()
+
+  // Calculate unread notifications count
+  const calculateUnreadCount = useCallback(async () => {
+    if (!headers || !currentApp?.id) return
+
+    try {
+      // Fetch products for low stock alerts
+      const productsResponse = await apiService.getProducts({ limit: 100 })
+      const products: Product[] = productsResponse.ok && productsResponse.data
+        ? (productsResponse.data.data || productsResponse.data)
+        : []
+      const productsArray = Array.isArray(products) ? products : []
+
+      // Fetch recent orders
+      const ordersResponse = await apiService.getOrders({ limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' })
+      const orders: Order[] = ordersResponse.ok && ordersResponse.data
+        ? (ordersResponse.data.data || ordersResponse.data)
+        : []
+      const ordersArray = Array.isArray(orders) ? orders : []
+
+      // Load read status from localStorage
+      let readNotificationIds = new Set<string>()
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(`read-notifications-${currentApp.id}`)
+        if (stored) {
+          try {
+            readNotificationIds = new Set(JSON.parse(stored))
+          } catch (error) {
+            console.error('Error loading read notifications:', error)
+          }
+        }
+      }
+
+      // Calculate notifications (same logic as NotificationsModal)
+      const notifications: Array<{ id: string; read: boolean }> = []
+
+      // Low stock alerts
+      const lowStockProducts = productsArray.filter(p => 
+        p.trackInventory && 
+        p.inventoryQuantity !== undefined && 
+        p.inventoryQuantity > 0 && 
+        p.inventoryQuantity < 10
+      )
+      
+      // Get current low stock product IDs
+      const currentLowStockProductIds = new Set(lowStockProducts.map(p => p.id).filter((id): id is number => id !== undefined))
+      
+      // Check if there are NEW products that became low stock (weren't in previous set)
+      const newLowStockProducts = Array.from(currentLowStockProductIds).filter(id => !previousLowStockProductIds.current.has(id))
+      const hasNewLowStockProducts = newLowStockProducts.length > 0
+      
+      // If there are new low stock products, mark notification as unread (even if it was previously read)
+      const lowStockNotificationRead = readNotificationIds.has('low-stock-grouped') && !hasNewLowStockProducts
+      
+      if (lowStockProducts.length > 0) {
+        notifications.push({
+          id: 'low-stock-grouped',
+          read: lowStockNotificationRead
+        })
+      }
+      
+      // Note: We don't update previousLowStockProductIds here because we want to detect
+      // new products that become low stock. The stored set is only updated when the
+      // notification is marked as read in NotificationsModal.
+
+      // New orders (last 24 hours)
+      const recentOrders = ordersArray.filter(order => {
+        if (!order.createdAt) return false
+        const orderDate = new Date(order.createdAt)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        return orderDate > oneDayAgo
+      })
+      if (recentOrders.length > 0) {
+        notifications.push({
+          id: 'new-orders-grouped',
+          read: readNotificationIds.has('new-orders-grouped')
+        })
+      }
+
+      // Count unread notifications
+      const unread = notifications.filter(n => !n.read).length
+      
+      // Check if there's a new notification (count increased OR new low stock products detected)
+      // Only trigger if we have a previous count (not initial load) and (count increased OR new low stock products)
+      if (previousUnreadCount !== null && (unread > previousUnreadCount || hasNewLowStockProducts)) {
+        setHasNewNotification(true)
+        // Reset the highlight after animation completes
+        setTimeout(() => {
+          setHasNewNotification(false)
+        }, 3000) // Animation lasts 3 seconds
+      }
+      
+      setPreviousUnreadCount(unread)
+      setUnreadCount(unread)
+    } catch (error) {
+      console.error('Error calculating unread notifications:', error)
+      setUnreadCount(0)
+    }
+  }, [headers, currentApp?.id])
+
+  // Load previous low stock product IDs from localStorage on mount
+  useEffect(() => {
+    if (currentApp?.id && typeof window !== 'undefined') {
+      const lowStockStored = localStorage.getItem(`low-stock-products-${currentApp.id}`)
+      if (lowStockStored) {
+        try {
+          const productIds = JSON.parse(lowStockStored)
+          previousLowStockProductIds.current = new Set(productIds)
+        } catch (error) {
+          console.error('Error loading previous low stock products:', error)
+        }
+      }
+    }
+  }, [currentApp?.id])
+
+  useEffect(() => {
+    calculateUnreadCount()
+    // Refresh every 30 seconds
+    const interval = setInterval(calculateUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [calculateUnreadCount])
 
   // Close notifications dropdown when clicking outside
   useEffect(() => {
@@ -126,21 +256,48 @@ export default function MerchantHeader({
                 onClick={() => {
                   setShowNotificationsModal(!showNotificationsModal)
                   setShowUserMenu(false) // Close user menu when opening notifications
+                  // Reset new notification highlight when opening modal
+                  if (hasNewNotification) {
+                    setHasNewNotification(false)
+                  }
                 }}
-                className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
+                className={`relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-all duration-300 ${
+                  hasNewNotification 
+                    ? 'bg-orange-100 ring-2 ring-orange-500 ring-opacity-60 shadow-lg shadow-orange-200' 
+                    : ''
+                }`}
                 aria-label="Notifications"
                 aria-expanded={showNotificationsModal}
               >
-                <Bell className="w-5 h-5 md:w-6 md:h-6" />
-                {/* Unread badge */}
-                <span className="absolute top-1 right-1 w-2 h-2 bg-orange-600 rounded-full border-2 border-white"></span>
+                <Bell className={`w-5 h-5 md:w-6 md:h-6 transition-all duration-300 ${
+                  hasNewNotification ? 'text-orange-600 scale-110 animate-bounce' : ''
+                }`} />
+                {/* Unread badge - only show if there are unread notifications */}
+                {unreadCount > 0 && (
+                  <span className={`absolute top-1 right-1 w-2 h-2 bg-orange-600 rounded-full border-2 border-white transition-all duration-300 ${
+                    hasNewNotification ? 'animate-ping scale-150' : ''
+                  }`}></span>
+                )}
+                {/* Pulsing ring effect for new notifications */}
+                {hasNewNotification && (
+                  <>
+                    <span className="absolute inset-0 rounded-lg bg-orange-400 opacity-30 animate-ping"></span>
+                    <span className="absolute inset-0 rounded-lg bg-orange-300 opacity-20 animate-pulse"></span>
+                  </>
+                )}
               </button>
               
               {/* Notifications Dropdown */}
               {showNotificationsModal && (
                 <NotificationsModal
                   isOpen={showNotificationsModal}
-                  onClose={() => setShowNotificationsModal(false)}
+                  onClose={() => {
+                    setShowNotificationsModal(false)
+                    // Recalculate unread count when modal closes (after a short delay to allow localStorage to update)
+                    setTimeout(() => {
+                      calculateUnreadCount()
+                    }, 100)
+                  }}
                   appId={currentApp.id}
                   apiKey={apiKey}
                   appSecretKey={appSecretKey}

@@ -217,7 +217,7 @@ export const HeroImagesSection = ({ appId }: HeroImagesSectionProps) => {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
       <h3 className="text-lg font-semibold text-gray-900 mb-2">Hero Images</h3>
       <p className="text-sm text-gray-600 mb-4">
         Upload images to display in the mobile app home screen slider. Max 10 images. Drag to reorder.
