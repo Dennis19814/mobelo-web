@@ -47,6 +47,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [categorySelectedAsset, setCategorySelectedAsset] = useState<UnifiedAssetData | undefined>()
   const categoryFileInputRef = useRef<HTMLInputElement>(null)
   const availableCategoriesRef = useRef<HTMLDivElement>(null)
+  const categoryErrorRef = useRef<HTMLDivElement>(null)
   const [categoryReplacementWarning, setCategoryReplacementWarning] = useState<string | null>(null)
   const [showCategoryReplacementWarning, setShowCategoryReplacementWarning] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
@@ -54,6 +55,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
   const [creatingCategory, setCreatingCategory] = useState(false)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
   const [productMedia, setProductMedia] = useState<ProductMedia[]>([])
   const [createdProductId, setCreatedProductId] = useState<number | null>(null)
   const [tempUploadedMedia, setTempUploadedMedia] = useState<File[]>([]) // Track temporary uploads
@@ -132,6 +134,24 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
     }
   }, [categoryReplacementWarning]);
 
+  // Auto-scroll to error when it appears
+  useEffect(() => {
+    if (categoryError && categoryErrorRef.current) {
+      categoryErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [categoryError])
+
+  // Auto-hide error after 5 seconds
+  useEffect(() => {
+    if (categoryError) {
+      const timer = setTimeout(() => {
+        setCategoryError(null)
+      }, 5000) // Hide after 5 seconds
+
+      return () => clearTimeout(timer)
+    }
+  }, [categoryError])
+
   // Category image/icon handlers
   const handleCategoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -194,11 +214,26 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || creatingCategory) return
 
+    // Clear previous error
+    setCategoryError(null)
+
+    // Check for duplicate category name (case-insensitive, same parent)
+    const trimmedName = newCategoryName.trim()
+    const duplicateCategory = categories.find(cat => 
+      cat.name.toLowerCase() === trimmedName.toLowerCase() && 
+      cat.parentId === selectedParentCategory
+    )
+
+    if (duplicateCategory) {
+      setCategoryError('A category with this name already exists in the same parent category.')
+      return
+    }
+
     setCreatingCategory(true)
     try {
       // Prepare category data based on display mode
       let categoryData: any = {
-        name: newCategoryName.trim(),
+        name: trimmedName,
         description: newCategoryDescription.trim() || undefined,
         parentId: selectedParentCategory || undefined,
         appId: appId,
@@ -233,6 +268,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
       if (response.ok && response.data) {
         const newCategoryId = response.data.id;
+        
+        // Clear error on success
+        setCategoryError(null)
 
         // Upload image if provided
         if (categoryImageFile && newCategoryId) {
@@ -279,9 +317,15 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         setTimeout(() => {
           setNewlyCreatedCategoryId(null)
         }, 3000)
+      } else {
+        // Handle API error response
+        const errorMessage = (response.data as any)?.message || (response.data as any)?.error || 'Failed to create category. A category with this name may already exist.'
+        setCategoryError(errorMessage)
       }
     } catch (error) {
       logger.error('Failed to add category:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create category. A category with this name may already exist.'
+      setCategoryError(errorMessage)
     } finally {
       setCreatingCategory(false)
     }
@@ -1850,6 +1894,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                           setCategorySelectedEmoji(null);
                           setCategoryReplacementWarning(null);
                           setShowCategoryReplacementWarning(false);
+                          setCategoryError(null);
                           if (categoryFileInputRef.current) {
                             categoryFileInputRef.current.value = '';
                           }
@@ -1863,6 +1908,22 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
 
                 {showAddCategory && (
                   <div className="p-4 space-y-4 bg-white">
+                    {/* Category Error Message */}
+                    {categoryError && (
+                      <div ref={categoryErrorRef} className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-start space-x-2">
+                        <AlertCircle className="w-4 h-4 text-orange-800 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-orange-800 flex-1">{categoryError}</p>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryError(null)}
+                          className="flex-shrink-0 p-0.5 hover:bg-orange-100 rounded transition-colors"
+                          aria-label="Close error"
+                        >
+                          <X className="w-3.5 h-3.5 text-orange-800" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Replacement Warning - Sticky at top */}
                     {showCategoryReplacementWarning && categoryReplacementWarning && (
                       <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 px-4 pt-4 animate-in slide-in-from-top duration-300 bg-white">
@@ -2101,6 +2162,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                           setCategorySelectedEmoji(null);
                           setCategoryReplacementWarning(null);
                           setShowCategoryReplacementWarning(false);
+                          setCategoryError(null);
                           if (categoryFileInputRef.current) {
                             categoryFileInputRef.current.value = '';
                           }
