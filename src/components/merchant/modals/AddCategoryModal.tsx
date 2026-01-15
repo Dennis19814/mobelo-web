@@ -270,6 +270,7 @@ export function AddCategoryModal({
                   errors.name ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter category name"
+                   maxLength={30}
               />
               {errors.name && (
                 <div className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">

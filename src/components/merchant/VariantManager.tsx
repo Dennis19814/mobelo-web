@@ -920,18 +920,20 @@ export default function VariantManager({ variants, onVariantsChange, onEditingSt
       )}
 
       {groupedVariants.length === 0 ? (
-        <div className="text-center py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 ">
-          <Layers className="w-10 h-5 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-500 mb-1.5 font-medium text-sm">No variants added yet</p>
-          <button
-            type="button"
-            onClick={() => setShowAddGroupForm(true)}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Create your first variant group
-          </button>
-        </div>
+  <div className="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
+  <Layers className="w-12 h-12 text-gray-300 mb-4" />
+  <p className="text-gray-500 mb-4 font-medium text-base">
+    No variants added yet
+  </p>
+  <button
+    type="button"
+    onClick={() => setShowAddGroupForm(true)}
+    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+  >
+    <Plus className="h-4 w-4 mr-2" />
+    Create your first variant group
+  </button>
+</div>
       ) : (
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           {groupedVariants.map((group) => {
