@@ -63,6 +63,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
   const [hasUnsavedVariant, setHasUnsavedVariant] = useState(false)
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null)
   const [triggerVariantShake, setTriggerVariantShake] = useState(false)
+  const [tagInput, setTagInput] = useState('')
 
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
@@ -441,6 +442,17 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
         return newErrors
       })
     }
+  }
+
+  const addTag = () => {
+    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+      handleInputChange('tags', [...(formData.tags || []), tagInput.trim()])
+      setTagInput('')
+    }
+  }
+
+  const removeTag = (tag: string) => {
+    handleInputChange('tags', formData.tags?.filter(t => t !== tag) || [])
   }
 
   const validateStep = (stepId: string): boolean => {
@@ -1024,25 +1036,26 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           {/* Basic Info Step */}
           {currentStepId === 'basic' && (
             <div className="space-y-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
-                    errors.name ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter product name"
-                />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
+          
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                      errors.name ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter product name"
+                  />
+                  {errors.name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Brand
@@ -1060,6 +1073,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     placeholder="Select or create brand"
                     disabled={loading}
                     onValidationChange={setIsBrandValid}
+                    className="!py-1.5"
                   />
                 </div>
 
@@ -1074,6 +1088,19 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     placeholder="Brief product description"
                     maxLength={500}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    SKU
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="Stock keeping unit"
                   />
                 </div>
               </div>
@@ -1091,20 +1118,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SKU
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sku}
-                    onChange={(e) => handleInputChange('sku', e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Stock keeping unit"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Barcode
@@ -1117,44 +1131,97 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     placeholder="Product barcode"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Options
+                  </label>
+                  <div className="flex flex-wrap items-center gap-4 pt-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.featured}
+                        onChange={(e) => handleInputChange('featured', e.target.checked)}
+                        className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-1.5 text-sm text-gray-700">Featured Product</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.isDigital}
+                        onChange={(e) => {
+                          handleInputChange('isDigital', e.target.checked)
+                          // Digital products don't require shipping
+                          if (e.target.checked) {
+                            handleInputChange('requiresShipping', false)
+                          }
+                        }}
+                        className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-1.5 text-sm text-gray-700">Digital Product</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.isNew || false}
+                        onChange={(e) => handleInputChange('isNew', e.target.checked)}
+                        className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-1.5 text-sm text-gray-700">New Product</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.featured}
-                    onChange={(e) => handleInputChange('featured', e.target.checked)}
-                    className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-1.5 text-sm text-gray-700">Featured Product</span>
-                </label>
 
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.isDigital}
-                    onChange={(e) => {
-                      handleInputChange('isDigital', e.target.checked)
-                      // Digital products don't require shipping
-                      if (e.target.checked) {
-                        handleInputChange('requiresShipping', false)
-                      }
-                    }}
-                    className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-1.5 text-sm text-gray-700">Digital Product</span>
-                </label>
+      {/*  */}
 
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.isNew || false}
-                    onChange={(e) => handleInputChange('isNew', e.target.checked)}
-                    className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-1.5 text-sm text-gray-700">New Product</span>
+                   <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Tags
                 </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                    maxLength={30}
+                    className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="Enter tag name"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    disabled={!tagInput.trim()}
+                    className="px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {formData.tags && formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="ml-2 text-gray-500 hover:text-red-600 transition-colors"
+                          title="Remove tag"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2168,21 +2235,6 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Tags Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Tags
-                </label>
-                <input
-                  type="text"
-                  value={formData.tags?.join(', ')}
-                  onChange={(e) => handleInputChange('tags', e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                  placeholder="Enter tags separated by commas"
-                />
-                <p className="mt-1 text-xs text-gray-500">Separate tags with commas</p>
               </div>
             </div>
           )}
