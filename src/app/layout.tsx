@@ -110,7 +110,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <head>
         {/* Resource hints for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -410,7 +410,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={cn(manrope.variable, inter.variable, 'font-sans antialiased')} style={{ fontFamily: 'var(--font-manrope), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <body className={cn(manrope.variable, inter.variable, 'font-sans antialiased overflow-x-hidden')} style={{ fontFamily: 'var(--font-manrope), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
         {/* Global error handler for browser extension errors */}
         <Script id="error-handler" strategy="beforeInteractive">
           {`

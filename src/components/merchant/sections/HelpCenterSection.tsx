@@ -61,7 +61,7 @@ export default function HelpCenterSection({ onNavigate }: HelpCenterSectionProps
   }
 
   return (
-    <div className="max-w-7xl mx-auto overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="max-w-7xl mx-auto overflow-x-hidden min-w-0">
       {/* Hero Section */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">

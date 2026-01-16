@@ -105,7 +105,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
   }
 
   return (
-    <div className="space-y-6 overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="space-y-6 overflow-x-hidden min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

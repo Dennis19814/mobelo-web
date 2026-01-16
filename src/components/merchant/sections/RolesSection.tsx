@@ -120,7 +120,7 @@ export function RolesSection() {
   }
 
   return (
-    <div className="p-6 overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="p-6 overflow-x-hidden min-w-0">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-gray-900">Team Roles & Permissions</h2>

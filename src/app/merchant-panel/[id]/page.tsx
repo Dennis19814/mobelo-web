@@ -603,7 +603,7 @@ export default function MerchantPanel() {
 
   return (
     <>
-      <div className="merchant-panel-compact min-h-screen bg-gray-50">
+      <div className="merchant-panel-compact min-h-screen bg-gray-50 overflow-x-hidden">
         {/* Header - fixed at top */}
         <MerchantHeader
           currentApp={currentApp}
@@ -615,7 +615,7 @@ export default function MerchantPanel() {
         />
 
         {/* Main Layout Container - responsive flex */}
-        <div className="flex pt-20 md:pt-24">
+        <div className="flex pt-16 md:pt-20 overflow-x-hidden w-full max-w-full">
           {/* Sidebar - fixed position, responsive width */}
           <MerchantSidebar
             activeSection={activeSection}
@@ -628,8 +628,8 @@ export default function MerchantPanel() {
           />
 
           {/* Main Content Area - responsive margin and padding */}
-          <main className="flex-1 lg:ml-64 min-h-[calc(100vh-4rem)]">
-            <div className="px-3 sm:px-4 md:px-4 lg:px-5 py-3 md:py-4 lg:py-5 max-w-7xl mx-auto">
+          <main className="flex-1 lg:ml-64 min-h-[calc(100vh-4rem)] overflow-x-hidden overflow-y-visible w-full max-w-full min-w-0">
+            <div className="px-3 sm:px-4 md:px-4 lg:px-5 py-2 md:py-3 max-w-7xl mx-auto w-full overflow-x-hidden overflow-y-visible min-w-0">
               <Suspense fallback={
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-orange-600" />

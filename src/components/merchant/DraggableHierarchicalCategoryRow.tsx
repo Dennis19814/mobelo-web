@@ -157,9 +157,9 @@ export default function DraggableHierarchicalCategoryRow({
         </div>
       </td>
 
-      {/* Products Count Column - Hidden on tablets and below */}
-      <td className="hidden lg:table-cell px-4 lg:px-6 py-4 text-center">
-        <span className="text-sm text-gray-900">{category.productCount || 0}</span>
+      {/* Products Count Column */}
+      <td className="px-4 lg:px-6 py-4 text-center w-20 md:w-24">
+        <span className="text-sm text-gray-900 whitespace-nowrap">{category.productCount ?? 0}</span>
       </td>
 
       {/* Status Column - Hidden on mobile */}
@@ -187,9 +187,9 @@ export default function DraggableHierarchicalCategoryRow({
           </button>
           <button
             onClick={() => onDelete(category)}
-            disabled={deleteLoading === category.id || category.hasChildren}
+            disabled={deleteLoading === category.id}
             className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-1.5 rounded hover:bg-red-50"
-            title={category.hasChildren ? "Cannot delete category with children" : "Delete category"}
+            title="Delete category"
           >
             {deleteLoading === category.id ? (
               <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
