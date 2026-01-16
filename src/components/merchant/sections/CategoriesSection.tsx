@@ -1,7 +1,7 @@
 'use client';
 import { logger } from '@/lib/logger'
 
-import { useState, useMemo, useCallback, memo, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, useEffect, memo, lazy, Suspense } from 'react';
 import { useMerchantAuth } from '@/hooks';
 import { apiService } from '@/lib/api-service';
 import {
@@ -49,6 +49,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [reorderLoading, setReorderLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [productCounts, setProductCounts] = useState<Map<number, number>>(new Map());
 
   const {
     categories,
@@ -60,6 +61,69 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     reorderCategories,
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
+
+  // Flatten nested categories structure (if API returns nested with children)
+  const flattenedCategories = useMemo((): Category[] => {
+    const flatten = (cats: Category[]): Category[] => {
+      const result: Category[] = [];
+      const processCategory = (cat: Category) => {
+        // Add the category itself (without children property)
+        const { children, ...categoryWithoutChildren } = cat;
+        result.push(categoryWithoutChildren as Category);
+        // Recursively process children if they exist
+        if (children && children.length > 0) {
+          children.forEach(child => processCategory(child));
+        }
+      };
+      cats.forEach(cat => processCategory(cat));
+      return result;
+    };
+    return flatten(categories);
+  }, [categories]);
+
+  // Fetch products and calculate product counts per category
+  useEffect(() => {
+    const fetchProductCounts = async () => {
+      try {
+        const response = await apiService.getProducts({ appId, limit: 10000 }); // Fetch all products
+        if (response.ok && response.data) {
+          const products = response.data.data || response.data;
+          if (Array.isArray(products)) {
+            // Count products per category
+            const counts = new Map<number, number>();
+            
+            products.forEach((product: any) => {
+              // Products can have multiple categories via categoryIds array or categories array
+              const categoryIds: number[] = [];
+              
+              if (product.categoryIds && Array.isArray(product.categoryIds)) {
+                categoryIds.push(...product.categoryIds);
+              } else if (product.categories && Array.isArray(product.categories)) {
+                product.categories.forEach((cat: any) => {
+                  if (cat.id) categoryIds.push(cat.id);
+                });
+              }
+              
+              categoryIds.forEach(categoryId => {
+                counts.set(categoryId, (counts.get(categoryId) || 0) + 1);
+              });
+            });
+            
+            setProductCounts(counts);
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to fetch product counts:', { error: error instanceof Error ? error.message : String(error) });
+      }
+    };
+
+    if (appId && flattenedCategories.length > 0) {
+      fetchProductCounts();
+    }
+  }, [appId, flattenedCategories.length]);
+
+  // Categories start collapsed - user can expand them manually
+  // Removed auto-expand functionality
 
 
   // Drag and drop sensors
@@ -76,6 +140,31 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
   // Transform categories to hierarchical structure with display order
   const categoriesWithHierarchy = useMemo((): CategoryWithHierarchy[] => {
+    // Helper to recursively get all descendant category IDs
+    const getAllDescendantIds = (categoryId: number, allCats: Category[]): number[] => {
+      const children = allCats.filter(c => c.parentId === categoryId);
+      const descendantIds = children.map(c => c.id);
+      // Recursively get descendants of each child
+      children.forEach(child => {
+        descendantIds.push(...getAllDescendantIds(child.id, allCats));
+      });
+      return descendantIds;
+    };
+
+    // Calculate total product count for a category including all its descendants
+    const getTotalProductCount = (category: Category, allCats: Category[]): number => {
+      // Use the actual product count from our fetched data, or fall back to API's productCount
+      const directCount = productCounts.get(category.id) ?? category.productCount ?? 0;
+      const descendantIds = getAllDescendantIds(category.id, allCats);
+      const descendantCount = descendantIds.reduce((sum, id) => {
+        // Use the actual product count from our fetched data, or fall back to API's productCount
+        const desc = allCats.find(c => c.id === id);
+        const descCount = desc ? (productCounts.get(desc.id) ?? desc.productCount ?? 0) : 0;
+        return sum + descCount;
+      }, 0);
+      return directCount + descendantCount;
+    };
+
     const buildHierarchy = (cats: Category[], parentId?: number, level = 0, parentPath = ''): CategoryWithHierarchy[] => {
       // Handle both null and undefined for root categories
       const filtered = cats
@@ -97,6 +186,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           ? `${index + 1}`
           : `${parentPath}.${index + 1}`;
 
+        // Calculate total product count including all descendants
+        const totalProductCount = getTotalProductCount(cat, flattenedCategories);
+
         const categoryWithHierarchy: CategoryWithHierarchy = {
           ...cat,
           level,
@@ -105,6 +197,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           siblingPosition: index,
           hasChildren,
           isExpanded: expandedCategories.has(cat.id),
+          productCount: totalProductCount, // Total including all descendants
         };
 
         const children = hasChildren && expandedCategories.has(cat.id)
@@ -115,8 +208,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       }).flat();
     };
 
-    return buildHierarchy(categories);
-  }, [categories, expandedCategories]);
+    return buildHierarchy(flattenedCategories);
+  }, [flattenedCategories, expandedCategories, productCounts]);
 
   // Filter categories based on search
   const filteredCategories = useMemo(() => {
@@ -273,15 +366,15 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   }, []);
 
   // Get categories that can be parents (exclude the current category being edited)
-  const parentCategories = useMemo(() => categories.filter(cat =>
+  const parentCategories = useMemo(() => flattenedCategories.filter(cat =>
     cat.id !== selectedCategory?.id &&
     cat.parentId !== selectedCategory?.id
-  ), [categories, selectedCategory?.id]);
+  ), [flattenedCategories, selectedCategory?.id]);
 
   // Check if a category has child categories
   const hasChildCategories = useCallback((categoryId: number) =>
-    categories.some(cat => cat.parentId === categoryId),
-    [categories]
+    flattenedCategories.some(cat => cat.parentId === categoryId),
+    [flattenedCategories]
   );
 
   // Check if a category has products (assuming productCount is available)
@@ -381,30 +474,30 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           >
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-2 md:px-4 py-3 w-8 md:w-12"></th>
-                    <th className="hidden lg:table-cell px-2 py-3 text-center text-xs font-medium text-gray-500">
+                    <th className="hidden lg:table-cell px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Display Order
                     </th>
-                    <th className="px-2 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="px-2 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="hidden lg:table-cell px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="hidden lg:table-cell px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Products
                     </th>
-                    <th className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-2 md:px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500">
+                    <th className="px-2 md:px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200">
                   <SortableContext
                     items={filteredCategories.map(c => c.id)}
                     strategy={verticalListSortingStrategy}
