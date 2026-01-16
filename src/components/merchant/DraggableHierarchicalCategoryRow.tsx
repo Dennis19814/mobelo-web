@@ -68,17 +68,18 @@ export default function DraggableHierarchicalCategoryRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`hover:bg-gray-50 ${isDragging ? 'bg-orange-50 shadow-lg z-50' : ''} ${
-        indentationLevel > 0 ? 'border-l-2 border-orange-200' : ''
+      className={`group hover:bg-gray-50/50 transition-colors ${isDragging ? 'bg-orange-50 shadow-lg z-50' : ''} ${
+        indentationLevel > 0 ? 'relative' : ''
       }`}
     >
+
       {/* Drag Handle Column */}
-      <td className="px-2 md:px-4 py-3 w-8 md:w-12">
+      <td className="px-2 md:px-4 py-4 w-8 md:w-12">
         {!isDragDisabled ? (
           <button
             {...attributes}
             {...listeners}
-            className="cursor-move hover:text-gray-700 touch-none"
+            className="cursor-move hover:text-gray-700 touch-none opacity-0 group-hover:opacity-100 transition-opacity"
             title="Drag to reorder within same level"
           >
             <GripVertical className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
@@ -88,22 +89,33 @@ export default function DraggableHierarchicalCategoryRow({
         )}
       </td>
 
-      {/* Hierarchical Display Order Column - Hidden on mobile/tablet */}
-      <td className="hidden lg:table-cell px-2 py-3 text-center text-sm text-gray-600 font-mono">
-        {displayOrder}
+      {/* Hierarchical Display Order Column - Only show whole numbers (parent categories) */}
+      <td className="hidden lg:table-cell px-2 py-4 text-center">
+        {!displayOrder.includes('.') && (
+          <span className="text-sm text-gray-600 font-mono">
+            {displayOrder}
+          </span>
+        )}
       </td>
 
       {/* Category Info Column with Hierarchy */}
-      <td className="px-2 md:px-4 lg:px-6 py-4">
+      <td className="px-2 md:px-4 lg:px-6 py-4 relative">
+        {/* Visual Hierarchy Connector for Subcategories - Thin light orange vertical line */}
+        {indentationLevel > 0 && (
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-0.5 bg-orange-200 pointer-events-none"
+            style={{ left: `${indentationPx - 12}px` }}
+          />
+        )}
         <div
-          className="flex items-center"
+          className="flex items-center gap-2"
           style={{ paddingLeft: `${indentationPx}px` }}
         >
           {/* Hierarchy Toggle for Categories with Children */}
           {showHierarchy && category.hasChildren && onToggleExpand && (
             <button
               onClick={() => onToggleExpand(category)}
-              className="mr-2 hover:bg-orange-50 rounded transition-colors border border-gray-200 hover:border-orange-300 flex items-center justify-center h-7 w-7 flex-shrink-0"
+              className="flex-shrink-0 hover:bg-orange-50 rounded transition-colors flex items-center justify-center h-6 w-6"
               title={category.isExpanded ? 'Collapse children' : 'Expand children'}
             >
               {category.isExpanded ? (
@@ -114,8 +126,13 @@ export default function DraggableHierarchicalCategoryRow({
             </button>
           )}
 
-          {/* Category Icon/Emoji Display */}
-          <div className="mr-2 flex-shrink-0 flex items-center justify-center overflow-hidden">
+          {/* Spacer when no toggle button */}
+          {(!showHierarchy || !category.hasChildren || !onToggleExpand) && (
+            <div className="w-6" />
+          )}
+
+          {/* Category Icon/Emoji Display - Light grey rounded square border */}
+          <div className="flex-shrink-0 flex items-center justify-center overflow-hidden rounded border border-gray-200 bg-gray-50 p-1.5">
             <UnifiedCategoryDisplay
               category={category}
               size={24}
@@ -123,25 +140,11 @@ export default function DraggableHierarchicalCategoryRow({
             />
           </div>
 
-          {/* Category Name and Path */}
+          {/* Category Name */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center">
-              <div className="text-sm font-medium text-gray-900 truncate">
-                {category.name}
-              </div>
-              {/* Level Indicator Badge */}
-              {showHierarchy && category.level > 0 && (
-                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                  L{category.level}
-                </span>
-              )}
+            <div className="text-sm font-semibold text-gray-900 truncate">
+              {category.name}
             </div>
-            {/* Category Path Breadcrumb */}
-            {showHierarchy && category.path && category.level > 0 && (
-              <div className="text-xs text-gray-500 truncate mt-1">
-                {category.path}
-              </div>
-            )}
           </div>
         </div>
       </td>
@@ -154,23 +157,19 @@ export default function DraggableHierarchicalCategoryRow({
       </td>
 
       {/* Products Count Column - Hidden on tablets and below */}
-      <td className="hidden lg:table-cell px-4 lg:px-6 py-4 text-sm text-gray-900">
-        <div className="flex items-center">
-          <span>{category.productCount || 0}</span>
-          {category.hasChildren && (
-            <span className="ml-1 text-xs text-gray-500">
-              (+children)
-            </span>
-          )}
-        </div>
+      <td className="hidden lg:table-cell px-4 lg:px-6 py-4 text-center">
+        <span className="text-sm text-gray-900">{category.productCount || 0}</span>
       </td>
 
       {/* Status Column - Hidden on mobile */}
       <td className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-4">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full
           ${category.isActive
             ? 'bg-green-100 text-green-800'
             : 'bg-gray-100 text-gray-800'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            category.isActive ? 'bg-green-600' : 'bg-gray-400'
+          }`}></span>
           {category.isActive ? 'Active' : 'Inactive'}
         </span>
       </td>
