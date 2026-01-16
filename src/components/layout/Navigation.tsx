@@ -190,6 +190,21 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3 md:gap-4">
             <div className="flex items-center space-x-3 md:space-x-4 lg:space-x-6 min-w-0 flex-1">
+              {/* Mobile menu button - moved to left side */}
+              <button
+                onClick={toggleMobileMenu}
+                className={`md:hidden flex items-center justify-center transition-all duration-200 rounded-[14px] shrink-0 ${
+                  isInTechSection 
+                    ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                    : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                }`}
+                style={{ width: '2.5rem', height: '2.5rem' }}
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isMobileMenuOpen}
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+              
               <Link
                 href="/"
                 aria-label="Go to home"
@@ -365,20 +380,6 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                   </button>
                 </div>
               )}
-              
-              {/* Mobile menu button - responsive */}
-              <button
-                onClick={toggleMobileMenu}
-                className={`md:hidden p-2 transition-all duration-200 rounded-[14px] ${
-                  isInTechSection 
-                    ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
-                    : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
-                }`}
-                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-                aria-expanded={isMobileMenuOpen}
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
-              </button>
             </div>
           </div>
         </div>

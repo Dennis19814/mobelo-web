@@ -455,7 +455,7 @@ export default function HomePage() {
         </section>
 
         {/* Why Choose */}
-        <section id="features" className="bg-white min-h-screen flex items-center py-12 md:py-16" aria-labelledby="features-heading">
+        <section id="features" className="bg-white min-h-screen flex items-center pt-6 md:pt-8 pb-12 md:pb-16 lg:pb-20" aria-labelledby="features-heading">
           <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
@@ -659,21 +659,7 @@ export default function HomePage() {
                       <h3 className="text-xl font-bold text-slate-900 transition-colors">{tpl.name}</h3>
                       <p className="text-sm text-slate-600 leading-relaxed">{tpl.desc}</p>
                       
-                      {/* Learn more link */}
-                      <div className="pt-2">
-                        <button className={`text-sm font-semibold flex items-center gap-1 group/btn transition-colors`}
-                                style={{
-                                  color: tpl.color.includes('ec4899') ? '#ec4899' :
-                                         tpl.color.includes('10b981') ? '#10b981' :
-                                         tpl.color.includes('8b5cf6') ? '#8b5cf6' :
-                                         tpl.color.includes('3b82f6') ? '#3b82f6' :
-                                         tpl.color.includes('f97316') ? '#f97316' :
-                                         '#64748b'
-                                }}>
-                          <span>Explore Template</span>
-                          <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
-                        </button>
-                      </div>
+                      
                     </div>
                   </div>
                 )
