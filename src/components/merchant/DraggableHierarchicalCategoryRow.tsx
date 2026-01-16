@@ -140,19 +140,20 @@ export default function DraggableHierarchicalCategoryRow({
             />
           </div>
 
-          {/* Category Name */}
-          <div className="flex-1 min-w-0">
+          {/* Category Name and Description */}
+          <div className="flex-1 min-w-0 overflow-hidden">
             <div className="text-sm font-semibold text-gray-900 truncate">
               {category.name}
             </div>
+            {/* Show description below name - truncated with ellipsis */}
+            {category.description && (
+              <div className="text-xs text-gray-500 mt-0.5 truncate" title={category.description}>
+                {category.description.length > 15 
+                  ? `${category.description.substring(0, 15)}...` 
+                  : category.description}
+              </div>
+            )}
           </div>
-        </div>
-      </td>
-
-      {/* Description Column - Hidden on tablets and below */}
-      <td className="hidden xl:table-cell px-6 py-4 text-sm text-gray-600 max-w-xs">
-        <div className="truncate" title={category.description || ''}>
-          {category.description || '-'}
         </div>
       </td>
 
