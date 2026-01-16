@@ -228,7 +228,7 @@ export default function TeamSection({ appId }: TeamSectionProps) {
   };
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

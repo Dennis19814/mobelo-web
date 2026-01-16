@@ -63,7 +63,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   } = useCategories({ appId, headers: headers || undefined });
 
   // Flatten nested categories structure (if API returns nested with children)
-  const flattenedCategories = useMemo((): Category[] => {
+  const flattenedCategoriesBase = useMemo((): Category[] => {
     const flatten = (cats: Category[]): Category[] => {
       const result: Category[] = [];
       const processCategory = (cat: Category) => {
@@ -80,6 +80,82 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     };
     return flatten(categories);
   }, [categories]);
+
+  // Fetch products to calculate product counts per category
+  const [productCounts, setProductCounts] = useState<Record<number, number>>({});
+  const [isLoadingProductCounts, setIsLoadingProductCounts] = useState(false);
+
+  useEffect(() => {
+    const fetchProductCounts = async () => {
+      if (!headers || flattenedCategoriesBase.length === 0) return;
+      
+      setIsLoadingProductCounts(true);
+      try {
+        // Initialize counts for all categories
+        const counts: Record<number, number> = {};
+        flattenedCategoriesBase.forEach(cat => {
+          counts[cat.id] = cat.productCount ?? 0; // Use API value as fallback
+        });
+        
+        // Fetch all products with a high limit to get accurate counts
+        const response = await apiService.getProducts({ limit: 10000 });
+        
+        if (response.ok && response.data) {
+          // Handle different response structures
+          let products: any[] = [];
+          if (Array.isArray(response.data)) {
+            products = response.data;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            products = response.data.data;
+          } else if (response.data.products && Array.isArray(response.data.products)) {
+            products = response.data.products;
+          }
+          
+          // Count products per category
+          products.forEach((product: any) => {
+            if (product.categories && Array.isArray(product.categories)) {
+              product.categories.forEach((cat: any) => {
+                const categoryId = typeof cat === 'object' && cat !== null ? (cat.id || cat.categoryId) : cat;
+                if (categoryId && typeof categoryId === 'number' && counts.hasOwnProperty(categoryId)) {
+                  counts[categoryId]++;
+                }
+              });
+            }
+            // Also check for categoryIds array (alternative format)
+            if (product.categoryIds && Array.isArray(product.categoryIds)) {
+              product.categoryIds.forEach((categoryId: number) => {
+                if (categoryId && counts.hasOwnProperty(categoryId)) {
+                  counts[categoryId]++;
+                }
+              });
+            }
+          });
+          
+          setProductCounts(counts);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch product counts', { error: err });
+        // On error, keep the counts from API (if any)
+        const fallbackCounts: Record<number, number> = {};
+        flattenedCategoriesBase.forEach(cat => {
+          fallbackCounts[cat.id] = cat.productCount ?? 0;
+        });
+        setProductCounts(fallbackCounts);
+      } finally {
+        setIsLoadingProductCounts(false);
+      }
+    };
+
+    fetchProductCounts();
+  }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
+
+  // Enhance flattened categories with product counts
+  const flattenedCategories = useMemo((): Category[] => {
+    return flattenedCategoriesBase.map(cat => ({
+      ...cat,
+      productCount: productCounts[cat.id] !== undefined ? productCounts[cat.id] : (cat.productCount ?? 0),
+    }));
+  }, [flattenedCategoriesBase, productCounts]);
 
   // Auto-expand all categories with children when categories are first loaded
   useEffect(() => {
@@ -328,16 +404,16 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   );
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
-      <div className="mb-8">
+    <div className="w-full max-w-full overflow-x-hidden min-w-0">
+      <div className="mb-8 w-full max-w-full min-w-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Categories</h1>
             <p className="text-gray-600">Organize your products into categories</p>
           </div>
           <button
             onClick={handleAddCategory}
-            className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap text-sm md:text-base"
+            className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap text-sm md:text-base shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Category</span>
@@ -347,10 +423,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
       {/* Error State */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 w-full max-w-full min-w-0">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <div>
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-red-800">Failed to load categories</p>
               <p className="text-sm text-red-700 mt-1">{error}</p>
               <button
@@ -365,9 +441,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       )}
 
       {/* Categories Table with Hierarchical Drag & Drop */}
-      <div className="bg-white rounded-lg shadow-sm -mt-4">
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative">
+      <div className="bg-white rounded-lg shadow-sm -mt-4 w-full max-w-full overflow-hidden min-w-0">
+        <div className="p-4 border-b border-gray-200 min-w-0">
+          <div className="relative min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
@@ -376,7 +452,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
               onChange={(e) => {
                 setSearchQuery(e.target.value);
               }}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 min-w-0"
             />
           </div>
           {searchQuery && (
@@ -416,8 +492,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="w-full overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b-2 border-gray-200">
                   <tr>
                     <th className="px-2 md:px-4 py-4 w-8 md:w-12"></th>
@@ -427,7 +503,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
                     <th className="px-2 md:px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="hidden lg:table-cell px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-20 md:w-24">
                       Products
                     </th>
                     <th className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">

@@ -348,7 +348,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
   }, [])
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

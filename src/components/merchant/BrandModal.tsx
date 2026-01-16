@@ -235,35 +235,33 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col my-4 relative">
+        {/* Header */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-            <div className="p-1.5 bg-blue-100 rounded-lg">
-              <Award className="w-3.5 h-3.5 text-orange-600" />
+              <div className="p-1.5 bg-blue-100 rounded-lg">
+                <Award className="w-3.5 h-3.5 text-orange-600" />
+              </div>
+              <h2 className="text-base font-semibold text-gray-900">
+                {brand ? 'Edit Brand' : 'Add Brand'}
+              </h2>
             </div>
-            <h2 className="text-base font-semibold text-gray-900">
-                            {brand ? 'Edit Brand' : 'Create New Brand'}
-
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
-          >
-            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-          </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+            >
+              <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+            </button>
           </div>
         </div>
 
-
-              {/* {brand ? 'Edit Brand' : 'Create New Brand'} */}
-
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        {/* Form - Scrollable */}
+        <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
           {errors.submit && (
-            <div className="bg-red-50 p-3 rounded-lg">
-              <p className="text-sm text-red-800">{errors.submit}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg shadow-sm px-3 py-2">
+              <p className="text-xs text-red-800">{errors.submit}</p>
             </div>
           )}
 
@@ -276,51 +274,54 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className={`w-full px-3 py-1.5 text-sm border rounded-lg text-gray-900 bg-white
-                ${errors.name ? 'border-red-500' : 'border-gray-300'}
-                focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.name ? 'border-red-300' : 'border-gray-300'
+              }`}
               placeholder="Enter brand name"
+              maxLength={30}
             />
             {errors.name && (
-              <p className="mt-1 text-xs text-red-600">{errors.name}</p>
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
+                <span>{errors.name}</span>
+              </div>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              Description (Optional)
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleInputChange}
               rows={2}
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter brand description"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Website
+              Website (Optional)
             </label>
             <input
               type="url"
               name="website"
               value={formData.website}
               onChange={handleInputChange}
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="https://example.com"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Logo
+              Logo (Optional)
             </label>
-            <div className="flex items-start space-x-3">
-              {logoPreview && (
-                <div className="relative w-20 h-20 border border-gray-300 rounded-lg overflow-hidden flex-shrink-0">
+            {logoPreview ? (
+              <div className="space-y-2">
+                <div className="relative w-20 h-20 border border-gray-300 rounded-lg overflow-hidden">
                   <Image
                     src={logoPreview}
                     alt="Brand logo"
@@ -329,9 +330,7 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
                     unoptimized={true}
                   />
                 </div>
-              )}
-              <div className="flex-1 flex flex-col space-y-2">
-                <label className="cursor-pointer">
+                <label className="cursor-pointer inline-block">
                   <input
                     type="file"
                     accept="image/*"
@@ -340,16 +339,29 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
                   />
                   <div className="flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     <Upload className="h-4 w-4 mr-2" />
-                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                    Change Logo
                   </div>
                 </label>
                 {logoFile && (
-                  <span className="text-xs text-gray-600 truncate">
+                  <p className="text-xs text-gray-600 truncate">
                     {logoFile.name}
-                  </span>
+                  </p>
                 )}
               </div>
-            </div>
+            ) : (
+              <label className="cursor-pointer block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="hidden"
+                />
+                <div className="border-2 border-dashed border-orange-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors">
+                  <Upload className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Click to upload • Max 5MB</p>
+                </div>
+              </label>
+            )}
           </div>
 
           <div className="flex items-center">
@@ -362,26 +374,33 @@ export default function BrandModal({ isOpen, onClose, onSave, brand, appId, apiK
               className="h-4 w-4 text-orange-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700">
-              Active
+              Active brand (visible to customers)
             </label>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center"
+              className="px-4 py-2 text-sm font-medium bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-              {brand ? 'Update Brand' : 'Create Brand'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{brand ? 'Updating...' : 'Creating...'}</span>
+                </>
+              ) : (
+                <span>{brand ? 'Update Brand' : 'Create Brand'}</span>
+              )}
             </button>
           </div>
         </form>
