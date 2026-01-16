@@ -57,6 +57,14 @@ interface ClaudeOutputEvent {
   timestamp: Date;
 }
 
+interface ClaudeCodeProgressEvent {
+  sessionId: string;
+  appId: number;
+  type: 'info' | 'success' | 'error';
+  message: string;
+  timestamp: string;
+}
+
 interface UseJobSocketReturn {
   socket: Socket | null;
   isConnected: boolean;
@@ -66,6 +74,7 @@ interface UseJobSocketReturn {
   appRestartedEvent: { appId: number; timestamp: string } | null;
   appReloadedEvent: { appId: number; timestamp: string } | null;
   claudeOutputEvent: ClaudeOutputEvent | null;
+  claudeCodeProgressEvent: ClaudeCodeProgressEvent | null;
 }
 
 /**
@@ -98,6 +107,7 @@ export function useJobSocket(userId: number | null): UseJobSocketReturn {
   const [appRestartedEvent, setAppRestartedEvent] = useState<{ appId: number; timestamp: string } | null>(null);
   const [appReloadedEvent, setAppReloadedEvent] = useState<{ appId: number; timestamp: string } | null>(null);
   const [claudeOutputEvent, setClaudeOutputEvent] = useState<ClaudeOutputEvent | null>(null);
+  const [claudeCodeProgressEvent, setClaudeCodeProgressEvent] = useState<ClaudeCodeProgressEvent | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // Memoize event handlers to prevent recreation on every render
@@ -179,6 +189,11 @@ export function useJobSocket(userId: number | null): UseJobSocketReturn {
     setClaudeOutputEvent(event);
   }, []);
 
+  const handleClaudeCodeProgress = useCallback((event: ClaudeCodeProgressEvent) => {
+    logger.debug('[useJobSocket] Claude code progress:', { event });
+    setClaudeCodeProgressEvent(event);
+  }, []);
+
   const handleAppReloaded = useCallback((event: { appId: number; message: string; timestamp: string }) => {
     logger.debug('[useJobSocket] App reloaded:', { event });
     setAppReloadedEvent({ appId: event.appId, timestamp: event.timestamp });
@@ -241,6 +256,7 @@ export function useJobSocket(userId: number | null): UseJobSocketReturn {
     socket.on('app-restarted', handleAppRestarted);
     socket.on('app-reloaded', handleAppReloaded);
     socket.on('claude-output', handleClaudeOutput);
+    socket.on('claude-code-progress', handleClaudeCodeProgress);
 
     // Cleanup on unmount
     return () => {
@@ -255,9 +271,10 @@ export function useJobSocket(userId: number | null): UseJobSocketReturn {
       socket.off('app-restarted', handleAppRestarted);
       socket.off('app-reloaded', handleAppReloaded);
       socket.off('claude-output', handleClaudeOutput);
+      socket.off('claude-code-progress', handleClaudeCodeProgress);
       socket.disconnect();
     };
-  }, [userId, handleConnect, handleDisconnect, handleConnectError, handleJobCompleted, handleJobFailed, handleJobProgress, handleAppTimeout, handleAppRestarted, handleAppReloaded, handleClaudeOutput]);
+  }, [userId, handleConnect, handleDisconnect, handleConnectError, handleJobCompleted, handleJobFailed, handleJobProgress, handleAppTimeout, handleAppRestarted, handleAppReloaded, handleClaudeOutput, handleClaudeCodeProgress]);
 
-  return { socket: socketRef.current, isConnected, lastEvent, expoInfo, appTimeoutEvent, appRestartedEvent, appReloadedEvent, claudeOutputEvent };
+  return { socket: socketRef.current, isConnected, lastEvent, expoInfo, appTimeoutEvent, appRestartedEvent, appReloadedEvent, claudeOutputEvent, claudeCodeProgressEvent };
 }

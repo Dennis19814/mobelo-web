@@ -300,7 +300,7 @@ export default function MyApps() {
 
   return (
     <>
-    <div className="bg-white">
+    <div className="bg-white min-h-screen flex flex-col">
       {/* Simplified Navigation Header */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white/50 backdrop-blur-md border-b border-orange-100/50 px-4 md:px-6 py-1.5 md:py-2 shadow-sm">
         <div className="max-w-7xl mx-auto">
@@ -429,9 +429,9 @@ export default function MyApps() {
       </nav>
       
       {/* Main Content */}
-      <main className="pt-20 md:pt-24">
+      <main className="pt-20 md:pt-24 flex-1">
         <div className="bg-white py-6 px-4">
-          <div className="max-w-6xl mx-auto pb-16">
+          <div className="max-w-6xl mx-auto">
 
             {/* Stats Section - moved above Apps Grid */}
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
@@ -570,12 +570,12 @@ export default function MyApps() {
                 </div>
               )}
             </div>
-            
-            {/* Footer */}
-            <Footer />
           </div>
         </div>
       </main>
+      
+      {/* Footer */}
+      <Footer />
     </div>
 
     {/* Logout Confirmation Modal */}
