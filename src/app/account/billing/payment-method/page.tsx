@@ -121,7 +121,7 @@ export default function UpdatePaymentMethodPage() {
             </div>
           </div>
         ) : (
-          <section className="py-16 px-6">
+          <section className="pt-20 md:pt-28 lg:pt-24 pb-16 px-6">
             <div className="max-w-2xl mx-auto">
               <div className="flex items-center gap-3 mb-2">
                 <CreditCard className="w-6 h-6 text-orange-600" />

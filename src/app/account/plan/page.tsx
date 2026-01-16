@@ -140,7 +140,7 @@ export default function AccountPlanPage() {
             </div>
           </div>
         ) : (
-          <section className="py-16 px-6">
+          <section className="pt-20 md:pt-28 lg:pt-24 pb-16 px-6">
             <div className="max-w-6xl mx-auto">
               {/* Current Plan Status Banner */}
               <>
@@ -294,7 +294,7 @@ export default function AccountPlanPage() {
                     onClick={() => setBillingCycle('annual')}
                     className={`px-4 py-1.5 text-sm font-medium rounded-full transition ${billingCycle === 'annual' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
                   >
-                    Annual <span className={`ml-2 text-xs ${billingCycle === 'annual' ? 'text-blue-100' : 'text-orange-700'}`}>Save 20%</span>
+                    Annual <span className={`ml-2 text-xs ${billingCycle === 'annual' ? 'text-orange-100' : 'text-orange-700'}`}>Save 20%</span>
                   </button>
                 </div>
               </div>
@@ -314,7 +314,7 @@ export default function AccountPlanPage() {
                     <Card
                       key={planId}
                       className={`border-2 transition-all hover:shadow-lg flex flex-col ${isCurrent
-                        ? 'ring-2 ring-blue-500 border-blue-500 bg-orange-50'
+                        ? 'ring-2 ring-orange-500 border-orange-500 bg-orange-50'
                         : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >

@@ -182,13 +182,13 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b px-4 md:px-6 py-1.5 md:py-2 shadow-sm transition-colors duration-300 ${
+      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-4 md:px-6 py-2 md:py-2.5 shadow-sm transition-colors duration-300 ${
         isInTechSection 
           ? 'bg-slate-900/50 border-slate-700/50' 
           : 'bg-white/50 border-orange-100/50'
       }`}>
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-3 md:gap-4">
+          <div className="flex items-center justify-between gap-3 md:gap-4 lg:gap-6">
             <div className="flex items-center space-x-3 md:space-x-4 lg:space-x-6 min-w-0 flex-1">
               {/* Mobile menu button - moved to left side */}
               <button
@@ -231,7 +231,7 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
             </div>
 
             {/* Navigation Menu - responsive spacing */}
-            <div className="hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 shrink-0">
+            <div className="hidden md:flex items-center space-x-3 lg:space-x-6 xl:space-x-8 shrink-0">
               {!hideMenuItems && (
                 <>
                   <button
