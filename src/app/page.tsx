@@ -358,7 +358,7 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero - responsive padding and grid */}
-        <section className="relative bg-gradient-to-b from-orange-50 via-white to-amber-50 min-h-screen flex items-center py-12 md:py-16 lg:py-20 pt-20 md:pt-24" aria-label="Hero section">
+        <section className="relative bg-gradient-to-b from-orange-50 via-white to-amber-50 min-h-screen flex items-center py-12 md:py-16 lg:py-20 pt-20 md:pt-28 lg:pt-24" aria-label="Hero section">
           <div className="absolute inset-0" aria-hidden="true" />
           <div className="relative mx-auto max-w-6xl px-4 md:px-6 w-full grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
             <article className="space-y-6">
@@ -437,7 +437,7 @@ export default function HomePage() {
         </section>
 
         {/* Stats - responsive grid */}
-        <section className="bg-white py-8 md:py-12 border-t border-b border-slate-100" aria-label="Platform statistics">
+        <section className="bg-white pt-8 md:pt-12 pb-8 md:pb-12 border-t border-b border-slate-100" aria-label="Platform statistics">
           <div className="mx-auto max-w-6xl px-4 md:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 text-center">
             {stats.map((item, idx) => (
               <div key={item.label} className="flex flex-col items-center gap-3">
@@ -455,7 +455,7 @@ export default function HomePage() {
         </section>
 
         {/* Why Choose */}
-        <section id="features" className="bg-white min-h-screen flex items-center pt-6 md:pt-8 pb-12 md:pb-16 lg:pb-20" aria-labelledby="features-heading">
+        <section id="features" className="bg-white min-h-screen flex items-center pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="features-heading">
           <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
@@ -503,7 +503,7 @@ export default function HomePage() {
         </section>
 
         {/* Steps */}
-        <section id="how-it-works" className="bg-white py-12 md:py-16 lg:py-20" aria-labelledby="how-it-works-heading">
+        <section id="how-it-works" className="bg-white pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="how-it-works-heading">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
             <div className="space-y-3 mb-16 text-center">
               <h2 id="how-it-works-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Three Simple Steps</h2>
@@ -755,7 +755,7 @@ export default function HomePage() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="bg-white py-16" aria-labelledby="faq-heading">
+        <section id="faq" className="bg-white pt-20 md:pt-28 lg:pt-24 pb-16 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="faq-heading">
           <div className="mx-auto max-w-4xl px-6">
             <div className="text-center space-y-3 mb-10">
               <h2 id="faq-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Frequently Asked Questions</h2>
