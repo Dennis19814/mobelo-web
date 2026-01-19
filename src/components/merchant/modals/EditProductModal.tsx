@@ -30,6 +30,8 @@ interface EditProductModalProps {
   onCategoriesUpdate?: (categories: any[]) => void
 }
 
+type ProductCategoryNode = ProductCategory & { children?: ProductCategoryNode[] }
+
 export default function EditProductModal({
   isOpen,
   onClose,
@@ -502,7 +504,7 @@ export default function EditProductModal({
     if (!editingCategoryName.trim()) return
     
     // Find the original category to check if name has changed
-    const originalCategory = categories.find(cat => cat.id === categoryId)
+    const originalCategory = flattenedCategories.find(cat => cat.id === categoryId)
     if (!originalCategory || editingCategoryName.trim() === originalCategory.name) {
       // No change, just cancel editing
       setEditingCategoryId(null)
@@ -568,8 +570,16 @@ export default function EditProductModal({
   }
 
   const getCategoryTree = () => {
-    const tree: (ProductCategory & { children?: ProductCategory[] })[] = []
-    const categoryMap = new Map<number, ProductCategory & { children?: ProductCategory[] }>()
+    const categoriesWithChildren = localCategories as ProductCategoryNode[]
+    const hasNestedChildren = categoriesWithChildren.some(
+      cat => cat.children && cat.children.length > 0
+    )
+    if (hasNestedChildren) {
+      return categoriesWithChildren
+    }
+
+    const tree: ProductCategoryNode[] = []
+    const categoryMap = new Map<number, ProductCategoryNode>()
     
     localCategories.forEach(cat => {
       categoryMap.set(cat.id, { ...cat, children: [] })
@@ -587,30 +597,179 @@ export default function EditProductModal({
     return tree
   }
 
+  const flattenedCategories = useMemo(() => {
+    const result: ProductCategory[] = []
+    const stack = [...getCategoryTree()]
+    while (stack.length > 0) {
+      const current = stack.shift()
+      if (!current) continue
+      const { children, ...categoryWithoutChildren } = current
+      result.push(categoryWithoutChildren as ProductCategory)
+      if (children && children.length > 0) {
+        stack.unshift(...children)
+      }
+    }
+    return result
+  }, [localCategories])
+
+
   // Helper function to get categories with proper nesting indication for dropdown
   const getCategoriesForDropdown = () => {
-    const result: Array<{ id: number; name: string; depth: number }> = []
+    const result: Array<{ id: number; name: string; depth: number; parentId?: number }> = []
     
+    const sortCategories = (items: ProductCategoryNode[]) => {
+      return [...items].sort((a, b) => {
+        const orderA = a.displayOrder ?? 0
+        const orderB = b.displayOrder ?? 0
+        if (orderA !== orderB) return orderA - orderB
+        return a.name.localeCompare(b.name)
+      })
+    }
+
     const addCategoryWithDepth = (category: ProductCategory & { children?: ProductCategory[] }, depth: number = 0) => {
       result.push({
         id: category.id,
         name: category.name,
-        depth
+        depth,
+        parentId: category.parentId
       })
       
-      if (category.children) {
-        category.children.forEach(child => {
+      if (category.children && category.children.length > 0) {
+        sortCategories(category.children as ProductCategoryNode[]).forEach(child => {
           addCategoryWithDepth(child, depth + 1)
         })
       }
     }
     
-    getCategoryTree().forEach(category => {
+    sortCategories(getCategoryTree()).forEach(category => {
       addCategoryWithDepth(category)
     })
     
     return result
   }
+
+  const categoryOptions = useMemo(() => getCategoriesForDropdown(), [localCategories])
+  const categoryNameById = useMemo(() => {
+    return new Map(flattenedCategories.map(category => [category.id, category.name]))
+  }, [flattenedCategories])
+  const groupedCategoryOptions = useMemo(() => {
+    const sortByOrder = (items: ProductCategoryNode[]) => {
+      return [...items].sort((a, b) => {
+        const orderA = a.displayOrder ?? 0
+        const orderB = b.displayOrder ?? 0
+        if (orderA !== orderB) return orderA - orderB
+        return a.name.localeCompare(b.name)
+      })
+    }
+
+    return sortByOrder(getCategoryTree()).map(parent => ({
+      parent,
+      children: parent.children ? sortByOrder(parent.children) : []
+    }))
+  }, [localCategories])
+
+  const renderCategoryRow = (category: ProductCategoryNode, depth: number) => (
+    <div
+      key={category.id}
+      className={`flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-all ${
+        newlyCreatedCategoryId === category.id
+          ? 'bg-green-50 border border-green-300 animate-pulse'
+          : ''
+      }`}
+    >
+      <label className="flex items-center flex-1 cursor-pointer">
+        <input
+          type="checkbox"
+          value={category.id}
+          checked={formData.categoryIds?.includes(category.id)}
+          onChange={(e) => {
+            const categoryId = parseInt(e.target.value)
+            if (e.target.checked) {
+              handleInputChange('categoryIds', [...(formData.categoryIds || []), categoryId])
+            } else {
+              handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== categoryId))
+            }
+          }}
+          className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+        />
+        {editingCategoryId === category.id ? (
+          <div className="ml-2 flex items-center space-x-2 flex-1">
+            <input
+              type="text"
+              value={editingCategoryName}
+              onChange={(e) => setEditingCategoryName(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && handleUpdateCategory(category.id)}
+              className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
+              autoFocus
+              maxLength={30}
+            />
+            {editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && (
+              <button
+                type="button"
+                onClick={() => handleUpdateCategory(category.id)}
+                className="p-1 hover:bg-green-100 rounded text-green-600"
+                title="Save changes"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCategoryId(null)
+                setEditingCategoryName('')
+              }}
+              className="p-1 hover:bg-red-100 rounded text-red-600"
+              title="Cancel editing"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <span className="ml-2 flex-1 min-w-0">
+              {depth > 0 && category.parentId && (
+                <span className="block text-[11px] text-gray-400 truncate">
+                  {categoryNameById.get(category.parentId)}
+                </span>
+              )}
+              <span
+                className="block text-sm text-gray-700 truncate"
+                style={{ paddingLeft: `${depth * 10}px` }}
+              >
+                {depth > 0 ? '↳ ' : ''}
+                {category.name}
+              </span>
+            </span>
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCategoryId(category.id)
+                  setEditingCategoryName(category.name)
+                }}
+                className="p-1 hover:bg-blue-100 rounded text-orange-600"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCategory(category.id)}
+                disabled={deletingCategoryId === category.id}
+                className="p-1 hover:bg-red-100 rounded text-red-600 disabled:opacity-50"
+              >
+                {deletingCategoryId === category.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3" />
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </label>
+    </div>
+  )
 
   useEffect(() => {
     if (isOpen) {
@@ -1820,7 +1979,7 @@ export default function EditProductModal({
                 {formData.categoryIds && formData.categoryIds.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {formData.categoryIds.map(categoryId => {
-                      const category = categories.find(c => c.id === categoryId);
+                      const category = flattenedCategories.find(c => c.id === categoryId);
                       return category ? (
                         <div key={categoryId} className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-lg">
                           <span className="text-xs text-gray-700">{category.name}</span>
@@ -2016,7 +2175,7 @@ export default function EditProductModal({
                               <div className="relative inline-block">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={categoryImagePreview}
+                                  src={categoryImagePreview || undefined}
                                   alt="Category preview"
                                   className="w-24 h-24 object-cover rounded-lg border-2 border-orange-300"
                                 />
@@ -2039,7 +2198,7 @@ export default function EditProductModal({
                                 <div className="flex items-center space-x-2 text-xs text-gray-600 mb-1">
                                   <span className="truncate">{categoryImageFile?.name}</span>
                                   <span className="text-gray-400">•</span>
-                                  <span>{(categoryImageFile?.size ? (categoryImageFile.size / 1024).toFixed(1) : '0')} KB</span>
+                                  <span>{((categoryImageFile?.size ?? 0) / 1024).toFixed(1)} KB</span>
                                 </div>
                                 <button
                                   type="button"
@@ -2154,98 +2313,19 @@ export default function EditProductModal({
                 <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
                   <h3 className="text-sm font-medium text-gray-700">Available Categories</h3>
                 </div>
-                <div className="max-h-64 overflow-y-auto p-3 bg-white">
-                  {categories.length === 0 ? (
+                <div className="p-3 bg-white">
+                  {categoryOptions.length === 0 ? (
                     <p className="text-xs text-gray-500 text-center py-4">No categories available. Create one above.</p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
-                      {categories.map(category => (
-                        <div 
-                          key={category.id} 
-                          className={`flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-all ${
-                            newlyCreatedCategoryId === category.id 
-                              ? 'bg-green-50 border border-green-300 animate-pulse' 
-                              : ''
-                          }`}
-                        >
-                          <label className="flex items-center flex-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            value={category.id}
-                            checked={formData.categoryIds?.includes(category.id)}
-                            onChange={(e) => {
-                              const categoryId = parseInt(e.target.value)
-                              if (e.target.checked) {
-                                handleInputChange('categoryIds', [...(formData.categoryIds || []), categoryId])
-                              } else {
-                                handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== categoryId))
-                              }
-                            }}
-                            className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
-                          />
-                          {editingCategoryId === category.id ? (
-                            <div className="ml-2 flex items-center space-x-2 flex-1">
-                              <input
-                                type="text"
-                                value={editingCategoryName}
-                                onChange={(e) => setEditingCategoryName(e.target.value)}
-                                onKeyPress={(e) => e.key === "Enter" && editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && handleUpdateCategory(category.id)}
-                                className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
-                                autoFocus
-                                maxLength={30}
-                              />
-                              {editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateCategory(category.id)}
-                                  className="p-1 hover:bg-green-100 rounded text-green-600"
-                                  title="Save changes"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingCategoryId(null)
-                                  setEditingCategoryName('')
-                                }}
-                                className="p-1 hover:bg-red-100 rounded text-red-600"
-                                title="Cancel editing"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
+                    <div className="columns-3 gap-3 [column-fill:_balance]">
+                      {groupedCategoryOptions.map(group => (
+                        <div key={group.parent.id} className="mb-3 break-inside-avoid">
+                          {renderCategoryRow(group.parent, 0)}
+                          {group.children.length > 0 && (
+                            <div className="mt-1 border-l border-gray-200 pl-2 space-y-1">
+                              {group.children.map(child => renderCategoryRow(child, 1))}
                             </div>
-                          ) : (
-                            <>
-                              <span className="ml-2 text-sm text-gray-700 flex-1 truncate">{category.name}</span>
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingCategoryId(category.id)
-                                    setEditingCategoryName(category.name)
-                                  }}
-                                  className="p-1 hover:bg-blue-100 rounded text-orange-600"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCategory(category.id)}
-                                  disabled={deletingCategoryId === category.id}
-                                  className="p-1 hover:bg-red-100 rounded text-red-600 disabled:opacity-50"
-                                >
-                                  {deletingCategoryId === category.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-3 h-3" />
-                                  )}
-                                </button>
-                              </div>
-                            </>
                           )}
-                        </label>
                         </div>
                       ))}
                     </div>

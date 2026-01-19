@@ -302,6 +302,15 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     setIsDragging(true);
   }, []);
 
+  const isDescendant = useCallback((childId: number, ancestorId: number) => {
+    let current = flattenedCategories.find(cat => cat.id === childId);
+    while (current && current.parentId != null) {
+      if (current.parentId === ancestorId) return true;
+      current = flattenedCategories.find(cat => cat.id === current!.parentId);
+    }
+    return false;
+  }, [flattenedCategories]);
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setIsDragging(false);
     const { active, over } = event;
@@ -317,14 +326,17 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       return;
     }
 
-    // Validate same parent level (critical for hierarchy integrity)
-    if (activeCategory.parentId !== overCategory.parentId) {
-      logger.warn('Cannot reorder categories across different parent levels');
+    // Prevent moving a category under its own descendants
+    if (isDescendant(overCategory.id, activeCategory.id)) {
+      logger.warn('Cannot move a category under its own descendant');
       return;
     }
 
-    // Get all categories at the same level
-    const sameLevelCategories = filteredCategories.filter(c => c.parentId === activeCategory.parentId);
+    // Same parent: reorder within the level
+    if (activeCategory.parentId === overCategory.parentId) {
+      const sameLevelCategories = filteredCategories
+        .filter(c => c.parentId === activeCategory.parentId)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
     const oldIndex = sameLevelCategories.findIndex(c => c.id === active.id);
     const newIndex = sameLevelCategories.findIndex(c => c.id === over.id);
 
@@ -332,17 +344,62 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       return;
     }
 
-    // Reorder within the same level
     const newOrder = arrayMove(sameLevelCategories, oldIndex, newIndex);
-
-    // Prepare reorder data
     const reorderData = newOrder.map((cat, index) => ({
       id: cat.id,
       displayOrder: index,
     }));
 
     await saveReorder(reorderData, activeCategory.parentId);
-  }, [filteredCategories, saveReorder]);
+      return;
+    }
+
+    // Cross-parent move: allow moving subcategories to another parent
+    if (activeCategory.parentId == null) {
+      logger.warn('Cannot move top-level categories under another category');
+      return;
+    }
+
+    const targetParentId = overCategory.level === 0 ? overCategory.id : overCategory.parentId;
+    if (targetParentId == null) {
+      return;
+    }
+
+    const oldParentId = activeCategory.parentId;
+    const oldParentSiblings = filteredCategories
+      .filter(c => c.parentId === oldParentId && c.id !== activeCategory.id)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const newParentSiblings = filteredCategories
+      .filter(c => c.parentId === targetParentId)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const newDisplayOrder = newParentSiblings.length;
+
+    const updatedCategory = await updateCategory(activeCategory.id, {
+      parentId: targetParentId,
+      displayOrder: newDisplayOrder,
+    });
+
+    if (!updatedCategory) {
+      return;
+    }
+
+    if (oldParentSiblings.length > 0) {
+      const oldParentReorder = oldParentSiblings.map((cat, index) => ({
+        id: cat.id,
+        displayOrder: index,
+      }));
+      await saveReorder(oldParentReorder, oldParentId ?? undefined);
+    }
+
+    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
+    const newParentReorder = newParentOrderIds.map((id, index) => ({
+      id,
+      displayOrder: index,
+    }));
+    await saveReorder(newParentReorder, targetParentId);
+  }, [filteredCategories, saveReorder, isDescendant, updateCategory]);
 
   const handleAddSuccess = useCallback((category: Category) => {
     setIsAddModalOpen(false);
