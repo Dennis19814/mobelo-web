@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Navigation } from '@/components/layout'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { Send, Download, ChevronRight, Loader2, Copy, Check, Bot, Video, HelpCircle, RefreshCw, ExternalLink, MessageCircle, ArrowUp } from 'lucide-react'
+import { Send, Download, ChevronRight, Loader2, Copy, Check, Bot, Video, HelpCircle, RefreshCw, ExternalLink, MessageCircle, ArrowUp, Info } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { useJobSocket } from '@/hooks/useJobSocket'
 import { usePublishSocket } from '@/hooks/usePublishSocket'
@@ -2275,17 +2275,30 @@ function AppBuilderContent() {
           {/* Middle Panel: Live Preview */}
           <div className="hidden md:flex w-full md:flex-1 lg:flex-1 bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1.5 sm:p-2 md:p-3 lg:p-4 flex-col h-full min-h-0 overflow-hidden order-2">
   
-  <div className="flex items-center justify-between mb-2 gap-2 flex-shrink-0">
+  <div className="flex items-center justify-between  gap-2 flex-shrink-0">
     <div className="flex items-center gap-2 min-w-0 flex-1">
       <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">Live Preview</h2>
     </div>
     <button
       onClick={handleReloadApp}
       disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
-      className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg disabled:opacity-50 transition-colors"
+      className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg disabled:opacity-50 transition-colors flex-shrink-0"
     >
       <RefreshCw className={`w-4 h-4 ${isReloading ? 'animate-spin' : ''}`} />
     </button>
+  </div>
+
+  {/* Info Box under Live Preview */}
+  <div className="flex items-center gap-1  bg-white  border-gray-200 rounded-lg  flex-shrink-0">
+    <Info className="w-3 h-3 text-orange-600 flex-shrink-0" />
+    <p className="text-[11px] text-gray-600 leading-tight lg:whitespace-nowrap">
+      <span className="hidden lg:inline">Preview may not be fully accurate. Test on a real device.</span>
+      <span className="lg:hidden">
+        Preview may not be fully<br />
+        accurate. Test on a real<br />
+        device.
+      </span>
+    </p>
   </div>
 
   {/* Phone Mockup Container */}
