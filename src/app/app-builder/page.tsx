@@ -151,6 +151,7 @@ function AppBuilderContent() {
   const [existingDownloadJob, setExistingDownloadJob] = useState<any>(null)
   const [isSubmittingPlay, setIsSubmittingPlay] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Centralized timeout management with automatic cleanup
   const timeouts = useTimeouts()
@@ -360,6 +361,37 @@ function AppBuilderContent() {
         logger.error('[AppBuilder] Failed to copy to clipboard:', err)
       })
   }, [timeouts])
+
+  // Auto-resize textarea: grow up to 5 lines, then show scrollbar
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    // Reset height to auto to get accurate scrollHeight
+    textarea.style.height = 'auto'
+    
+    // Calculate line height (approximate based on font size and padding)
+    // Using computed styles for accuracy
+    const computedStyle = window.getComputedStyle(textarea)
+    const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize) * 1.5
+    const paddingTop = parseFloat(computedStyle.paddingTop) || 0
+    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0
+    
+    // Max height for 5 lines
+    const maxHeight = lineHeight * 5 + paddingTop + paddingBottom
+    
+    // Current scroll height
+    const scrollHeight = textarea.scrollHeight
+    
+    // Set height: min of scrollHeight and maxHeight
+    if (scrollHeight <= maxHeight) {
+      textarea.style.height = `${scrollHeight}px`
+      textarea.style.overflowY = 'hidden'
+    } else {
+      textarea.style.height = `${maxHeight}px`
+      textarea.style.overflowY = 'auto'
+    }
+  }, [])
 
   // Handle iframe load success
   const handleIframeLoad = useCallback(() => {
@@ -1871,6 +1903,14 @@ function AppBuilderContent() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages, isClaudeExecuting])
 
+  // Adjust textarea height when userInput changes
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure DOM has updated
+    requestAnimationFrame(() => {
+      adjustTextareaHeight()
+    })
+  }, [userInput, adjustTextareaHeight])
+
   // Set iframe load timeout when iframe key changes
   useEffect(() => {
     logger.debug(`[AppBuilder] 🔑 iframe key changed to ${iframeKey}, iframe will load`, {
@@ -1956,6 +1996,44 @@ function AppBuilderContent() {
         }
         .app-builder-surface {
           font-family: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        /* Custom scrollbar styling for textarea with rounded corners */
+        .textarea-rounded-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .textarea-rounded-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+          margin: 4px 2px;
+          border-radius: 0.5rem; /* rounded-md - matches textarea border radius */
+        }
+        .textarea-rounded-scrollbar::-webkit-scrollbar-thumb {
+          background: #d1d5db; /* gray-300 */
+          border-radius: 0.5rem; /* rounded-md - matches textarea border radius */
+          border: none;
+        }
+        .textarea-rounded-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af; /* gray-400 */
+        }
+        /* Firefox scrollbar styling */
+        .textarea-rounded-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #d1d5db transparent;
+        }
+        @media (min-width: 640px) {
+          .textarea-rounded-scrollbar::-webkit-scrollbar-track {
+            border-radius: 0.5rem; /* rounded-lg */
+          }
+          .textarea-rounded-scrollbar::-webkit-scrollbar-thumb {
+            border-radius: 0.5rem; /* rounded-lg */
+          }
+        }
+        @media (min-width: 768px) {
+          .textarea-rounded-scrollbar::-webkit-scrollbar-track {
+            border-radius: 0.75rem; /* rounded-xl */
+          }
+          .textarea-rounded-scrollbar::-webkit-scrollbar-thumb {
+            border-radius: 0.75rem; /* rounded-xl */
+          }
         }
       `}</style>
       <Navigation
@@ -2139,9 +2217,12 @@ function AppBuilderContent() {
  <div className="p-1 sm:p-1.5 md:p-2 border-t border-gray-100">
       <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
         <textarea
+          ref={textareaRef}
           rows={1}
           value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
+          onChange={(e) => {
+            setUserInput(e.target.value)
+          }}
           disabled={isGenerating}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -2167,7 +2248,8 @@ function AppBuilderContent() {
             }
           }}
           placeholder="Describe change..."
-          className="flex-1 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 rounded-md sm:rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-[9.5px] sm:text-[10px] md:text-[10.5px] resize-none"
+          className="flex-1 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 rounded-md sm:rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-[9.5px] sm:text-[10px] md:text-[10.5px] resize-none overflow-hidden textarea-rounded-scrollbar"
+          style={{ minHeight: '2rem' }}
         />
         <button
           onClick={handleSendMessage}
@@ -2231,7 +2313,7 @@ function AppBuilderContent() {
         </div>
 
         {/* Status Bar (Dark Icons for White BG) */}
-        <div className="h-[7%] w-full flex items-end justify-between px-[8%] pb-[2.8%] flex-shrink-0 z-20 bg-white">
+<div className="h-[6%] w-full flex items-end justify-between px-[8%] pb-[0%] flex-shrink-0 z-20 bg-white">
           <span className="text-[min(1.4vh,12px)] font-bold text-black">9:41</span>
           <div className="flex gap-1 items-center">
             <svg className="w-[min(2.4vh,20px)] h-[min(1.2vh,10px)]" viewBox="0 0 18 12" fill="black">
@@ -2296,8 +2378,8 @@ function AppBuilderContent() {
         </div>
 
         {/* Home Bar (Dark for White BG) */}
-        <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
-          <div className="w-[35%] h-[2.5px] bg-black/10 rounded-full"></div>
+        <div className=" w-full flex items-center justify-center flex-shrink-0 bg-white pb-[2%]">
+          <div className="w-[35%] h-[2.5px] bg-black/10 rounded-full "></div>
         </div>
 
       </div>
