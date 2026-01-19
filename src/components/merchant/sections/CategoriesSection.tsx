@@ -337,20 +337,20 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       const sameLevelCategories = filteredCategories
         .filter(c => c.parentId === activeCategory.parentId)
         .sort((a, b) => a.displayOrder - b.displayOrder);
-    const oldIndex = sameLevelCategories.findIndex(c => c.id === active.id);
-    const newIndex = sameLevelCategories.findIndex(c => c.id === over.id);
+      const oldIndex = sameLevelCategories.findIndex(c => c.id === active.id);
+      const newIndex = sameLevelCategories.findIndex(c => c.id === over.id);
 
-    if (oldIndex === -1 || newIndex === -1) {
-      return;
-    }
+      if (oldIndex === -1 || newIndex === -1) {
+        return;
+      }
 
-    const newOrder = arrayMove(sameLevelCategories, oldIndex, newIndex);
-    const reorderData = newOrder.map((cat, index) => ({
-      id: cat.id,
-      displayOrder: index,
-    }));
+      const newOrder = arrayMove(sameLevelCategories, oldIndex, newIndex);
+      const reorderData = newOrder.map((cat, index) => ({
+        id: cat.id,
+        displayOrder: index,
+      }));
 
-    await saveReorder(reorderData, activeCategory.parentId);
+      await saveReorder(reorderData, activeCategory.parentId);
       return;
     }
 
