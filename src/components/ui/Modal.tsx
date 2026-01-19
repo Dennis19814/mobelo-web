@@ -29,7 +29,7 @@ export default function Modal({
   children,
   overlay = true,
   closeOnEscape = true,
-  closeOnOverlayClick = false,
+  closeOnOverlayClick = true,
   position = 'center',
   className = ''
 }: ExtendedModalProps) {
