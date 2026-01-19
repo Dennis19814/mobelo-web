@@ -519,8 +519,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+        {isLoading && !reorderLoading ? (
+          <div className="flex items-center justify-center py-12 bg-gray-50">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
           </div>
         ) : filteredCategories.length === 0 ? (
@@ -597,10 +597,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
         )}
 
         {reorderLoading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="flex items-center space-x-2">
-              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
-              <span className="text-sm text-gray-600">Saving order...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
+              <span className="text-sm text-white">Saving order...</span>
             </div>
           </div>
         )}
