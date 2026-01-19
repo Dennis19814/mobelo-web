@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles, Check, XCircle, Upload, Loader2, Tags, Image as ImageIcon } from 'lucide-react'
+import { X, Package, DollarSign, Box, Image, FolderTree, Layers, FolderPlus, Edit2, Trash2, Plus, Truck, Sparkles, Check, XCircle, Upload, Loader2, Tags, Image as ImageIcon, ChevronRight, ChevronDown } from 'lucide-react'
 import ExtraInfoEditor from '../ExtraInfoEditor'
 import Modal from '@/components/ui/Modal'
 import VariantManager from '../VariantManager'
@@ -116,6 +116,7 @@ export default function EditProductModal({
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
   const [newlyCreatedCategoryId, setNewlyCreatedCategoryId] = useState<number | null>(null)
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set())
 
   // Sync formData with product prop when it changes
   useEffect(() => {
@@ -652,6 +653,9 @@ export default function EditProductModal({
   const categoryNameById = useMemo(() => {
     return new Map(flattenedCategories.map(category => [category.id, category.name]))
   }, [flattenedCategories])
+
+  // Build grouped categories by top-level parent, keeping children together.
+  // Only show children when parent is expanded.
   const groupedCategoryOptions = useMemo(() => {
     const sortByOrder = (items: ProductCategoryNode[]) => {
       return [...items].sort((a, b) => {
@@ -662,11 +666,85 @@ export default function EditProductModal({
       })
     }
 
-    return sortByOrder(getCategoryTree()).map(parent => ({
-      parent,
-      children: parent.children ? sortByOrder(parent.children) : []
-    }))
-  }, [localCategories])
+    const buildFlat = (
+      nodes: ProductCategoryNode[],
+      depth: number,
+      acc: Array<{ node: ProductCategoryNode; depth: number }>
+    ) => {
+      sortByOrder(nodes).forEach(node => {
+        acc.push({ node, depth })
+        if (node.children && node.children.length > 0 && expandedCategories.has(node.id)) {
+          buildFlat(node.children as ProductCategoryNode[], depth + 1, acc)
+        }
+      })
+    }
+
+    return sortByOrder(getCategoryTree()).map(parent => {
+      const items: Array<{ node: ProductCategoryNode; depth: number }> = []
+      buildFlat([parent], 0, items)
+      return {
+        parentId: parent.id,
+        items
+      }
+    })
+  }, [localCategories, expandedCategories])
+
+  // Toggle expand/collapse for a category
+  const toggleCategoryExpand = useCallback((categoryId: number) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId)
+      } else {
+        newSet.add(categoryId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Auto-expand categories that have selected children
+  useEffect(() => {
+    if (!formData.categoryIds || formData.categoryIds.length === 0 || localCategories.length === 0) {
+      return
+    }
+
+    const tree = getCategoryTree()
+    const categoriesToExpand = new Set<number>()
+
+    const findParentsOfSelected = (nodes: ProductCategoryNode[]) => {
+      nodes.forEach(node => {
+        if (node.children && node.children.length > 0) {
+          // Check if any child or descendant is selected
+          const hasSelectedDescendant = (cat: ProductCategoryNode): boolean => {
+            if (formData.categoryIds?.includes(cat.id)) {
+              return true
+            }
+            if (cat.children && cat.children.length > 0) {
+              return cat.children.some(child => hasSelectedDescendant(child))
+            }
+            return false
+          }
+
+          if (hasSelectedDescendant(node)) {
+            categoriesToExpand.add(node.id)
+          }
+
+          // Recursively check children
+          findParentsOfSelected(node.children as ProductCategoryNode[])
+        }
+      })
+    }
+
+    findParentsOfSelected(tree)
+    
+    if (categoriesToExpand.size > 0) {
+      setExpandedCategories(prev => {
+        const newSet = new Set(prev)
+        categoriesToExpand.forEach(id => newSet.add(id))
+        return newSet
+      })
+    }
+  }, [formData.categoryIds, localCategories])
 
   const renderCategoryRow = (category: ProductCategoryNode, depth: number) => (
     <div
@@ -727,20 +805,42 @@ export default function EditProductModal({
           </div>
         ) : (
           <>
-            <span className="ml-2 flex-1 min-w-0">
-              {depth > 0 && category.parentId && (
-                <span className="block text-[11px] text-gray-400 truncate">
-                  {categoryNameById.get(category.parentId)}
-                </span>
+            <div className="ml-2 flex items-center flex-1 min-w-0">
+              {/* Expand/Collapse Button for categories with children */}
+              {category.children && category.children.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleCategoryExpand(category.id)
+                  }}
+                  className="flex-shrink-0 hover:bg-orange-50 rounded transition-colors flex items-center justify-center h-5 w-5 mr-1"
+                  title={expandedCategories.has(category.id) ? 'Collapse children' : 'Expand children'}
+                >
+                  {expandedCategories.has(category.id) ? (
+                    <ChevronDown className="h-3 w-3 text-orange-600" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-orange-600" />
+                  )}
+                </button>
+              ) : (
+                <div className="w-5 mr-1" /> // Spacer when no expand button
               )}
-              <span
-                className="block text-sm text-gray-700 truncate"
-                style={{ paddingLeft: `${depth * 10}px` }}
-              >
-                {depth > 0 ? '↳ ' : ''}
-                {category.name}
+              <span className="flex-1 min-w-0">
+                {depth > 0 && category.parentId && (
+                  <span className="block text-[11px] text-gray-400 truncate">
+                    {categoryNameById.get(category.parentId)}
+                  </span>
+                )}
+                <span
+                  className="block text-sm text-gray-700 truncate"
+                  style={{ paddingLeft: `${depth * 10}px` }}
+                >
+                  {depth > 0 ? '↳ ' : ''}
+                  {category.name}
+                </span>
               </span>
-            </span>
+            </div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
               <button
                 type="button"
@@ -2317,15 +2417,17 @@ export default function EditProductModal({
                   {categoryOptions.length === 0 ? (
                     <p className="text-xs text-gray-500 text-center py-4">No categories available. Create one above.</p>
                   ) : (
-                    <div className="columns-3 gap-3 [column-fill:_balance]">
+                    <div className="columns-1 md:columns-2 lg:columns-3 gap-3 [column-fill:_balance]">
                       {groupedCategoryOptions.map(group => (
-                        <div key={group.parent.id} className="mb-3 break-inside-avoid">
-                          {renderCategoryRow(group.parent, 0)}
-                          {group.children.length > 0 && (
-                            <div className="mt-1 border-l border-gray-200 pl-2 space-y-1">
-                              {group.children.map(child => renderCategoryRow(child, 1))}
+                        <div key={group.parentId} className="mb-2 break-inside-avoid space-y-1">
+                          {group.items.map(({ node, depth }) => (
+                            <div
+                              key={node.id}
+                              style={{ marginLeft: depth * 12 }}
+                            >
+                              {renderCategoryRow(node, depth)}
                             </div>
-                          )}
+                          ))}
                         </div>
                       ))}
                     </div>
