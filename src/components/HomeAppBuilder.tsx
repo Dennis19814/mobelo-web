@@ -197,7 +197,7 @@ export default function HomeAppBuilder() {
 
     const modalContent = (
       <div
-        className="fixed inset-0 z-[99999] flex items-start justify-center bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
         style={{
           position: 'fixed',
           top: 0,
@@ -205,7 +205,6 @@ export default function HomeAppBuilder() {
           right: 0,
           bottom: 0,
           margin: 0,
-          paddingTop: '100px',
           overflow: 'hidden'
         }}
       >

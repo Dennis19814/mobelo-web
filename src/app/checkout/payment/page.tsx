@@ -192,7 +192,7 @@ function CheckoutPaymentContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
-      <main className="flex-1 flex items-center justify-center pt-20 md:pt-24">
+      <main className="flex-1 flex items-center justify-center pt-20 md:pt-28 lg:pt-24">
         <section className="w-full px-6 ">
           <div className="max-w-5xl mx-auto">
             {/* Progress */}

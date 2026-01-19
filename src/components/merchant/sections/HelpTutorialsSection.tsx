@@ -270,7 +270,7 @@ export default function HelpTutorialsSection({ onNavigate }: HelpTutorialsSectio
   }
 
   return (
-    <div className="max-w-7xl mx-auto overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="max-w-7xl mx-auto overflow-x-hidden min-w-0">
       {/* Breadcrumb */}
       <button
         onClick={() => onNavigate && onNavigate('help-center')}

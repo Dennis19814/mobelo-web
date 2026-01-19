@@ -54,7 +54,7 @@ export default function BillingPage() {
             </div>
           </div>
         ) : (
-          <section className="py-16 px-6">
+          <section className="pt-20 md:pt-28 lg:pt-24 pb-16 px-6">
             <div className="max-w-6xl mx-auto">
               <h1 className="text-2xl font-semibold text-gray-900">Billing</h1>
               <p className="mt-2 text-sm text-gray-600">Manage your payment method and download invoices.</p>

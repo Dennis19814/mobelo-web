@@ -323,7 +323,7 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
   }
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">

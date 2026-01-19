@@ -181,10 +181,10 @@ export function AddCategoryModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col my-4 relative">
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5 z-10">
+          <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="p-1.5 bg-blue-100 rounded-lg">
@@ -203,9 +203,9 @@ export function AddCategoryModal({
             </div>
           </div>
 
-          {/* Replacement Warning - Sticky at top */}
+          {/* Replacement Warning */}
           {showReplacementWarning && replacementWarning && (
-            <div className="sticky top-[45px] z-10 px-3 py-2 animate-in slide-in-from-top duration-300">
+            <div className="flex-shrink-0 px-3 py-2 animate-in slide-in-from-top duration-300">
               <div className="bg-amber-50 border border-amber-200 rounded-lg shadow-sm px-3 py-2 flex items-center gap-2">
                 <div className="flex-shrink-0">
                   <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
@@ -224,8 +224,8 @@ export function AddCategoryModal({
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleFormSubmit} className="p-4 space-y-4">
+          {/* Form - Scrollable */}
+          <form onSubmit={handleFormSubmit} className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
             {/* General Error */}
             {errors._general && (
               <div className="bg-red-50 border border-red-200 rounded-lg shadow-sm px-3 py-2 flex items-center gap-2">

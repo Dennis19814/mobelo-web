@@ -1,7 +1,7 @@
 'use client';
 import { logger } from '@/lib/logger'
 
-import { useState, useMemo, useCallback, memo, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, memo, lazy, Suspense } from 'react';
 import { useMerchantAuth } from '@/hooks';
 import { apiService } from '@/lib/api-service';
 import {
@@ -49,6 +49,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [reorderLoading, setReorderLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const hasInitializedExpansion = useRef(false);
 
   const {
     categories,
@@ -60,6 +61,118 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     reorderCategories,
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
+
+  // Flatten nested categories structure (if API returns nested with children)
+  const flattenedCategoriesBase = useMemo((): Category[] => {
+    const flatten = (cats: Category[]): Category[] => {
+      const result: Category[] = [];
+      const processCategory = (cat: Category) => {
+        // Add the category itself (without children property)
+        const { children, ...categoryWithoutChildren } = cat;
+        result.push(categoryWithoutChildren as Category);
+        // Recursively process children if they exist
+        if (children && children.length > 0) {
+          children.forEach(child => processCategory(child));
+        }
+      };
+      cats.forEach(cat => processCategory(cat));
+      return result;
+    };
+    return flatten(categories);
+  }, [categories]);
+
+  // Fetch products to calculate product counts per category
+  const [productCounts, setProductCounts] = useState<Record<number, number>>({});
+  const [isLoadingProductCounts, setIsLoadingProductCounts] = useState(false);
+
+  useEffect(() => {
+    const fetchProductCounts = async () => {
+      if (!headers || flattenedCategoriesBase.length === 0) return;
+      
+      setIsLoadingProductCounts(true);
+      try {
+        // Initialize counts for all categories
+        const counts: Record<number, number> = {};
+        flattenedCategoriesBase.forEach(cat => {
+          counts[cat.id] = cat.productCount ?? 0; // Use API value as fallback
+        });
+        
+        // Fetch all products with a high limit to get accurate counts
+        const response = await apiService.getProducts({ limit: 10000 });
+        
+        if (response.ok && response.data) {
+          // Handle different response structures
+          let products: any[] = [];
+          if (Array.isArray(response.data)) {
+            products = response.data;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            products = response.data.data;
+          } else if (response.data.products && Array.isArray(response.data.products)) {
+            products = response.data.products;
+          }
+          
+          // Count products per category
+          products.forEach((product: any) => {
+            if (product.categories && Array.isArray(product.categories)) {
+              product.categories.forEach((cat: any) => {
+                const categoryId = typeof cat === 'object' && cat !== null ? (cat.id || cat.categoryId) : cat;
+                if (categoryId && typeof categoryId === 'number' && counts.hasOwnProperty(categoryId)) {
+                  counts[categoryId]++;
+                }
+              });
+            }
+            // Also check for categoryIds array (alternative format)
+            if (product.categoryIds && Array.isArray(product.categoryIds)) {
+              product.categoryIds.forEach((categoryId: number) => {
+                if (categoryId && counts.hasOwnProperty(categoryId)) {
+                  counts[categoryId]++;
+                }
+              });
+            }
+          });
+          
+          setProductCounts(counts);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch product counts', { error: err });
+        // On error, keep the counts from API (if any)
+        const fallbackCounts: Record<number, number> = {};
+        flattenedCategoriesBase.forEach(cat => {
+          fallbackCounts[cat.id] = cat.productCount ?? 0;
+        });
+        setProductCounts(fallbackCounts);
+      } finally {
+        setIsLoadingProductCounts(false);
+      }
+    };
+
+    fetchProductCounts();
+  }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
+
+  // Enhance flattened categories with product counts
+  const flattenedCategories = useMemo((): Category[] => {
+    return flattenedCategoriesBase.map(cat => ({
+      ...cat,
+      productCount: productCounts[cat.id] !== undefined ? productCounts[cat.id] : (cat.productCount ?? 0),
+    }));
+  }, [flattenedCategoriesBase, productCounts]);
+
+  // Auto-expand all categories with children when categories are first loaded
+  useEffect(() => {
+    if (flattenedCategories.length > 0 && !hasInitializedExpansion.current) {
+      const categoriesWithChildren = new Set<number>();
+      flattenedCategories.forEach(cat => {
+        const hasChildren = flattenedCategories.some(c => c.parentId === cat.id);
+        if (hasChildren) {
+          categoriesWithChildren.add(cat.id);
+        }
+      });
+      if (categoriesWithChildren.size > 0) {
+        setExpandedCategories(categoriesWithChildren);
+        hasInitializedExpansion.current = true;
+      }
+    }
+  }, [flattenedCategories]);
 
 
   // Drag and drop sensors
@@ -115,8 +228,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       }).flat();
     };
 
-    return buildHierarchy(categories);
-  }, [categories, expandedCategories]);
+    return buildHierarchy(flattenedCategories);
+  }, [flattenedCategories, expandedCategories]);
 
   // Filter categories based on search
   const filteredCategories = useMemo(() => {
@@ -189,6 +302,15 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     setIsDragging(true);
   }, []);
 
+  const isDescendant = useCallback((childId: number, ancestorId: number) => {
+    let current = flattenedCategories.find(cat => cat.id === childId);
+    while (current && current.parentId != null) {
+      if (current.parentId === ancestorId) return true;
+      current = flattenedCategories.find(cat => cat.id === current!.parentId);
+    }
+    return false;
+  }, [flattenedCategories]);
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setIsDragging(false);
     const { active, over } = event;
@@ -204,32 +326,80 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       return;
     }
 
-    // Validate same parent level (critical for hierarchy integrity)
-    if (activeCategory.parentId !== overCategory.parentId) {
-      logger.warn('Cannot reorder categories across different parent levels');
+    // Prevent moving a category under its own descendants
+    if (isDescendant(overCategory.id, activeCategory.id)) {
+      logger.warn('Cannot move a category under its own descendant');
       return;
     }
 
-    // Get all categories at the same level
-    const sameLevelCategories = filteredCategories.filter(c => c.parentId === activeCategory.parentId);
-    const oldIndex = sameLevelCategories.findIndex(c => c.id === active.id);
-    const newIndex = sameLevelCategories.findIndex(c => c.id === over.id);
+    // Same parent: reorder within the level
+    if (activeCategory.parentId === overCategory.parentId) {
+      const sameLevelCategories = filteredCategories
+        .filter(c => c.parentId === activeCategory.parentId)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
+      const oldIndex = sameLevelCategories.findIndex(c => c.id === active.id);
+      const newIndex = sameLevelCategories.findIndex(c => c.id === over.id);
 
-    if (oldIndex === -1 || newIndex === -1) {
+      if (oldIndex === -1 || newIndex === -1) {
+        return;
+      }
+
+      const newOrder = arrayMove(sameLevelCategories, oldIndex, newIndex);
+      const reorderData = newOrder.map((cat, index) => ({
+        id: cat.id,
+        displayOrder: index,
+      }));
+
+      await saveReorder(reorderData, activeCategory.parentId);
       return;
     }
 
-    // Reorder within the same level
-    const newOrder = arrayMove(sameLevelCategories, oldIndex, newIndex);
+    // Cross-parent move: allow moving subcategories to another parent
+    if (activeCategory.parentId == null) {
+      logger.warn('Cannot move top-level categories under another category');
+      return;
+    }
 
-    // Prepare reorder data
-    const reorderData = newOrder.map((cat, index) => ({
-      id: cat.id,
+    const targetParentId = overCategory.level === 0 ? overCategory.id : overCategory.parentId;
+    if (targetParentId == null) {
+      return;
+    }
+
+    const oldParentId = activeCategory.parentId;
+    const oldParentSiblings = filteredCategories
+      .filter(c => c.parentId === oldParentId && c.id !== activeCategory.id)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const newParentSiblings = filteredCategories
+      .filter(c => c.parentId === targetParentId)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const newDisplayOrder = newParentSiblings.length;
+
+    const updatedCategory = await updateCategory(activeCategory.id, {
+      parentId: targetParentId,
+      displayOrder: newDisplayOrder,
+    });
+
+    if (!updatedCategory) {
+      return;
+    }
+
+    if (oldParentSiblings.length > 0) {
+      const oldParentReorder = oldParentSiblings.map((cat, index) => ({
+        id: cat.id,
+        displayOrder: index,
+      }));
+      await saveReorder(oldParentReorder, oldParentId ?? undefined);
+    }
+
+    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
+    const newParentReorder = newParentOrderIds.map((id, index) => ({
+      id,
       displayOrder: index,
     }));
-
-    await saveReorder(reorderData, activeCategory.parentId);
-  }, [filteredCategories, saveReorder]);
+    await saveReorder(newParentReorder, targetParentId);
+  }, [filteredCategories, saveReorder, isDescendant, updateCategory]);
 
   const handleAddSuccess = useCallback((category: Category) => {
     setIsAddModalOpen(false);
@@ -273,15 +443,15 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   }, []);
 
   // Get categories that can be parents (exclude the current category being edited)
-  const parentCategories = useMemo(() => categories.filter(cat =>
+  const parentCategories = useMemo(() => flattenedCategories.filter(cat =>
     cat.id !== selectedCategory?.id &&
     cat.parentId !== selectedCategory?.id
-  ), [categories, selectedCategory?.id]);
+  ), [flattenedCategories, selectedCategory?.id]);
 
   // Check if a category has child categories
   const hasChildCategories = useCallback((categoryId: number) =>
-    categories.some(cat => cat.parentId === categoryId),
-    [categories]
+    flattenedCategories.some(cat => cat.parentId === categoryId),
+    [flattenedCategories]
   );
 
   // Check if a category has products (assuming productCount is available)
@@ -291,16 +461,16 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   );
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
-      <div className="mb-8">
+    <div className="w-full max-w-full overflow-x-hidden min-w-0">
+      <div className="mb-8 w-full max-w-full min-w-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Categories</h1>
             <p className="text-gray-600">Organize your products into categories</p>
           </div>
           <button
             onClick={handleAddCategory}
-            className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap text-sm md:text-base"
+            className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap text-sm md:text-base shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Category</span>
@@ -310,10 +480,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
       {/* Error State */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 w-full max-w-full min-w-0">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <div>
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-red-800">Failed to load categories</p>
               <p className="text-sm text-red-700 mt-1">{error}</p>
               <button
@@ -328,9 +498,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       )}
 
       {/* Categories Table with Hierarchical Drag & Drop */}
-      <div className="bg-white rounded-lg shadow-sm -mt-4">
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative">
+      <div className="bg-white rounded-lg shadow-sm -mt-4 w-full max-w-full overflow-hidden min-w-0">
+        <div className="p-4 border-b border-gray-200 min-w-0">
+          <div className="relative min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
@@ -339,7 +509,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
               onChange={(e) => {
                 setSearchQuery(e.target.value);
               }}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 min-w-0"
             />
           </div>
           {searchQuery && (
@@ -349,8 +519,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+        {isLoading && !reorderLoading ? (
+          <div className="flex items-center justify-center py-12 bg-gray-50">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
           </div>
         ) : filteredCategories.length === 0 ? (
@@ -379,32 +549,29 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="w-full overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b-2 border-gray-200">
                   <tr>
-                    <th className="px-2 md:px-4 py-3 w-8 md:w-12"></th>
-                    <th className="hidden lg:table-cell px-2 py-3 text-center text-xs font-medium text-gray-500">
-                      Display Order
+                    <th className="px-2 md:px-4 py-4 w-8 md:w-12"></th>
+                    <th className="hidden lg:table-cell px-2 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Order
                     </th>
-                    <th className="px-2 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="px-2 md:px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500">
-                      Description
-                    </th>
-                    <th className="hidden lg:table-cell px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="px-4 lg:px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-20 md:w-24">
                       Products
                     </th>
-                    <th className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500">
+                    <th className="hidden md:table-cell px-3 md:px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-2 md:px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500">
+                    <th className="px-2 md:px-4 lg:px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-100">
                   <SortableContext
                     items={filteredCategories.map(c => c.id)}
                     strategy={verticalListSortingStrategy}
@@ -430,10 +597,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
         )}
 
         {reorderLoading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="flex items-center space-x-2">
-              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
-              <span className="text-sm text-gray-600">Saving order...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
+              <span className="text-sm text-white">Saving order...</span>
             </div>
           </div>
         )}

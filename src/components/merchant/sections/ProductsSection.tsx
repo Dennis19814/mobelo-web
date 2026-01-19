@@ -623,7 +623,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   }
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       {/* Success Message */}
       {successMessage && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 animate-in slide-in-from-top duration-300">

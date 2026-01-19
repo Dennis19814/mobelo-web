@@ -51,10 +51,10 @@ export function DeleteCategoryModal({
   if (!isOpen || !category) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] flex flex-col my-4">
         {/* Header with close button */}
-        <div className="relative p-6 pb-0">
+        <div className="relative p-6 pb-0 flex-shrink-0">
           <button
             onClick={handleClose}
             disabled={isDeleting}
@@ -74,8 +74,8 @@ export function DeleteCategoryModal({
           <h2 className="text-xl font-bold text-gray-900 text-center mb-2">Delete Category</h2>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           {/* Category Info */}
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-6">
             <CategoryIcon iconUrl={category.iconUrl} size={24} />
@@ -142,7 +142,7 @@ export function DeleteCategoryModal({
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col space-y-3">
+          <div className="flex flex-col space-y-3 pt-4">
             <button
               onClick={handleConfirm}
               disabled={isDeleting || !isConfirmValid}

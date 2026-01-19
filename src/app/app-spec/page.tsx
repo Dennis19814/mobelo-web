@@ -305,7 +305,7 @@ function AppSpecContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation hideMenuItems={true} showGenerateNewApp={true} />
-      <div className="mx-auto max-w-5xl px-4 pt-12 pb-12 w-full flex-1">
+      <div className="mx-auto max-w-5xl px-4 pt-20 md:pt-28 lg:pt-24 pb-12 w-full flex-1">
         <header className="mb-6">
           <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex w-max items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm">

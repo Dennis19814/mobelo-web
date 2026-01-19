@@ -391,7 +391,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}

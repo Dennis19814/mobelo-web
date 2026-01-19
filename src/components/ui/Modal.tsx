@@ -29,7 +29,7 @@ export default function Modal({
   children,
   overlay = true,
   closeOnEscape = true,
-  closeOnOverlayClick = false,
+  closeOnOverlayClick = true,
   position = 'center',
   className = ''
 }: ExtendedModalProps) {
@@ -96,17 +96,19 @@ export default function Modal({
       ref={modalRef}
       className={cn(
         'fixed inset-0 z-50 flex justify-center items-center',
+        'p-4',
         overlay && 'bg-black bg-opacity-50'
       )}
       onClick={handleOverlayClick}
     >
       <div
         className={cn(
-          'bg-white rounded-lg shadow-xl w-full',
+          'bg-white rounded-lg shadow-xl',
           'transform transition-all duration-200',
           'animate-in fade-in-0 zoom-in-95',
-          'm-4 max-h-[calc(100vh-2rem)] flex flex-col',
+          'max-h-[calc(100vh-2rem)] flex flex-col',
           'overflow-hidden',
+          'w-full',
           modalSizes[size],
           className
         )}
@@ -133,7 +135,7 @@ export default function Modal({
         )}
 
         {/* Content */}
-        <div className="px-6 overflow-y-auto flex-1">
+        <div className="px-6 py-6 overflow-y-auto flex-1">
           {children}
         </div>
       </div>

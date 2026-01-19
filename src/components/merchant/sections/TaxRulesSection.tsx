@@ -301,7 +301,7 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
   }
 
   return (
-    <div className="overflow-hidden -mt-3 md:-mt-4 lg:-mt-9">
+    <div className="overflow-x-hidden min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Tax Rules</h2>

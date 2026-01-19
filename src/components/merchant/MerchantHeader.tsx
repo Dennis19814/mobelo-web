@@ -42,6 +42,7 @@ export default function MerchantHeader({
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
   const notificationsRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [previousUnreadCount, setPreviousUnreadCount] = useState<number | null>(null)
   const [hasNewNotification, setHasNewNotification] = useState(false)
@@ -190,6 +191,23 @@ export default function MerchantHeader({
     }
   }, [showNotificationsModal])
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserMenu])
+
   const getUserInitials = (user: User | null) => {
     if (!user) return 'U'
     if (user.firstName && user.lastName) {
@@ -307,7 +325,7 @@ export default function MerchantHeader({
             </div>
 
             {/* User Menu - responsive */}
-            <div className="relative">
+            <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => {
                   setShowUserMenu(!showUserMenu)
