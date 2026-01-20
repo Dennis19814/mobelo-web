@@ -183,8 +183,9 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
   // Set field value
   const setFieldValue = useCallback((field: keyof LocalCategoryFormData, value: any) => {
-    // Ensure description field can be cleared (empty string)
-    const normalizedValue = field === 'description' ? (value || '') : value;
+    // Allow description field to be cleared (accept empty string directly)
+    // For description, always use the value as-is to allow clearing
+    const normalizedValue = field === 'description' ? (value === null || value === undefined ? '' : value) : value;
     
     setFormData(prev => ({
       ...prev,
@@ -411,9 +412,14 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
 
       if (category) {
         // Update existing category - only include changed fields
+        // For description: always include it in the update data so API can clear it if needed
+        // If cleared (empty string after trim), send empty string explicitly (not undefined)
+        // This ensures the API knows to clear the description field
+        const trimmedDescription = formData.description.trim();
+        
         submitData = {
           name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
+          description: trimmedDescription, // Send empty string if cleared, so API can clear it
           displayOrder: formData.displayOrder,
           isActive: formData.isActive,
         };
