@@ -60,7 +60,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   const [refreshing, setRefreshing] = useState(false)
   const [filters, setFilters] = useState<ProductFiltersType>({
     page: 1,
-    limit: 15,
+    limit: 20,
     sortBy: 'createdAt',
     sortOrder: 'DESC'
   })
@@ -855,7 +855,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
         totalItems={totalProducts}
         currentPage={currentPage}
         totalPages={totalPages}
-        itemsPerPage={filters.limit || 15}
+        itemsPerPage={filters.limit || 20}
         onPageChange={handlePageChange}
         onItemsPerPageChange={handleLimitChange}
         itemLabel="results"
