@@ -50,6 +50,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const hasInitializedExpansion = useRef(false);
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
+  const hasStartedLoading = useRef(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
 
   const {
     categories,
@@ -62,24 +65,44 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
 
+  useEffect(() => {
+    if (categories.length > 0) {
+      setHasCompletedInitialLoad(true);
+      return;
+    }
+
+    if (isLoading) {
+      hasStartedLoading.current = true;
+    }
+
+    if (!isLoading && hasStartedLoading.current) {
+      setHasCompletedInitialLoad(true);
+    }
+  }, [categories.length, isLoading]);
+
   // Flatten nested categories structure (if API returns nested with children)
-  const flattenedCategoriesBase = useMemo((): Category[] => {
-    const flatten = (cats: Category[]): Category[] => {
-      const result: Category[] = [];
-      const processCategory = (cat: Category) => {
-        // Add the category itself (without children property)
-        const { children, ...categoryWithoutChildren } = cat;
-        result.push(categoryWithoutChildren as Category);
-        // Recursively process children if they exist
-        if (children && children.length > 0) {
-          children.forEach(child => processCategory(child));
-        }
-      };
-      cats.forEach(cat => processCategory(cat));
-      return result;
+  const flattenCategories = useCallback((cats: Category[]): Category[] => {
+    const result: Category[] = [];
+    const processCategory = (cat: Category) => {
+      // Add the category itself (without children property)
+      const { children, ...categoryWithoutChildren } = cat;
+      result.push(categoryWithoutChildren as Category);
+      // Recursively process children if they exist
+      if (children && children.length > 0) {
+        children.forEach(child => processCategory(child));
+      }
     };
-    return flatten(categories);
-  }, [categories]);
+    cats.forEach(cat => processCategory(cat));
+    return result;
+  }, []);
+
+  useEffect(() => {
+    setLocalCategories(flattenCategories(categories));
+  }, [categories, flattenCategories]);
+
+  const flattenedCategoriesBase = useMemo((): Category[] => {
+    return localCategories;
+  }, [localCategories]);
 
   // Fetch products to calculate product counts per category
   const [productCounts, setProductCounts] = useState<Record<number, number>>({});
@@ -350,6 +373,16 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
         displayOrder: index,
       }));
 
+      setLocalCategories(prev =>
+        prev.map(cat => {
+          if (cat.parentId !== activeCategory.parentId) return cat;
+          const newIndexForCat = reorderData.findIndex(item => item.id === cat.id);
+          return newIndexForCat !== -1
+            ? { ...cat, displayOrder: newIndexForCat }
+            : cat;
+        })
+      );
+
       await saveReorder(reorderData, activeCategory.parentId);
       return;
     }
@@ -376,6 +409,37 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
     const newDisplayOrder = newParentSiblings.length;
 
+    const oldParentReorder = oldParentSiblings.map((cat, index) => ({
+      id: cat.id,
+      displayOrder: index,
+    }));
+
+    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
+    const newParentReorder = newParentOrderIds.map((id, index) => ({
+      id,
+      displayOrder: index,
+    }));
+
+    const oldParentReorderMap = new Map(oldParentReorder.map(item => [item.id, item.displayOrder]));
+    const newParentReorderMap = new Map(newParentReorder.map(item => [item.id, item.displayOrder]));
+
+    setLocalCategories(prev =>
+      prev.map(cat => {
+        if (cat.id === activeCategory.id) {
+          return { ...cat, parentId: targetParentId, displayOrder: newDisplayOrder };
+        }
+        if (cat.parentId === oldParentId && cat.id !== activeCategory.id) {
+          const nextOrder = oldParentReorderMap.get(cat.id);
+          return nextOrder !== undefined ? { ...cat, displayOrder: nextOrder } : cat;
+        }
+        if (cat.parentId === targetParentId) {
+          const nextOrder = newParentReorderMap.get(cat.id);
+          return nextOrder !== undefined ? { ...cat, displayOrder: nextOrder } : cat;
+        }
+        return cat;
+      })
+    );
+
     const updatedCategory = await updateCategory(activeCategory.id, {
       parentId: targetParentId,
       displayOrder: newDisplayOrder,
@@ -386,18 +450,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     }
 
     if (oldParentSiblings.length > 0) {
-      const oldParentReorder = oldParentSiblings.map((cat, index) => ({
-        id: cat.id,
-        displayOrder: index,
-      }));
       await saveReorder(oldParentReorder, oldParentId ?? undefined);
     }
 
-    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
-    const newParentReorder = newParentOrderIds.map((id, index) => ({
-      id,
-      displayOrder: index,
-    }));
     await saveReorder(newParentReorder, targetParentId);
   }, [filteredCategories, saveReorder, isDescendant, updateCategory]);
 
@@ -519,7 +574,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {isLoading && !reorderLoading ? (
+        {(isLoading || (!hasCompletedInitialLoad && !error)) && !reorderLoading ? (
           <div className="flex items-center justify-center py-12 bg-gray-50">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
           </div>
