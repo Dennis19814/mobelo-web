@@ -50,10 +50,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const hasInitializedExpansion = useRef(false);
-  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
-  const hasStartedLoading = useRef(false);
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
-  const [isInitialMount, setIsInitialMount] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   const {
     categories,
@@ -66,35 +64,20 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
 
-  useEffect(() => {
-    setHasCompletedInitialLoad(false);
-    hasStartedLoading.current = false;
-    setIsInitialMount(true);
-  }, [appId]);
-
-  // Track initial mount to show spinner immediately
+  // Track when categories have been loaded at least once
   useEffect(() => {
     if (!isLoading && categories.length > 0) {
-      setIsInitialMount(false);
-    } else if (!isLoading && hasStartedLoading.current) {
-      setIsInitialMount(false);
+      hasLoadedOnce.current = true;
+    } else if (!isLoading && hasLoadedOnce.current) {
+      // Already loaded once, but now no categories (might have been deleted)
+      hasLoadedOnce.current = true;
     }
   }, [isLoading, categories.length]);
 
+  // Reset loaded state when appId changes
   useEffect(() => {
-    if (categories.length > 0) {
-      setHasCompletedInitialLoad(true);
-      return;
-    }
-
-    if (isLoading) {
-      hasStartedLoading.current = true;
-    }
-
-    if (!isLoading && hasStartedLoading.current) {
-      setHasCompletedInitialLoad(true);
-    }
-  }, [categories.length, isLoading]);
+    hasLoadedOnce.current = false;
+  }, [appId]);
 
   // Flatten nested categories structure (if API returns nested with children)
   const flattenCategories = useCallback((cats: Category[]): Category[] => {
@@ -189,8 +172,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
 
   // Track if we're still processing categories (fetching or processing product counts)
-  // Show spinner while fetching categories OR while fetching product counts for categories
-  const isProcessingCategories = isLoading || (categories.length > 0 && isLoadingProductCounts);
+  // Show spinner immediately on mount until categories are loaded (like inventory page)
+  // Show spinner if: still loading categories OR haven't loaded once yet OR loading product counts for existing categories
+  const isProcessingCategories = isLoading || !hasLoadedOnce.current || (categories.length > 0 && isLoadingProductCounts);
 
   // Enhance flattened categories with product counts
   const flattenedCategories = useMemo((): Category[] => {
@@ -594,7 +578,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {((isLoading || isInitialMount || (isLoadingProductCounts && categories.length > 0)) && !reorderLoading) ? (
+        {isProcessingCategories && !reorderLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
