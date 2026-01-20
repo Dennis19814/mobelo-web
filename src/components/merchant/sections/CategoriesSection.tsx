@@ -681,9 +681,11 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
             </div>
           </div>
         )}
+      </div>
 
-        {/* Pagination */}
-        {filteredCategories.length > 0 && (
+      {/* Pagination */}
+      {filteredCategories.length > 0 && (
+        <div className="mt-4">
           <Pagination
             totalItems={totalCategories}
             currentPage={page}
@@ -694,8 +696,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
             itemLabel="categories"
             selectId="categories-per-page-select"
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modals - Lazy loaded */}
       <Suspense fallback={null}>
