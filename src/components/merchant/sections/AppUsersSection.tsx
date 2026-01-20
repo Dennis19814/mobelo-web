@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { useMerchantAuth, useCrudOperations } from '@/hooks';
+import { Pagination } from '@/components/merchant/common';
 import {
   Search,
   Loader2,
@@ -86,8 +87,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
   const [modalBlockReason, setModalBlockReason] = useState('');
   const [showModalUnblockForm, setShowModalUnblockForm] = useState(false);
   const [modalUnblockNote, setModalUnblockNote] = useState('');
-
-  const limit = 20;
+  const [limit, setLimit] = useState(20);
 
   const fetchUsers = useCallback(async () => {
     // Support owner (dual-key) or staff JWT
@@ -335,6 +335,15 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
     setPage(1);
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -501,6 +510,7 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
                 onChange={(e) => {
                   const value = e.target.value;
                   setSortBy(value ? value as UserSortBy : undefined);
+                  setPage(1); // Reset to first page when sort changes
                   // If sorting is selected and no order is set, default to DESC
                   if (value && !sortOrder) {
                     setSortOrder(UserSortOrder.DESC);
@@ -523,7 +533,10 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
               {sortBy && (
                 <select
                   value={sortOrder || UserSortOrder.DESC}
-                  onChange={(e) => setSortOrder(e.target.value as UserSortOrder)}
+                  onChange={(e) => {
+                    setSortOrder(e.target.value as UserSortOrder);
+                    setPage(1); // Reset to first page when sort order changes
+                  }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
                   <option value={UserSortOrder.DESC}>Descending</option>
@@ -763,34 +776,23 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
             </table>
           </div>
         )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalCount)} of {totalCount} users
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Pagination */}
+      {totalCount > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={totalCount}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="users"
+            selectId="app-users-per-page"
+          />
+        </div>
+      )}
 
       {/* User Details Modal with Tabs */}
       {isUserDetailsOpen && selectedUser && (

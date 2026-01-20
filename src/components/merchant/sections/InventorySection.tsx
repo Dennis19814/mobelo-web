@@ -690,9 +690,11 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
             </table>
           </div>
         )}
+      </div>
 
-        {/* Pagination */}
-        {filteredProducts.length > 0 && (
+      {/* Pagination */}
+      {filteredProducts.length > 0 && (
+        <div className="mt-4">
           <Pagination
             totalItems={totalProducts}
             currentPage={page}
@@ -703,8 +705,8 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
             itemLabel="products"
             selectId="inventory-per-page-select"
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Stock Adjustment Modal */}
       {showAddStock && selectedProduct && (

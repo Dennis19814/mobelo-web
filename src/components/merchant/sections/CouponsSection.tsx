@@ -436,8 +436,12 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
               ))}
             </tbody>
           </table>
+        </div>
+      )}
 
-          {/* Pagination */}
+      {/* Pagination */}
+      {coupons.length > 0 && (
+        <div className="mt-4">
           <Pagination
             totalItems={total}
             currentPage={filters.page || 1}

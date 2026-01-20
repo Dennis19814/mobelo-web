@@ -458,9 +458,11 @@ export default function TeamSection({ appId }: TeamSectionProps) {
             </tbody>
           </table>
         )}
+      </div>
 
-        {/* Pagination */}
-        {staffMembers.length > 0 && (
+      {/* Pagination */}
+      {staffMembers.length > 0 && (
+        <div className="mt-4">
           <Pagination
             totalItems={total}
             currentPage={page}
@@ -471,8 +473,8 @@ export default function TeamSection({ appId }: TeamSectionProps) {
             itemLabel="team members"
             selectId="team-per-page-select"
           />
-        )}
-      </div>
+        </div>
+      )}
 </div>
       {/* Modals */}
       {showInviteModal && (

@@ -316,8 +316,19 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
           </DndContext>
         )}
 
-        {/* Pagination */}
-        {brands.length > 0 && (
+        {reorderLoading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+              <span className="text-sm text-gray-600">Saving order...</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {brands.length > 0 && (
+        <div className="mt-4">
           <Pagination
             totalItems={totalCount}
             currentPage={page}
@@ -328,17 +339,8 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
             itemLabel="brands"
             selectId="brands-per-page-select"
           />
-        )}
-
-        {reorderLoading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-            <div className="flex items-center space-x-2">
-              <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
-              <span className="text-sm text-gray-600">Saving order...</span>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <Suspense fallback={null}>
         <BrandModal
