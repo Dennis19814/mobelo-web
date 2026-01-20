@@ -248,11 +248,8 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading products with reviews...</p>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
       </div>
     )
   }
@@ -412,9 +409,8 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
             </div>
             
             {reviewsLoading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading reviews...</p>
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
               </div>
             ) : reviews.length === 0 ? (
               <div className="p-8 text-center">

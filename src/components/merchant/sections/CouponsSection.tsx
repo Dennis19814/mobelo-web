@@ -295,8 +295,8 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
 
       {/* Coupons Table */}
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
         </div>
       ) : coupons.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
