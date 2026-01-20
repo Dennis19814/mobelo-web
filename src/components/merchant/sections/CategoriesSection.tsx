@@ -53,6 +53,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
   const hasStartedLoading = useRef(false);
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  const [isInitialMount, setIsInitialMount] = useState(true);
 
   const {
     categories,
@@ -64,6 +65,21 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     reorderCategories,
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
+
+  useEffect(() => {
+    setHasCompletedInitialLoad(false);
+    hasStartedLoading.current = false;
+    setIsInitialMount(true);
+  }, [appId]);
+
+  // Track initial mount to show spinner immediately
+  useEffect(() => {
+    if (!isLoading && categories.length > 0) {
+      setIsInitialMount(false);
+    } else if (!isLoading && hasStartedLoading.current) {
+      setIsInitialMount(false);
+    }
+  }, [isLoading, categories.length]);
 
   useEffect(() => {
     if (categories.length > 0) {
@@ -171,6 +187,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
     fetchProductCounts();
   }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
+
+  // Track if we're still processing categories (fetching or processing product counts)
+  // Show spinner while fetching categories OR while fetching product counts for categories
+  const isProcessingCategories = isLoading || (categories.length > 0 && isLoadingProductCounts);
 
   // Enhance flattened categories with product counts
   const flattenedCategories = useMemo((): Category[] => {
@@ -574,30 +594,21 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {(isLoading || (!hasCompletedInitialLoad && !error)) && !reorderLoading ? (
-          <div className="flex items-center justify-center py-12 bg-gray-50">
-            <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        {((isLoading || isInitialMount || (isLoadingProductCounts && categories.length > 0)) && !reorderLoading) ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
-        ) : filteredCategories.length === 0 ? (
+        ) : filteredCategories.length === 0 && searchQuery ? (
           <div className="text-center py-12">
             <FolderTree className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900">
               No categories found
             </h3>
             <p className="text-gray-600">
-              {searchQuery ? 'Try adjusting your search' : 'Get started by creating your first category'}
+              Try adjusting your search
             </p>
-            {!searchQuery && (
-              <button
-                onClick={handleAddCategory}
-                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors mt-4"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Category
-              </button>
-            )}
           </div>
-        ) : (
+        ) : filteredCategories.length > 0 ? (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -649,7 +660,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
               </table>
             </div>
           </DndContext>
-        )}
+        ) : null}
 
         {reorderLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
