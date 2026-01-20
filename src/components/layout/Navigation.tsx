@@ -196,9 +196,9 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                 className="flex items-center group shrink-0"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                {/* mobelo logo image - responsive sizing */}
+                {/* mobelo logo image - standard sizing */}
                 <Image
-                  src="/logo.png"
+                  src="/logo-new.png"
                   alt="Mobelo - AI-Powered Mobile App Builder"
                   width={120}
                   height={40}

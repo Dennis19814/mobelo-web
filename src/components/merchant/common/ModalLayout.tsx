@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, MouseEvent } from 'react';
 import { X, LucideIcon } from 'lucide-react';
 
 interface ModalLayoutProps {
@@ -41,9 +41,21 @@ export function ModalLayout({
 }: ModalLayoutProps) {
   if (!isOpen) return null;
 
+  const handleOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-      <div className={`relative mx-auto p-0 border w-full ${maxWidthClasses[maxWidth]} shadow-lg rounded-lg bg-white max-h-[calc(100vh-2rem)] flex flex-col`}>
+    <div
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+      onClick={handleOverlayClick}
+    >
+      <div
+        className={`relative mx-auto p-0 border w-full ${maxWidthClasses[maxWidth]} shadow-lg rounded-lg bg-white max-h-[calc(100vh-2rem)] flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
