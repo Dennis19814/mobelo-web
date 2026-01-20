@@ -25,6 +25,7 @@ import { Category } from '@/types/category';
 import { CategoryWithHierarchy } from '@/types/category.types';
 import { useCategories } from '@/hooks/useCategories';
 import DraggableHierarchicalCategoryRow from '@/components/merchant/DraggableHierarchicalCategoryRow';
+import { Pagination } from '../common';
 
 // Lazy load modals
 const AddCategoryModal = lazy(() => import('@/components/merchant/modals/AddCategoryModal').then(m => ({ default: m.AddCategoryModal })));
@@ -52,6 +53,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const hasInitializedExpansion = useRef(false);
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const hasLoadedOnce = useRef(false);
+
+  // Pagination (client-side since API doesn't support pagination)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   const {
     categories,
@@ -267,6 +272,28 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       (cat.description && cat.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [categoriesWithHierarchy, searchQuery]);
+
+  // Paginate filtered categories (client-side pagination)
+  const totalCategories = filteredCategories.length;
+  const totalPages = useMemo(() => Math.ceil(totalCategories / limit), [totalCategories, limit]);
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (page - 1) * limit;
+    return filteredCategories.slice(startIndex, startIndex + limit);
+  }, [filteredCategories, page, limit]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  }, []);
 
   const handleAddCategory = useCallback(() => {
     setIsAddModalOpen(true);
@@ -623,10 +650,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   <SortableContext
-                    items={filteredCategories.map(c => c.id)}
+                    items={paginatedCategories.map(c => c.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {filteredCategories.map((category, index) => (
+                    {paginatedCategories.map((category, index) => (
                       <DraggableHierarchicalCategoryRow
                         key={category.id}
                         category={category}
@@ -635,7 +662,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
                         onDelete={handleDeleteCategory}
                         onToggleExpand={handleToggleExpand}
                         deleteLoading={deleteLoading}
-                        isDragDisabled={!!searchQuery || filteredCategories.length <= 1 || reorderLoading}
+                        isDragDisabled={!!searchQuery || paginatedCategories.length <= 1 || reorderLoading}
                         showHierarchy={true}
                       />
                     ))}
@@ -653,6 +680,20 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
               <span className="text-sm text-white">Saving order...</span>
             </div>
           </div>
+        )}
+
+        {/* Pagination */}
+        {filteredCategories.length > 0 && (
+          <Pagination
+            totalItems={totalCategories}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="categories"
+            selectId="categories-per-page-select"
+          />
         )}
       </div>
 
