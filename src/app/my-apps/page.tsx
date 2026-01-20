@@ -1,7 +1,7 @@
 'use client'
 import { logger } from '@/lib/logger'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -54,6 +54,8 @@ export default function MyApps() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement | null>(null)
+  const userMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [appToDelete, setAppToDelete] = useState<App | null>(null)
@@ -79,6 +81,29 @@ export default function MyApps() {
   useEffect(() => {
     checkAuthStatus()
   }, [checkAuthStatus])
+
+  // Close user dropdown when clicking outside (desktop)
+  useEffect(() => {
+    if (!showUserMenu) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+
+      const menuEl = userMenuRef.current
+      const buttonEl = userMenuButtonRef.current
+
+      if (menuEl && menuEl.contains(target)) return
+      if (buttonEl && buttonEl.contains(target)) return
+
+      setShowUserMenu(false)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserMenu])
 
   const fetchApps = useCallback(async () => {
     const accessToken = localStorage.getItem('access_token')
@@ -308,11 +333,11 @@ export default function MyApps() {
             <div className="flex items-center space-x-6">
               <Link href="/" aria-label="Go to home" className="flex items-center group">
                 <Image
-                  src="/logo.png"
+                  src="/Logo-new.png"
                   alt="mobelo logo"
                   width={120}
                   height={40}
-                  className="h-10 w-auto transition-transform duration-150 group-hover:scale-105"
+                  className="h-8 md:h-9 lg:h-10 w-auto transition-transform duration-150 group-hover:scale-105"
                 />
               </Link>
 
@@ -325,8 +350,9 @@ export default function MyApps() {
             {/* User menu + Mobile menu button */}
             <div className="flex items-center space-x-3">
               {/* Desktop User menu */}
-              <div className="hidden md:block relative">
+              <div className="hidden md:block relative" ref={userMenuRef}>
                 <button
+                  ref={userMenuButtonRef}
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 font-medium transition-all duration-200 rounded-md"
                 >

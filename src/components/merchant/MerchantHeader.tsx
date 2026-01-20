@@ -240,11 +240,12 @@ export default function MerchantHeader({
             {/* Logo - responsive sizing */}
             <Link href="/" aria-label="Go to home" className="flex items-center group shrink-0">
               <Image
-                src="/logo.png"
+                src="/logo-new.png"
                 alt="mobelo logo"
                 width={120}
                 height={40}
                 className="h-8 md:h-9 lg:h-10 w-auto transition-transform duration-150 group-hover:scale-105"
+                priority
               />
             </Link>
 
