@@ -20,7 +20,7 @@ export default function SettingsTemplatesSection({ appId, apiKey, appSecretKey }
 
       <Suspense fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
         </div>
       }>
         <TemplatesSection appId={appId} apiKey={apiKey || ''} appSecretKey={appSecretKey || ''} />
