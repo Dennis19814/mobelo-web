@@ -616,14 +616,88 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             
             const uploadResponse = await apiService.uploadProductMedia(newProductId, uploadFormData)
             if (uploadResponse.ok && uploadResponse.data?.media) {
-              // Update productMedia with uploaded media IDs
-              const uploadedMedia = uploadResponse.data.media
+              const buildMediaStrictKey = (media: ProductMedia) =>
+                `${media.originalFileName || ''}|${media.fileSize || ''}|${media.mimeType || ''}`
+              const buildMediaNameKey = (media: ProductMedia) => media.originalFileName || ''
+
+              const mapUploadedMedia = (uploaded: any): ProductMedia => ({
+                id: uploaded.id,
+                url: uploaded.mediaUrl || uploaded.cdnUrl || uploaded.thumbnailUrl || '',
+                type: uploaded.type || 'image',
+                altText: uploaded.altText || '',
+                displayOrder: uploaded.displayOrder || 0,
+                isPrimary: uploaded.isPrimary || false,
+                isListingThumbnail: uploaded.isListingThumbnail || false,
+                isDetailThumbnail: uploaded.isDetailThumbnail || false,
+                thumbnailUrl: uploaded.thumbnailUrl,
+                duration: uploaded.duration,
+                fileSize: uploaded.fileSize,
+                width: uploaded.width,
+                height: uploaded.height,
+                mimeType: uploaded.mimeType,
+                originalFileName: uploaded.originalFileName
+              })
+
               setProductMedia(prev => {
                 const tempMedia = prev.filter(m => m.isTemporary)
                 const permanentMedia = prev.filter(m => !m.isTemporary)
-                
+
+                const tempMediaStrictMap = new Map<string, ProductMedia[]>()
+                const tempMediaNameMap = new Map<string, ProductMedia[]>()
+                tempMedia.forEach(mediaItem => {
+                  const strictKey = buildMediaStrictKey(mediaItem)
+                  const nameKey = buildMediaNameKey(mediaItem)
+                  const strictList = tempMediaStrictMap.get(strictKey) || []
+                  strictList.push(mediaItem)
+                  tempMediaStrictMap.set(strictKey, strictList)
+                  if (nameKey) {
+                    const nameList = tempMediaNameMap.get(nameKey) || []
+                    nameList.push(mediaItem)
+                    tempMediaNameMap.set(nameKey, nameList)
+                  }
+                })
+
+                const takeTempMatch = (mapped: ProductMedia) => {
+                  const strictKey = buildMediaStrictKey(mapped)
+                  const nameKey = buildMediaNameKey(mapped)
+                  let match = tempMediaStrictMap.get(strictKey)?.shift()
+                  if (!match && nameKey) {
+                    match = tempMediaNameMap.get(nameKey)?.shift()
+                  }
+                  if (match) {
+                    const matchStrictKey = buildMediaStrictKey(match)
+                    const matchNameKey = buildMediaNameKey(match)
+                    const strictList = tempMediaStrictMap.get(matchStrictKey)?.filter(item => item !== match) || []
+                    if (strictList.length > 0) {
+                      tempMediaStrictMap.set(matchStrictKey, strictList)
+                    } else {
+                      tempMediaStrictMap.delete(matchStrictKey)
+                    }
+                    if (matchNameKey) {
+                      const nameList = tempMediaNameMap.get(matchNameKey)?.filter(item => item !== match) || []
+                      if (nameList.length > 0) {
+                        tempMediaNameMap.set(matchNameKey, nameList)
+                      } else {
+                        tempMediaNameMap.delete(matchNameKey)
+                      }
+                    }
+                  }
+                  return match
+                }
+
+                const mappedUploadedMedia = uploadResponse.data.media.map((uploadedItem: any) => {
+                  const mapped = mapUploadedMedia(uploadedItem)
+                  const match = takeTempMatch(mapped)
+                  if (match) {
+                    mapped.isPrimary = !!match.isPrimary
+                    mapped.isListingThumbnail = !!match.isListingThumbnail
+                    mapped.isDetailThumbnail = !!match.isDetailThumbnail
+                  }
+                  return mapped
+                })
+
                 // Replace temporary media with uploaded media
-                const updatedMedia = [...permanentMedia, ...uploadedMedia]
+                const updatedMedia = [...permanentMedia, ...mappedUploadedMedia]
                 
                 // Clean up blob URLs
                 tempMedia.forEach(m => {
@@ -634,6 +708,31 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                 
                 return updatedMedia
               })
+
+              const tempMediaSnapshot = productMedia.filter(m => m.isTemporary)
+              const selectedListing = tempMediaSnapshot.find(m => m.isListingThumbnail)
+              const selectedDetail = tempMediaSnapshot.find(m => m.isDetailThumbnail)
+              const uploadedMedia = uploadResponse.data.media.map(mapUploadedMedia)
+
+              const matchUploadedByTemp = (temp: ProductMedia | undefined) => {
+                if (!temp) return undefined
+                const strictKey = buildMediaStrictKey(temp)
+                const nameKey = buildMediaNameKey(temp)
+                return (
+                  uploadedMedia.find(m => buildMediaStrictKey(m) === strictKey) ||
+                  (nameKey ? uploadedMedia.find(m => buildMediaNameKey(m) === nameKey) : undefined)
+                )
+              }
+
+              const listingTarget = matchUploadedByTemp(selectedListing)
+              const detailTarget = matchUploadedByTemp(selectedDetail)
+
+              if (listingTarget?.id) {
+                await apiService.setProductMediaAsThumbnail(newProductId, listingTarget.id)
+              }
+              if (detailTarget?.id) {
+                await apiService.setProductMediaAsDetailThumbnail(newProductId, detailTarget.id)
+              }
               
               // Clear temporary files
               setTempUploadedMedia([])
@@ -1744,6 +1843,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       isListingThumbnail: false,
                       isDetailThumbnail: false,
                       thumbnailUrl: previewUrl,
+                      originalFileName: file.name,
+                      fileSize: file.size,
+                      mimeType: file.type,
                       isTemporary: true // Flag to identify temp uploads
                     }
 
@@ -1794,7 +1896,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   }
                 }}
                   onSetPrimary={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1808,7 +1912,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetListingThumbnail={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1822,7 +1928,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetDetailThumbnail={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
