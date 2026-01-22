@@ -30,8 +30,8 @@ export default function HomeAppCarousel() {
     const absOffset = Math.abs(offset)
     const translateX = offset * 125
     const scale = isCenter ? 1.1 : absOffset === 1 ? 0.85 : 0.7
-    const opacity = isCenter ? 1 : absOffset === 1 ? 0.7 : 0.4
-    const blur = isCenter ? 0 : absOffset === 1 ? 1 : 2
+    const opacity = isCenter ? 1 : absOffset === 1 ? 1 : 0.8
+    const blur = isCenter ? 0 : absOffset === 1 ? 0 : 0
     const zIndex = 10 - absOffset
     const rotateY = offset * 8
     

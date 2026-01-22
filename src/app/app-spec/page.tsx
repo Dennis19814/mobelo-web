@@ -52,6 +52,7 @@ import {
   MapPin,
   Loader2,
 } from 'lucide-react'
+import HomeAppCarousel from '@/components/HomeAppCarousel'
 
 type KeyFeature = { feature: string; why: string }
 type PageExpl = { pageId: string; title: string; role: 'promote'|'sell'|'discover'|'retain'|'support'; why: string }
@@ -777,6 +778,7 @@ export default function AppSpecPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-600">Loading...</div></div>}>
       <AppSpecContent />
+    <HomeAppCarousel/>
     </Suspense>
   )
 }
