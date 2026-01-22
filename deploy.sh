@@ -65,38 +65,43 @@ check_connection() {
     log_info "✓ Deployment directory configured"
 }
 
-# Build Next.js app locally
-build_web() {
-    log_info "Building Next.js application locally..."
+# Build Next.js app on server (AFTER configuring production .env)
+build_web_on_server() {
+    log_info "Building Next.js application on production server..."
 
-    # Clean install for consistency
-    log_info "Installing dependencies..."
-    npm ci --legacy-peer-deps
+    ssh -i "$SSH_KEY" $SERVER << 'ENDSSH'
+        set -e
+        cd /var/www/mobelo-web
 
-    # Build Next.js app with NODE_ENV=production
-    log_info "Building production bundle..."
-    NODE_ENV=production npm run build
+        echo "[SERVER] Installing dependencies..."
+        npm ci --legacy-peer-deps
 
-    # Verify build output
-    if [ ! -d ".next/standalone" ]; then
-        log_error "✗ Build failed - .next/standalone directory not found"
-        exit 1
-    fi
+        echo "[SERVER] Building production bundle with production environment..."
+        NODE_ENV=production npm run build
 
-    # Copy static assets for standalone build
-    log_info "Copying static assets for standalone build..."
-    cp -r public .next/standalone/
-    cp -r .next/static .next/standalone/.next/
+        # Verify build output
+        if [ ! -d ".next/standalone" ]; then
+            echo "[SERVER] ✗ Build failed - .next/standalone directory not found"
+            exit 1
+        fi
 
-    log_info "✓ Next.js app built successfully"
+        # Copy static assets for standalone build
+        echo "[SERVER] Copying static assets for standalone build..."
+        cp -r public .next/standalone/
+        cp -r .next/static .next/standalone/.next/
+
+        echo "[SERVER] ✓ Next.js app built successfully on server"
+ENDSSH
+
+    log_info "✓ Next.js app built successfully on server"
 }
 
 # Upload files to server
 upload_files() {
     log_info "Uploading files to production server..."
 
-    # Use rsync to sync files directly to server
-    log_info "Syncing files to server..."
+    # Use rsync to sync SOURCE files to server (will build on server)
+    log_info "Syncing source files to server..."
     rsync -avz --progress \
         --exclude='.git' \
         --exclude='*.log' \
@@ -104,7 +109,7 @@ upload_files() {
         --exclude='.DS_Store' \
         --exclude='deploy.sh' \
         --exclude='production-dennis.pem' \
-        --exclude='.next/cache' \
+        --exclude='.next' \
         --exclude='node_modules' \
         -e "ssh -i $SSH_KEY" \
         ./ $SERVER:$REMOTE_DIR/
@@ -130,6 +135,34 @@ configure_production() {
 NODE_ENV=production
 PORT=3001
 
+# API Configuration - CRITICAL: Must use production API URLs
+NEXT_PUBLIC_API_URL=https://api.mobelo.dev
+NEXT_PUBLIC_WORKER_URL=https://worker.mobelo.dev
+NEXT_PUBLIC_WEB_URL=https://mobelo.dev
+NEXT_PUBLIC_APP_URL=https://mobelo.dev
+
+# Application Configuration
+NEXT_PUBLIC_APP_NAME="Mobile App Designer"
+NEXT_PUBLIC_APP_DESCRIPTION="AI-powered mobile app design tool"
+NEXT_PUBLIC_APP_VERSION="1.0.0"
+
+# API Timeout
+NEXT_PUBLIC_API_TIMEOUT="10000"
+
+# Authentication Configuration
+NEXT_PUBLIC_OTP_LENGTH="6"
+NEXT_PUBLIC_OTP_EXPIRY_MINUTES="10"
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_ANALYTICS="false"
+NEXT_PUBLIC_ENABLE_ERROR_REPORTING="false"
+NEXT_PUBLIC_ENABLE_MOCK_DATA="false"
+
+# Production Settings
+NEXT_PUBLIC_DEBUG_MODE="false"
+NEXT_PUBLIC_SHOW_PERFORMANCE_METRICS="false"
+NEXT_PUBLIC_DISABLE_DIRECT_API_IN_DEV="false"
+
 # Stripe Configuration (update with your keys)
 NEXT_PUBLIC_STRIPE_PUBLIC_KEY=your_stripe_public_key_here
 
@@ -139,8 +172,40 @@ EOF
             echo "[SERVER] ⚠️  Please update .env with actual values"
         else
             echo "[SERVER] .env exists, ensuring production values..."
+
+            # Update basic production settings
             sed -i 's/NODE_ENV=.*/NODE_ENV=production/' .env
             sed -i 's/PORT=.*/PORT=3001/' .env
+
+            # Ensure all production API URLs are set (critical for client-side API calls)
+            if grep -q "^NEXT_PUBLIC_API_URL=" .env; then
+                sed -i 's|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=https://api.mobelo.dev|' .env
+            else
+                echo "NEXT_PUBLIC_API_URL=https://api.mobelo.dev" >> .env
+            fi
+
+            if grep -q "^NEXT_PUBLIC_WORKER_URL=" .env; then
+                sed -i 's|NEXT_PUBLIC_WORKER_URL=.*|NEXT_PUBLIC_WORKER_URL=https://worker.mobelo.dev|' .env
+            else
+                echo "NEXT_PUBLIC_WORKER_URL=https://worker.mobelo.dev" >> .env
+            fi
+
+            if grep -q "^NEXT_PUBLIC_WEB_URL=" .env; then
+                sed -i 's|NEXT_PUBLIC_WEB_URL=.*|NEXT_PUBLIC_WEB_URL=https://mobelo.dev|' .env
+            else
+                echo "NEXT_PUBLIC_WEB_URL=https://mobelo.dev" >> .env
+            fi
+
+            if grep -q "^NEXT_PUBLIC_APP_URL=" .env; then
+                sed -i 's|NEXT_PUBLIC_APP_URL=.*|NEXT_PUBLIC_APP_URL=https://mobelo.dev|' .env
+            else
+                echo "NEXT_PUBLIC_APP_URL=https://mobelo.dev" >> .env
+            fi
+
+            # Update feature flags for production
+            sed -i 's/NEXT_PUBLIC_DEBUG_MODE=.*/NEXT_PUBLIC_DEBUG_MODE="false"/' .env
+            sed -i 's/NEXT_PUBLIC_ENABLE_MOCK_DATA=.*/NEXT_PUBLIC_ENABLE_MOCK_DATA="false"/' .env
+
             echo "[SERVER] ✓ .env updated for production"
         fi
 
@@ -240,9 +305,9 @@ main() {
     fi
 
     check_connection
-    build_web
     upload_files
     configure_production
+    build_web_on_server
     restart_services
     verify_deployment
 
