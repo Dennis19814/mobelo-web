@@ -11,7 +11,7 @@ const carouselImages = [
   { src: '/images/mockups/gray.png' },
 ]
 
-const glowGradient = 'from-slate-500 via-gray-500 to-zinc-600'
+const glowGradient = ''
 
 export default function HomeAppCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -44,7 +44,7 @@ export default function HomeAppCarousel() {
   }
 
   return (
-    <section className="relative bg-white py-20 md:py-28 overflow-hidden" aria-labelledby="app-carousel-heading">
+    <section className="relative  overflow-hidden" aria-labelledby="app-carousel-heading">
 
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="relative">
@@ -68,7 +68,7 @@ export default function HomeAppCarousel() {
                     <div className="relative">
                       {/* Enhanced glow for center card */}
                       {isCenter && (
-                        <div className={`absolute -inset-6 bg-gradient-to-r ${glowGradient} opacity-30 blur-2xl animate-pulse`}></div>
+                        <div className={`absolute -inset-6 bg-gradient-to-r  animate-pulse`}></div>
                       )}
                       
                       {/* iPhone frame (matched to Templates section) */}
@@ -124,25 +124,59 @@ export default function HomeAppCarousel() {
             </div>
 
             {/* Navigation arrows */}
-            <button
-              onClick={() => setActiveIndex((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 group bg-white hover:bg-slate-50 text-slate-700 rounded-full p-4 border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:scale-110 shadow-lg"
-              aria-label="Previous app preview"
-            >
-              <svg className="w-6 h-6 transform group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+        <button
+  onClick={() =>
+    setActiveIndex((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)
+  }
+  className="absolute left-0 top-1/2 -translate-y-1/2 group
+    bg-white hover:bg-slate-50 text-slate-700
+    rounded-full p-3
+    border border-slate-200 hover:border-slate-300
+    transition-all duration-300 hover:scale-105
+    shadow-md"
+  aria-label="Previous app preview"
+>
+  <svg
+    className="w-5 h-5 transform group-hover:-translate-x-0.5 transition-transform"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.5}
+      d="M15 19l-7-7 7-7"
+    />
+  </svg>
+</button>
+
             
-            <button
-              onClick={() => setActiveIndex((prev) => (prev + 1) % carouselImages.length)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 group bg-white hover:bg-slate-50 text-slate-700 rounded-full p-4 border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:scale-110 shadow-lg"
-              aria-label="Next app preview"
-            >
-              <svg className="w-6 h-6 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+      <button
+  onClick={() => setActiveIndex((prev) => (prev + 1) % carouselImages.length)}
+  className="absolute right-0 top-1/2 -translate-y-1/2 group
+    bg-white hover:bg-slate-50 text-slate-700
+    rounded-full p-3
+    border border-slate-200 hover:border-slate-300
+    transition-all duration-300 hover:scale-105
+    shadow-md"
+  aria-label="Next app preview"
+>
+  <svg
+    className="w-5 h-5 transform group-hover:translate-x-0.5 transition-transform"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.5}
+      d="M9 5l7 7-7 7"
+    />
+  </svg>
+</button>
+
           </div>
 
         </div>

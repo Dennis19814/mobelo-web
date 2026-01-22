@@ -467,7 +467,7 @@ function AppSpecContent() {
     }
 
     return (
-      <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.04)]">
         <div className="grid gap-6 md:grid-cols-3">
 
           {/* 🎨 Colors */}
@@ -669,7 +669,7 @@ function AppSpecContent() {
 
 
         {/* Secondary Tagline (hero tagline) moved below visual spec */}
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-gray-800">{spec.concept.heroTagline}</p>
         </div>
 
