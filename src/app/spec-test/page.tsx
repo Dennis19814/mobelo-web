@@ -120,7 +120,7 @@ function AppSpecContent() {
   }, [data?.spec?.fonts?.heading, data?.spec?.fonts?.body, data?.spec])
 
   useEffect(() => {
-    // Try token-based sessionStorage first
+    // Try token-based sessionStorage first.
     try {
       if (token) {
         const raw = sessionStorage.getItem(`appSpec:${token}`)
