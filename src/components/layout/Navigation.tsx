@@ -196,9 +196,9 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                 className="flex items-center group shrink-0"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                {/* mobelo logo image - responsive sizing */}
+                {/* mobelo logo image - standard sizing */}
                 <Image
-                  src="/logo.png"
+                  src="/logo-new.png"
                   alt="Mobelo - AI-Powered Mobile App Builder"
                   width={120}
                   height={40}
@@ -258,6 +258,16 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                     }`}
                   >
                     Pricing
+                  </Link>
+                  <Link
+                    href="/spec-test"
+                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
+                      isInTechSection 
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
+                    }`}
+                  >
+                    Spec-Test
                   </Link>
            
                 </>
@@ -411,6 +421,13 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Pricing
+                    </Link>
+                    <Link
+                      href="/spec-test"
+                      className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Spec-Test
                     </Link>
                     <button
                       onClick={() => scrollToSection('faq')}

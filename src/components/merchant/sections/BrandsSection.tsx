@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Plus, Search, Loader2, Building2 } from 'lucide-react';
 import DraggableBrandRow from '../DraggableBrandRow';
+import { Pagination } from '../common';
 
 // Lazy load modals
 const BrandModal = lazy(() => import('../BrandModal'));
@@ -35,7 +36,7 @@ interface BrandsSectionProps {
 const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const [limit, setLimit] = useState(20);
 
   const {
     brands,
@@ -175,6 +176,15 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
 
   const totalPages = useMemo(() => Math.ceil(totalCount / limit), [totalCount, limit]);
 
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1); // Reset to first page when changing limit
+  }, []);
+
   // Disable drag and drop when searching or when there's only one brand
   const isDragDisabled = useMemo(
     () => !!searchQuery || brands.length <= 1 || reorderLoading,
@@ -230,7 +240,7 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : brands.length === 0 ? (
           <div className="text-center py-12">
@@ -306,32 +316,6 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
           </DndContext>
         )}
 
-        {brands.length > 0 && totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-700">
-                Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalCount)} of {totalCount} brands
-              </p>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {reorderLoading && (
           <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
             <div className="flex items-center space-x-2">
@@ -341,6 +325,22 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {brands.length > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={totalCount}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="brands"
+            selectId="brands-per-page-select"
+          />
+        </div>
+      )}
 
       <Suspense fallback={null}>
         <BrandModal

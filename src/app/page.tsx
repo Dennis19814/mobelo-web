@@ -456,6 +456,11 @@ export default function HomePage() {
 
         {/* Why Choose */}
         <section id="features" className="bg-white min-h-screen flex items-center pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="features-heading">
+        {/* <section
+          id="features"
+          className="bg-white pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24"
+          aria-labelledby="features-heading"
+        > */}
           <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
@@ -479,7 +484,10 @@ export default function HomePage() {
         </section>
 
         {/* Launch Features */}
-        <section className="bg-slate-50 min-h-screen flex items-center py-12 md:py-16" aria-labelledby="launch-features-heading">
+        <section
+          className="bg-slate-50 pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20"
+          aria-labelledby="launch-features-heading"
+        >
           <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
               <h2 id="launch-features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Everything You Need to Launch</h2>
@@ -552,7 +560,10 @@ export default function HomePage() {
 
 
       {/* Templates */}
-        <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50 py-16 md:py-20" aria-labelledby="templates-heading">
+        <section
+          className="bg-gradient-to-b from-slate-50 via-white to-slate-50 pt-20 md:pt-28 lg:pt-24 pb-16 md:pb-20"
+          aria-labelledby="templates-heading"
+        >
           <div className="mx-auto max-w-7xl px-4 md:px-6">
             <div className="text-center space-y-4 mb-16">
               
@@ -649,7 +660,7 @@ export default function HomePage() {
   </div>
 
   {/* Floating icon badge */}
-  <div className={`absolute top-6 right-8 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg z-40 group-hover:scale-110 transition-transform`}>
+  <div className={`absolute top-6 right-8 w-14 h-14 rounded-2xl bg-gradient-to-br ${tpl.color} flex items-center justify-center text-white shadow-lg z-10 group-hover:scale-110 transition-transform`}>
     {Icon ? <Icon className="w-7 h-7" /> : isEmoji ? <span className="text-2xl">{tpl.icon}</span> : null}
   </div>
 </div>
@@ -803,7 +814,7 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="bg-gradient-to-br from-orange-500 to-amber-500 min-h-screen flex items-center py-16" aria-labelledby="cta-heading">
+        <section className="bg-gradient-to-br from-orange-500 to-amber-500 py-20 md:py-28 lg:py-24 flex items-center" aria-labelledby="cta-heading">
           <div className="mx-auto max-w-5xl px-6 w-full">
             <div className="bg-white rounded-3xl shadow-2xl shadow-orange-300/40 p-8 md:p-10 space-y-8">
               <div className="grid md:grid-cols-2 gap-10">

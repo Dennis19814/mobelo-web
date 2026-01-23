@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Navigation } from '@/components/layout'
+import HomeAppCarousel from '@/components/HomeAppCarousel'
 import { SigninModal } from '@/components/modals'
 import { apiService } from '@/lib/api-service'
 import {
@@ -52,7 +53,6 @@ import {
   MapPin,
   Loader2,
 } from 'lucide-react'
-import HomeAppCarousel from '@/components/HomeAppCarousel'
 
 type KeyFeature = { feature: string; why: string }
 type PageExpl = { pageId: string; title: string; role: 'promote'|'sell'|'discover'|'retain'|'support'; why: string }
@@ -93,6 +93,8 @@ function AppSpecContent() {
   const token = params.get('spec')
   const [data, setData] = useState<{ prompt: string; spec: AppSpec } | null>(null)
   const [showSigninModal, setShowSigninModal] = useState(false)
+  const [selectedThemeId, setSelectedThemeId] = useState('theme')
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
 
   // Load Google Fonts dynamically based on API response
   useEffect(() => {
@@ -137,6 +139,20 @@ function AppSpecContent() {
     // If nothing found, go home
     router.replace('/')
   }, [router, token])
+
+  useEffect(() => {
+    const spec = data?.spec
+    if (!spec) return
+    const themes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
+      ? spec.best.suggestedThemes
+      : (spec.theme ? [spec.theme] : [])
+    const defaultId = spec.theme?.id || themes[0]?.id
+    if (!defaultId) return
+    const isCurrentValid = themes.some((theme) => theme.id === selectedThemeId)
+    if (selectedThemeId === 'theme' || !isCurrentValid) {
+      setSelectedThemeId(defaultId)
+    }
+  }, [data, selectedThemeId])
 
   const roleClass = (role: string) =>
     `inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
@@ -303,6 +319,29 @@ function AppSpecContent() {
     return wrap('bg-gray-50 text-gray-600', <ClipboardList className="h-6 w-6" />)
   }
 
+  const defaultThemeColors = {
+    primary: '#4F46E5',
+    secondary: '#10B981',
+    accent: '#06B6D4',
+    background: '#FFFFFF',
+    text: '#1F2937'
+  }
+
+  const availableThemes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
+    ? spec.best.suggestedThemes
+    : (spec.theme ? [spec.theme] : [])
+
+  const chosenTheme = spec.theme || availableThemes[0]
+  const themeColors = chosenTheme?.colors || defaultThemeColors
+  const themeSwatches = [
+    themeColors.primary,
+    themeColors.secondary,
+    themeColors.accent,
+    themeColors.background,
+    themeColors.text,
+  ]
+  const selectedTheme = availableThemes.find((theme) => theme.id === selectedThemeId) || chosenTheme
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation hideMenuItems={true} showGenerateNewApp={true} />
@@ -340,7 +379,7 @@ function AppSpecContent() {
             </div>
           </div>
           <p className="mt-2 text-lg text-gray-700">{spec.concept.oneLiner}</p>
-          {/* Wizard Steps (after primary subtitle) */}
+        {/* Wizard Steps (after primary subtitle) */}
           <div className="mt-8 mb-8">
             <div className="flex items-center justify-center gap-4 sm:gap-6 mx-auto w-fit">
               {/* Step 1 - Completed */}
@@ -381,138 +420,256 @@ function AppSpecContent() {
               </div>
             </div>
           </div>
-        </header>
+        <div className="mb-8">
+          <HomeAppCarousel />
+        </div>
 
-        {/* Concept Canvas (static sample visual spec) */}
-        <section className="mb-8">
-          {(() => {
-            // Get theme colors from API response, fallback to defaults
-            const chosenTheme = spec.theme || spec.best?.suggestedThemes?.[0]
-            const themeColors = chosenTheme?.colors || {
-              primary: '#4F46E5',
-              secondary: '#10B981',
-              accent: '#06B6D4',
-              background: '#FFFFFF',
-              text: '#1F2937'
-            }
+        <section className="mb-10">
+  {(() => {
+    const chosenTheme = spec.theme || spec.best?.suggestedThemes?.[0]
+    const themeColors = chosenTheme?.colors || {
+      primary: '#4F46E5',
+      secondary: '#10B981',
+      accent: '#06B6D4',
+      background: '#FFFFFF',
+      text: '#1F2937'
+    }
 
-            // Sample static visual spec for concept visualization
-            const visualSpec = {
-              palette: {
-                primary: themeColors.primary,
-                accent: themeColors.accent,
-                neutrals: ['#F5F5F5', '#E5E7EB', '#D1D5DB', '#9CA3AF'],
-                swatches: [
-                  themeColors.primary,
-                  themeColors.secondary,
-                  themeColors.accent,
-                  themeColors.background,
-                  themeColors.text,
-                  '#F5F5F5',
-                  '#D1D5DB',
-                  '#9CA3AF'
-                ]
-              },
-              typography: {
-                heading: { name: spec.fonts?.heading || 'Inter', sample: 'Aa' },
-                body: { name: spec.fonts?.body || 'Inter', sample: 'The quick brown fox jumps over the lazy dog' },
-              },
-              screenshots: [
-                { id: 's1', url: '/images/app1.png', alt: 'App Screen 1' },
-                { id: 's2', url: '/images/app2.png', alt: 'App Screen 2' },
-              ],
-              menus: (spec.menuItems && spec.menuItems.length > 0 ? spec.menuItems : ['Home','Browse','Product','Wishlist','Cart','Orders','Profile']).slice(0,7),
-              icons: ['home','search','shopping-bag','heart','shopping-cart','package','user'],
-            } as const
+    const colorSwatches = [
+      themeColors.primary,
+      themeColors.secondary,
+      themeColors.accent,
+      themeColors.background,
+      themeColors.text,
+      '#F5F5F5',
+      '#D1D5DB',
+      '#9CA3AF'
+    ]
 
-            const iconNode = (key: string) => {
-              switch (key) {
-                case 'home': return <HomeIcon className="h-4 w-4" />
-                case 'search': return <Search className="h-4 w-4" />
-                case 'shopping-bag': return <ShoppingBag className="h-4 w-4" />
-                case 'heart': return <Heart className="h-4 w-4" />
-                case 'shopping-cart': return <ShoppingCart className="h-4 w-4" />
-                case 'package': return <Package className="h-4 w-4" />
-                case 'user': return <User className="h-4 w-4" />
-                default: return <ClipboardList className="h-4 w-4" />
-              }
-            }
+    const menus = (
+      spec.menuItems?.length
+        ? spec.menuItems
+        : ['Home', 'Browse', 'Product', 'Wishlist', 'Cart', 'Profile']
+    ).slice(0, 6)
 
-            return (
-              <div className="relative overflow-hidden rounded-2xl bg-[#8C8C8C] text-white shadow-lg px-4 sm:px-6 py-6 min-h-[420px]">
+    const icons = ['home', 'search', 'shopping-bag', 'heart', 'shopping-cart', 'user']
 
-                {/* Left mid: Theme palette */}
-                <div className="absolute left-6 top-28">
-                  <div className="text-xs font-semibold opacity-90 mb-2">{chosenTheme?.displayName || 'Product Catalog'}</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {visualSpec.palette.swatches.slice(0,8).map((hex, i) => (
-                      <div key={i} className="h-10 w-10 rounded-lg border border-white/10 shadow-inner" style={{ backgroundColor: hex }} />
-                    ))}
-                  </div>
+    const iconNode = (key: string) => {
+      switch (key) {
+        case 'home': return <HomeIcon className="h-4 w-4" />
+        case 'search': return <Search className="h-4 w-4" />
+        case 'shopping-bag': return <ShoppingBag className="h-4 w-4" />
+        case 'heart': return <Heart className="h-4 w-4" />
+        case 'shopping-cart': return <ShoppingCart className="h-4 w-4" />
+        case 'user': return <User className="h-4 w-4" />
+        default: return <ClipboardList className="h-4 w-4" />
+      }
+    }
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.04)]">
+        <div className="grid gap-6 md:grid-cols-3">
+
+          {/* 🎨 Colors */}
+          <div className="rounded-2xl bg-white/80 border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-800">
+              {spec.concept.appName || 'App Theme'}
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {colorSwatches.map((hex, i) => (
+                <div
+                  key={i}
+                  className="h-11 w-11 rounded-xl border border-slate-200 shadow-sm transition hover:scale-105"
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 🔤 Typography */}
+          <div className="rounded-2xl bg-white/80 border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-800">
+              Typography
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div
+                className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 text-xl font-bold shadow-inner"
+                style={{ fontFamily: spec.fonts?.heading || 'Inter' }}
+              >
+                Aa
+              </div>
+
+              <div>
+                <div className="text-sm font-medium text-slate-700">
+                  {spec.fonts?.heading || 'Inter'}
                 </div>
-
-                {/* Left top: secondary screenshot (left device) */}
-                <div className="absolute left-56 top-6 drop-shadow-xl">
-                  <div className="rounded-[22px] bg-white/5 border border-white/10 h-80 w-44 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={visualSpec.screenshots[1].url}
-                      alt={visualSpec.screenshots[1].alt}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e:any)=>{e.currentTarget.src='https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=400&auto=format&fit=crop'}}
-                    />
-                  </div>
-                </div>
-
-                {/* Right device near center */}
-                <div className="absolute left-1/2 -translate-x-12 top-6 drop-shadow-xl">
-                  <div className="rounded-[22px] bg-white/5 border border-white/10 h-80 w-44 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={visualSpec.screenshots[0].url}
-                      alt={visualSpec.screenshots[0].alt}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e:any)=>{e.currentTarget.src='https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=400&auto=format&fit=crop'}}
-                    />
-                  </div>
-                </div>
-
-                {/* Bottom-left: Typography */}
-                <div className="absolute left-6 bottom-10 max-w-xs">
-                  <div className="text-sm font-semibold opacity-90 mb-2">Typography</div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-lg font-bold" style={{ fontFamily: visualSpec.typography.heading.name + ', system-ui, sans-serif' }}>{visualSpec.typography.heading.sample}</div>
-                    <div className="text-xs opacity-80">{visualSpec.typography.heading.name}</div>
-                  </div>
-                  <div className="mt-3 text-[11px] opacity-90 leading-snug" style={{ fontFamily: visualSpec.typography.body.name + ', system-ui, sans-serif' }}>{visualSpec.typography.body.sample}</div>
-                </div>
-
-                {/* Right side: Menus + Icons */}
-                <div className="absolute right-[25px] top-24 max-w-[320px]">
-                  <div className="text-sm font-semibold opacity-90 mb-2">Menus</div>
-                  <div className="flex flex-wrap gap-2 gap-y-2 mb-3 justify-start">
-                    {visualSpec.menus.map((m, i) => (
-                      <span key={i} className="inline-flex items-center rounded-full bg-white/10 border border-white/20 px-2 py-0.5 text-[11px] opacity-90">{m}</span>
-                    ))}
-                  </div>
-                  <div className="text-sm font-semibold opacity-90 mb-2 text-left">Icons</div>
-                  <div className="flex flex-wrap gap-2 justify-start max-w-[320px]">
-                    {visualSpec.icons.map((ic, i) => (
-                      <span key={i} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 border border-white/20 text-white/90">
-                        {iconNode(ic)}
-                      </span>
-                    ))}
-                  </div>
+                <div
+                  className="text-xs text-slate-500 mt-1"
+                  style={{ fontFamily: spec.fonts?.body || 'Inter' }}
+                >
+                  The quick brown fox jumps over the lazy dog
                 </div>
               </div>
-            )
-          })()}
-        </section>
+            </div>
+          </div>
+
+          {/* 🧩 Icons + Menu */}
+          <div className="rounded-2xl bg-white/80 border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-800">
+              Navigation
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {icons.map((ic) => (
+                <div
+                  key={ic}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
+                >
+                  {iconNode(ic)}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {menus.map((m) => (
+                <span
+                  key={m}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+                >
+                  {m}
+                </span>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    )
+  })()}
+</section>
+
+
+        
+        <section className="mb-10">
+  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    
+    {/* Theme Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        🎨 App Color Theme
+      </div>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsThemeMenuOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm transition hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        >
+          <span className="font-medium">
+            {selectedTheme?.displayName || "Default Theme"}
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            {(selectedTheme?.colors
+              ? [
+                  selectedTheme.colors.primary,
+                  selectedTheme.colors.secondary,
+                  selectedTheme.colors.accent,
+                ]
+              : themeSwatches.slice(0, 3)
+            ).map((hex, index) => (
+              <span
+                key={index}
+                className="h-4 w-4 rounded-full border border-gray-200"
+                style={{ backgroundColor: hex }}
+              />
+            ))}
+          </div>
+        </button>
+
+        {isThemeMenuOpen && (
+          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+            {availableThemes.length ? (
+              availableThemes.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => {
+                    setSelectedThemeId(theme.id)
+                    setIsThemeMenuOpen(false)
+                  }}
+                  className="flex w-full items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50 transition"
+                >
+                  <span className="font-medium text-gray-800">
+                    {theme.displayName}
+                  </span>
+                  <div className="flex gap-1.5">
+                    {[theme.colors.primary, theme.colors.secondary, theme.colors.accent].map(
+                      (hex, i) => (
+                        <span
+                          key={i}
+                          className="h-4 w-4 rounded-full border"
+                          style={{ backgroundColor: hex }}
+                        />
+                      )
+                    )}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500">
+                Default theme applied
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Font Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        🔤 App Font
+      </div>
+
+      <select
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        defaultValue="poppins"
+      >
+        <option value="poppins">Poppins</option>
+        <option value="inter">Inter</option>
+        <option value="montserrat">Montserrat</option>
+        <option value="source-sans">Source Sans 3</option>
+      </select>
+    </div>
+
+    {/* Icon Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        📱 App Icon
+      </div>
+
+      <select
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        defaultValue="leaf"
+      >
+        <option value="leaf">Leaf</option>
+        <option value="cart">Cart</option>
+        <option value="sparkle">Sparkle</option>
+        <option value="badge">Badge</option>
+      </select>
+    </div>
+
+  </div>
+</section>
+
+        </header>
+
 
         {/* Secondary Tagline (hero tagline) moved below visual spec */}
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-gray-800">{spec.concept.heroTagline}</p>
         </div>
 
@@ -778,7 +935,6 @@ export default function AppSpecPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-600">Loading...</div></div>}>
       <AppSpecContent />
-    <HomeAppCarousel/>
     </Suspense>
   )
 }

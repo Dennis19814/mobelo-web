@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { Product, ProductVariant } from '@/types/product.types'
+import { Pagination } from '../common'
 
 // Lazy load modal
 const InventoryHistoryModal = lazy(() => import('../modals/InventoryHistoryModal'))
@@ -80,6 +81,10 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
     notes: ''
   })
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  // Pagination (client-side since we load all products)
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(20)
 
   // Fetch ALL products that track inventory (paginate until complete)
   const fetchProducts = useCallback(async () => {
@@ -322,6 +327,28 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
     [products, searchTerm]
   )
 
+  // Paginate filtered products (client-side pagination)
+  const totalProducts = filteredProducts.length
+  const totalPages = useMemo(() => Math.ceil(totalProducts / limit), [totalProducts, limit])
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (page - 1) * limit
+    return filteredProducts.slice(startIndex, startIndex + limit)
+  }, [filteredProducts, page, limit])
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm])
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage)
+  }, [])
+
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setLimit(newLimit)
+    setPage(1)
+  }, [])
+
   // Get movement type badge color
   const getMovementTypeBadge = useCallback((type: string) => {
     switch (type) {
@@ -429,7 +456,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-1">
-            {filteredProducts.map((product) => (
+            {paginatedProducts.map((product) => (
               <div
                 key={product.id}
                 className={`
@@ -554,7 +581,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProducts.map((product) => (
+                {paginatedProducts.map((product) => (
                   <tr
                     key={product.id}
                     className={`hover:bg-gray-50 cursor-pointer ${selectedProduct?.id === product.id ? 'bg-orange-50' : ''}`}
@@ -664,6 +691,22 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {filteredProducts.length > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={totalProducts}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="products"
+            selectId="inventory-per-page-select"
+          />
+        </div>
+      )}
 
       {/* Stock Adjustment Modal */}
       {showAddStock && selectedProduct && (

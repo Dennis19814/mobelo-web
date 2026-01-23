@@ -25,6 +25,7 @@ import { Category } from '@/types/category';
 import { CategoryWithHierarchy } from '@/types/category.types';
 import { useCategories } from '@/hooks/useCategories';
 import DraggableHierarchicalCategoryRow from '@/components/merchant/DraggableHierarchicalCategoryRow';
+import { Pagination } from '../common';
 
 // Lazy load modals
 const AddCategoryModal = lazy(() => import('@/components/merchant/modals/AddCategoryModal').then(m => ({ default: m.AddCategoryModal })));
@@ -50,6 +51,12 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const hasInitializedExpansion = useRef(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  const hasLoadedOnce = useRef(false);
+
+  // Pagination (client-side since API doesn't support pagination)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   const {
     categories,
@@ -62,24 +69,44 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     refetch: refreshCategories
   } = useCategories({ appId, headers: headers || undefined });
 
+  // Track when categories have been loaded at least once
+  useEffect(() => {
+    if (!isLoading && categories.length > 0) {
+      hasLoadedOnce.current = true;
+    } else if (!isLoading && hasLoadedOnce.current) {
+      // Already loaded once, but now no categories (might have been deleted)
+      hasLoadedOnce.current = true;
+    }
+  }, [isLoading, categories.length]);
+
+  // Reset loaded state when appId changes
+  useEffect(() => {
+    hasLoadedOnce.current = false;
+  }, [appId]);
+
   // Flatten nested categories structure (if API returns nested with children)
-  const flattenedCategoriesBase = useMemo((): Category[] => {
-    const flatten = (cats: Category[]): Category[] => {
-      const result: Category[] = [];
-      const processCategory = (cat: Category) => {
-        // Add the category itself (without children property)
-        const { children, ...categoryWithoutChildren } = cat;
-        result.push(categoryWithoutChildren as Category);
-        // Recursively process children if they exist
-        if (children && children.length > 0) {
-          children.forEach(child => processCategory(child));
-        }
-      };
-      cats.forEach(cat => processCategory(cat));
-      return result;
+  const flattenCategories = useCallback((cats: Category[]): Category[] => {
+    const result: Category[] = [];
+    const processCategory = (cat: Category) => {
+      // Add the category itself (without children property)
+      const { children, ...categoryWithoutChildren } = cat;
+      result.push(categoryWithoutChildren as Category);
+      // Recursively process children if they exist
+      if (children && children.length > 0) {
+        children.forEach(child => processCategory(child));
+      }
     };
-    return flatten(categories);
-  }, [categories]);
+    cats.forEach(cat => processCategory(cat));
+    return result;
+  }, []);
+
+  useEffect(() => {
+    setLocalCategories(flattenCategories(categories));
+  }, [categories, flattenCategories]);
+
+  const flattenedCategoriesBase = useMemo((): Category[] => {
+    return localCategories;
+  }, [localCategories]);
 
   // Fetch products to calculate product counts per category
   const [productCounts, setProductCounts] = useState<Record<number, number>>({});
@@ -148,6 +175,11 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
     fetchProductCounts();
   }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
+
+  // Track if we're still processing categories (fetching or processing product counts)
+  // Show spinner immediately on mount until categories are loaded (like inventory page)
+  // Show spinner if: still loading categories OR haven't loaded once yet OR loading product counts for existing categories
+  const isProcessingCategories = isLoading || !hasLoadedOnce.current || (categories.length > 0 && isLoadingProductCounts);
 
   // Enhance flattened categories with product counts
   const flattenedCategories = useMemo((): Category[] => {
@@ -240,6 +272,28 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
       (cat.description && cat.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [categoriesWithHierarchy, searchQuery]);
+
+  // Paginate filtered categories (client-side pagination)
+  const totalCategories = filteredCategories.length;
+  const totalPages = useMemo(() => Math.ceil(totalCategories / limit), [totalCategories, limit]);
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (page - 1) * limit;
+    return filteredCategories.slice(startIndex, startIndex + limit);
+  }, [filteredCategories, page, limit]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  }, []);
 
   const handleAddCategory = useCallback(() => {
     setIsAddModalOpen(true);
@@ -350,6 +404,16 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
         displayOrder: index,
       }));
 
+      setLocalCategories(prev =>
+        prev.map(cat => {
+          if (cat.parentId !== activeCategory.parentId) return cat;
+          const newIndexForCat = reorderData.findIndex(item => item.id === cat.id);
+          return newIndexForCat !== -1
+            ? { ...cat, displayOrder: newIndexForCat }
+            : cat;
+        })
+      );
+
       await saveReorder(reorderData, activeCategory.parentId);
       return;
     }
@@ -376,6 +440,37 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
 
     const newDisplayOrder = newParentSiblings.length;
 
+    const oldParentReorder = oldParentSiblings.map((cat, index) => ({
+      id: cat.id,
+      displayOrder: index,
+    }));
+
+    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
+    const newParentReorder = newParentOrderIds.map((id, index) => ({
+      id,
+      displayOrder: index,
+    }));
+
+    const oldParentReorderMap = new Map(oldParentReorder.map(item => [item.id, item.displayOrder]));
+    const newParentReorderMap = new Map(newParentReorder.map(item => [item.id, item.displayOrder]));
+
+    setLocalCategories(prev =>
+      prev.map(cat => {
+        if (cat.id === activeCategory.id) {
+          return { ...cat, parentId: targetParentId, displayOrder: newDisplayOrder };
+        }
+        if (cat.parentId === oldParentId && cat.id !== activeCategory.id) {
+          const nextOrder = oldParentReorderMap.get(cat.id);
+          return nextOrder !== undefined ? { ...cat, displayOrder: nextOrder } : cat;
+        }
+        if (cat.parentId === targetParentId) {
+          const nextOrder = newParentReorderMap.get(cat.id);
+          return nextOrder !== undefined ? { ...cat, displayOrder: nextOrder } : cat;
+        }
+        return cat;
+      })
+    );
+
     const updatedCategory = await updateCategory(activeCategory.id, {
       parentId: targetParentId,
       displayOrder: newDisplayOrder,
@@ -386,18 +481,9 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     }
 
     if (oldParentSiblings.length > 0) {
-      const oldParentReorder = oldParentSiblings.map((cat, index) => ({
-        id: cat.id,
-        displayOrder: index,
-      }));
       await saveReorder(oldParentReorder, oldParentId ?? undefined);
     }
 
-    const newParentOrderIds = [...newParentSiblings.map(cat => cat.id), activeCategory.id];
-    const newParentReorder = newParentOrderIds.map((id, index) => ({
-      id,
-      displayOrder: index,
-    }));
     await saveReorder(newParentReorder, targetParentId);
   }, [filteredCategories, saveReorder, isDescendant, updateCategory]);
 
@@ -519,30 +605,21 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           )}
         </div>
 
-        {isLoading && !reorderLoading ? (
-          <div className="flex items-center justify-center py-12 bg-gray-50">
-            <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        {isProcessingCategories && !reorderLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
-        ) : filteredCategories.length === 0 ? (
+        ) : filteredCategories.length === 0 && searchQuery ? (
           <div className="text-center py-12">
             <FolderTree className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900">
               No categories found
             </h3>
             <p className="text-gray-600">
-              {searchQuery ? 'Try adjusting your search' : 'Get started by creating your first category'}
+              Try adjusting your search
             </p>
-            {!searchQuery && (
-              <button
-                onClick={handleAddCategory}
-                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors mt-4"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Category
-              </button>
-            )}
           </div>
-        ) : (
+        ) : filteredCategories.length > 0 ? (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -573,10 +650,10 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   <SortableContext
-                    items={filteredCategories.map(c => c.id)}
+                    items={paginatedCategories.map(c => c.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {filteredCategories.map((category, index) => (
+                    {paginatedCategories.map((category, index) => (
                       <DraggableHierarchicalCategoryRow
                         key={category.id}
                         category={category}
@@ -585,7 +662,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
                         onDelete={handleDeleteCategory}
                         onToggleExpand={handleToggleExpand}
                         deleteLoading={deleteLoading}
-                        isDragDisabled={!!searchQuery || filteredCategories.length <= 1 || reorderLoading}
+                        isDragDisabled={!!searchQuery || paginatedCategories.length <= 1 || reorderLoading}
                         showHierarchy={true}
                       />
                     ))}
@@ -594,7 +671,7 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
               </table>
             </div>
           </DndContext>
-        )}
+        ) : null}
 
         {reorderLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -605,6 +682,22 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {filteredCategories.length > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={totalCategories}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="categories"
+            selectId="categories-per-page-select"
+          />
+        </div>
+      )}
 
       {/* Modals - Lazy loaded */}
       <Suspense fallback={null}>

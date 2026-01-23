@@ -5,6 +5,7 @@ import { Users, Plus, Edit2, Trash2, Ban, CheckCircle, Search, Filter } from 'lu
 import { apiService } from '@/lib/api-service';
 import InviteStaffModal from '../modals/InviteStaffModal';
 import EditStaffModal from '../modals/EditStaffModal';
+import { Pagination } from '../common';
 
 interface StaffMember {
   id: number;
@@ -38,6 +39,12 @@ export default function TeamSection({ appId }: TeamSectionProps) {
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [timeoutId, setTimeoutId] = useState<any>(null);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const totalPages = useMemo(() => Math.ceil(total / limit), [total, limit]);
 
   // Check if user is owner (has full access) or staff (needs permissions)
   // Memoized to prevent infinite re-renders
@@ -83,10 +90,23 @@ export default function TeamSection({ appId }: TeamSectionProps) {
         role: roleFilter || undefined,
         status: statusFilter || undefined,
         search: searchTerm || undefined,
+        page,
+        limit,
       });
 
       if (response.ok) {
-        setStaffMembers(response.data.data || response.data);
+        // Handle paginated response
+        if (response.data.data) {
+          setStaffMembers(response.data.data);
+          setTotal(response.data.total || response.data.meta?.total || 0);
+        } else if (Array.isArray(response.data)) {
+          // Handle array response (non-paginated)
+          setStaffMembers(response.data);
+          setTotal(response.data.length);
+        } else {
+          setStaffMembers([]);
+          setTotal(0);
+        }
       } else {
         setError(response.status === 403
           ? 'You do not have permissions to access this feature'
@@ -105,7 +125,7 @@ export default function TeamSection({ appId }: TeamSectionProps) {
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, statusFilter, searchTerm]);
+  }, [roleFilter, statusFilter, searchTerm, page, limit]);
 
   useEffect(() => {
     // Permission pre-check: Check if user is owner or has staff permissions
@@ -123,7 +143,17 @@ export default function TeamSection({ appId }: TeamSectionProps) {
    * Handle search
    */
   const handleSearch = () => {
+    setPage(1); // Reset to first page on search
     loadStaffMembers();
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1); // Reset to first page when changing limit
   };
 
   /**
@@ -270,7 +300,10 @@ export default function TeamSection({ appId }: TeamSectionProps) {
                 type="text"
                 placeholder="Search by name or email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
@@ -287,7 +320,10 @@ export default function TeamSection({ appId }: TeamSectionProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             >
               <option value="">All Roles</option>
@@ -302,7 +338,10 @@ export default function TeamSection({ appId }: TeamSectionProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             >
               <option value="">All Status</option>
@@ -317,9 +356,8 @@ export default function TeamSection({ appId }: TeamSectionProps) {
             <div className="pt-6">
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="text-gray-600 mt-2">Loading staff members...</p>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : staffMembers.length === 0 ? (
           <div className="p-8 text-center">
@@ -421,6 +459,22 @@ export default function TeamSection({ appId }: TeamSectionProps) {
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {staffMembers.length > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={total}
+            currentPage={page}
+            totalPages={totalPages}
+            itemsPerPage={limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="team members"
+            selectId="team-per-page-select"
+          />
+        </div>
+      )}
 </div>
       {/* Modals */}
       {showInviteModal && (

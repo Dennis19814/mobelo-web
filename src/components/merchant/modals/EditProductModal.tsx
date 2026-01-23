@@ -80,6 +80,9 @@ export default function EditProductModal({
 
   const [productMedia, setProductMedia] = useState<ProductMedia[]>(product.media || [])
   const [tempUploadedMedia, setTempUploadedMedia] = useState<File[]>([]) // Track temporary uploads
+  const [pendingMediaDeletions, setPendingMediaDeletions] = useState<number[]>([]) // Track media IDs to delete
+  const [pendingListingThumbnail, setPendingListingThumbnail] = useState<number | string | null>(null) // Track listing thumbnail change (can be temp ID)
+  const [pendingDetailThumbnail, setPendingDetailThumbnail] = useState<number | string | null>(null) // Track detail thumbnail change (can be temp ID)
 
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateProductDto, string>>>({})
   const [tagInput, setTagInput] = useState('')
@@ -1039,16 +1042,49 @@ export default function EditProductModal({
         }
       }
 
-      // Step 2: Replace temporary media with uploaded real media
+      // Step 2: Replace temporary media with uploaded real media and create ID mapping
       let finalMedia = productMedia.filter(m => !(m as any).isTemporary) // Remove temp media
+      const tempToRealIdMap = new Map<string | number, number>() // Map temp IDs to real IDs
+
+      // Helper functions to match temp media to uploaded media by file properties
+      const buildMediaStrictKey = (media: ProductMedia) =>
+        `${media.originalFileName || ''}|${media.fileSize || ''}|${media.mimeType || ''}`
+      const buildMediaNameKey = (media: ProductMedia) => media.originalFileName || ''
+
+      // Get all temporary media for matching
+      const tempMediaList = productMedia.filter((m: any) => m.isTemporary)
 
       // Add uploaded media with correct isPrimary flags from temp media
       uploadedRealMedia.forEach((realMedia, index) => {
-        const tempMedia = productMedia.find((m: any) => m.isTemporary && m.displayOrder === realMedia.displayOrder)
+        // Try to match by strict key first (fileName + fileSize + mimeType)
+        const strictKey = buildMediaStrictKey(realMedia)
+        let tempMedia = tempMediaList.find((m: any) => 
+          m.isTemporary && buildMediaStrictKey(m) === strictKey
+        )
+
+        // If no strict match, try matching by filename only
+        if (!tempMedia) {
+          const nameKey = buildMediaNameKey(realMedia)
+          if (nameKey) {
+            tempMedia = tempMediaList.find((m: any) => 
+              m.isTemporary && buildMediaNameKey(m) === nameKey
+            )
+          }
+        }
+
+        // Fallback to displayOrder if still no match
+        if (!tempMedia) {
+          tempMedia = tempMediaList.find((m: any) => m.isTemporary && m.displayOrder === realMedia.displayOrder)
+        }
+
         if (tempMedia) {
           realMedia.isPrimary = tempMedia.isPrimary
           realMedia.isListingThumbnail = tempMedia.isListingThumbnail
           realMedia.isDetailThumbnail = tempMedia.isDetailThumbnail
+          // Map temporary ID to real ID
+          if (tempMedia.id && typeof realMedia.id === 'number') {
+            tempToRealIdMap.set(tempMedia.id, realMedia.id)
+          }
         }
         finalMedia.push(realMedia)
       })
@@ -1197,6 +1233,131 @@ export default function EditProductModal({
       const response = await apiService.updateProduct(product.id, updateData)
 
       if (response.ok) {
+        // Step 3: Process pending media operations (deletions and thumbnail settings)
+        
+        // Delete pending media (only delete existing media, not newly uploaded ones)
+        if (pendingMediaDeletions.length > 0) {
+          logger.debug(`Deleting ${pendingMediaDeletions.length} media items...`)
+          for (const mediaId of pendingMediaDeletions) {
+            try {
+              // Only delete if it's not a temporary ID (temporary media was never uploaded)
+              if (typeof mediaId === 'number') {
+                const deleteResponse = await apiService.deleteProductMedia(product.id, mediaId)
+                if (!deleteResponse.ok) {
+                  logger.error(`Failed to delete media ${mediaId}:`, { error: deleteResponse.data?.message || 'Unknown error' })
+                }
+              }
+            } catch (deleteErr) {
+              logger.error(`Error deleting media ${mediaId}:`, { error: deleteErr instanceof Error ? deleteErr.message : String(deleteErr) })
+            }
+          }
+        }
+
+        // Set listing thumbnail if pending
+        if (pendingListingThumbnail !== null) {
+          try {
+            // Resolve the real media ID (might be a temporary ID that needs mapping)
+            let realMediaId: number | null = null
+            if (typeof pendingListingThumbnail === 'number') {
+              // Check if it's an existing media ID
+              const existingMedia = finalMedia.find(m => m.id === pendingListingThumbnail && typeof m.id === 'number')
+              if (existingMedia) {
+                realMediaId = existingMedia.id as number
+              }
+            } else {
+              // It's a temporary ID, try to map it to real ID
+              realMediaId = tempToRealIdMap.get(pendingListingThumbnail) || null
+              
+              // If mapping failed, try to find in uploadedRealMedia by matching properties
+              if (realMediaId === null) {
+                const tempMedia = productMedia.find((m: any) => m.isTemporary && m.id === pendingListingThumbnail)
+                if (tempMedia) {
+                  // Try to find uploaded media with matching properties
+                  const matchedUploaded = uploadedRealMedia.find(uploaded => {
+                    const strictMatch = buildMediaStrictKey(tempMedia) === buildMediaStrictKey(uploaded)
+                    const nameMatch = buildMediaNameKey(tempMedia) && buildMediaNameKey(tempMedia) === buildMediaNameKey(uploaded)
+                    return strictMatch || nameMatch
+                  })
+                  if (matchedUploaded && typeof matchedUploaded.id === 'number') {
+                    realMediaId = matchedUploaded.id
+                    logger.debug(`Found listing thumbnail media by property matching: ${realMediaId}`)
+                  }
+                }
+              } else {
+                logger.debug(`Mapped listing thumbnail temp ID ${pendingListingThumbnail} to real ID ${realMediaId}`)
+              }
+            }
+
+            if (realMediaId !== null) {
+              const thumbnailResponse = await apiService.setProductMediaAsThumbnail(product.id, realMediaId)
+              if (!thumbnailResponse.ok) {
+                logger.error(`Failed to set listing thumbnail for media ${realMediaId}:`, { error: thumbnailResponse.data?.message || 'Unknown error' })
+              } else {
+                logger.debug(`Successfully set listing thumbnail for media ${realMediaId}`)
+              }
+            } else {
+              logger.warn(`Could not resolve listing thumbnail ID: ${pendingListingThumbnail}`)
+            }
+          } catch (thumbErr) {
+            logger.error(`Error setting listing thumbnail:`, { error: thumbErr instanceof Error ? thumbErr.message : String(thumbErr) })
+          }
+        }
+
+        // Set detail thumbnail if pending
+        if (pendingDetailThumbnail !== null) {
+          try {
+            // Resolve the real media ID (might be a temporary ID that needs mapping)
+            let realMediaId: number | null = null
+            if (typeof pendingDetailThumbnail === 'number') {
+              // Check if it's an existing media ID
+              const existingMedia = finalMedia.find(m => m.id === pendingDetailThumbnail && typeof m.id === 'number')
+              if (existingMedia) {
+                realMediaId = existingMedia.id as number
+              }
+            } else {
+              // It's a temporary ID, try to map it to real ID
+              realMediaId = tempToRealIdMap.get(pendingDetailThumbnail) || null
+              
+              // If mapping failed, try to find in uploadedRealMedia by matching properties
+              if (realMediaId === null) {
+                const tempMedia = productMedia.find((m: any) => m.isTemporary && m.id === pendingDetailThumbnail)
+                if (tempMedia) {
+                  // Try to find uploaded media with matching properties
+                  const matchedUploaded = uploadedRealMedia.find(uploaded => {
+                    const strictMatch = buildMediaStrictKey(tempMedia) === buildMediaStrictKey(uploaded)
+                    const nameMatch = buildMediaNameKey(tempMedia) && buildMediaNameKey(tempMedia) === buildMediaNameKey(uploaded)
+                    return strictMatch || nameMatch
+                  })
+                  if (matchedUploaded && typeof matchedUploaded.id === 'number') {
+                    realMediaId = matchedUploaded.id
+                    logger.debug(`Found detail thumbnail media by property matching: ${realMediaId}`)
+                  }
+                }
+              } else {
+                logger.debug(`Mapped detail thumbnail temp ID ${pendingDetailThumbnail} to real ID ${realMediaId}`)
+              }
+            }
+
+            if (realMediaId !== null) {
+              const thumbnailResponse = await apiService.setProductMediaAsDetailThumbnail(product.id, realMediaId)
+              if (!thumbnailResponse.ok) {
+                logger.error(`Failed to set detail thumbnail for media ${realMediaId}:`, { error: thumbnailResponse.data?.message || 'Unknown error' })
+              } else {
+                logger.debug(`Successfully set detail thumbnail for media ${realMediaId}`)
+              }
+            } else {
+              logger.warn(`Could not resolve detail thumbnail ID: ${pendingDetailThumbnail}`)
+            }
+          } catch (thumbErr) {
+            logger.error(`Error setting detail thumbnail:`, { error: thumbErr instanceof Error ? thumbErr.message : String(thumbErr) })
+          }
+        }
+
+        // Clear pending operations
+        setPendingMediaDeletions([])
+        setPendingListingThumbnail(null)
+        setPendingDetailThumbnail(null)
+
         onSuccess?.()
         handleClose()
       } else {
@@ -1282,6 +1443,11 @@ export default function EditProductModal({
 
     // Clear temporary media state
     setTempUploadedMedia([])
+    
+    // Clear pending media operations
+    setPendingMediaDeletions([])
+    setPendingListingThumbnail(null)
+    setPendingDetailThumbnail(null)
 
     // Clear local categories to prevent stale data
     setLocalCategories([])
@@ -1981,13 +2147,16 @@ export default function EditProductModal({
                   const tempMedia: ProductMedia = {
                     id: tempId as any,
                     url: previewUrl,
-                    type: 'image' as const,
+                    type: file.type.startsWith('video/') ? 'video' as const : 'image' as const,
                     altText: '',
                     displayOrder: productMedia.length,
                     isPrimary: isFirstImage, // Auto-set as primary if it's the first image
                     isListingThumbnail: false,
                     isDetailThumbnail: false,
                     thumbnailUrl: previewUrl,
+                    originalFileName: file.name,
+                    fileSize: file.size,
+                    mimeType: file.type,
                     isTemporary: true // Flag to identify temp uploads
                   }
 
@@ -1999,68 +2168,86 @@ export default function EditProductModal({
                   return tempMedia
                 }}
                 onDelete={async (mediaId) => {
-                  try {
-                    const headers: any = {}
-                    if (apiKey) headers['x-api-key'] = apiKey
-                    if (appSecretKey) headers['x-app-secret'] = appSecretKey
-                    
-                    const response = await apiService.deleteProductMedia(product.id, mediaId)
-                    return response.ok
-                  } catch (err) {
-                    logger.error('Delete failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
-                    return false
+                  // If it's a temporary media (not yet uploaded), just remove from state
+                  const mediaToDelete = productMedia.find(m => m.id === mediaId)
+                  if (mediaToDelete && (mediaToDelete as any).isTemporary) {
+                    // Remove temporary media
+                    setProductMedia(prev => {
+                      const mediaItem = prev.find(m => m.id === mediaId)
+                      if (mediaItem?.isTemporary && mediaItem.url.startsWith('blob:')) {
+                        URL.revokeObjectURL(mediaItem.url)
+                      }
+                      
+                      // Find the index of the temporary media to remove corresponding file
+                      const tempMediaIndex = prev.findIndex(m => m.id === mediaId && (m as any).isTemporary)
+                      if (tempMediaIndex !== -1) {
+                        // Remove corresponding file from tempUploadedMedia
+                        setTempUploadedMedia(files => {
+                          const newFiles = [...files]
+                          newFiles.splice(tempMediaIndex, 1)
+                          return newFiles
+                        })
+                      }
+                      
+                      return prev.filter(m => m.id !== mediaId)
+                    })
+                    return true
                   }
+                  
+                  // For existing media, track for deletion on submit
+                  if (typeof mediaId === 'number') {
+                    setPendingMediaDeletions(prev => [...prev, mediaId])
+                    // Clear pending thumbnails if this media was set as thumbnail
+                    setPendingListingThumbnail(prev => prev === mediaId ? null : prev)
+                    setPendingDetailThumbnail(prev => prev === mediaId ? null : prev)
+                    // Remove from local state immediately for UI feedback
+                    setProductMedia(prev => prev.filter(m => m.id !== mediaId))
+                    return true
+                  }
+                  
+                  // Handle temporary media ID (string) - also clear pending thumbnails
+                  if (typeof mediaId === 'string') {
+                    setPendingListingThumbnail(prev => prev === mediaId ? null : prev)
+                    setPendingDetailThumbnail(prev => prev === mediaId ? null : prev)
+                  }
+                  
+                  return false
                 }}
                 onSetPrimary={async (mediaId) => {
-                  try {
-                    console.log('[onSetPrimary] Starting - will set both listing and detail thumbnails for mediaId:', mediaId)
-                    const headers: any = {}
-                    if (apiKey) headers['x-api-key'] = apiKey
-                    if (appSecretKey) headers['x-app-secret'] = appSecretKey
-
-                    // Set both listing and detail thumbnails to make it fully primary
-                    console.log('[onSetPrimary] Calling setProductMediaAsThumbnail...')
-                    const listingResponse = await apiService.setProductMediaAsThumbnail(product.id, mediaId)
-                    console.log('[onSetPrimary] Listing response:', listingResponse.ok)
-
-                    console.log('[onSetPrimary] Calling setProductMediaAsDetailThumbnail...')
-                    const detailResponse = await apiService.setProductMediaAsDetailThumbnail(product.id, mediaId)
-                    console.log('[onSetPrimary] Detail response:', detailResponse.ok)
-
-                    const finalResult = listingResponse.ok && detailResponse.ok
-                    console.log('[onSetPrimary] Final result:', finalResult)
-                    return finalResult
-                  } catch (err) {
-                    console.error('[onSetPrimary] ERROR:', err)
-                    logger.error('Set primary failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
-                    return false
-                  }
+                  // Just update state - API call will happen on submit
+                  // Accept both number (existing media) and string (temporary media) IDs
+                  setPendingListingThumbnail(mediaId as any)
+                  setPendingDetailThumbnail(mediaId as any)
+                  // Update local state for UI feedback
+                  setProductMedia(prev => prev.map(m => ({
+                    ...m,
+                    isPrimary: m.id === mediaId,
+                    isListingThumbnail: m.id === mediaId,
+                    isDetailThumbnail: m.id === mediaId
+                  })))
+                  return true
                 }}
                 onSetListingThumbnail={async (mediaId) => {
-                  try {
-                    const headers: any = {}
-                    if (apiKey) headers['x-api-key'] = apiKey
-                    if (appSecretKey) headers['x-app-secret'] = appSecretKey
-                    
-                    const response = await apiService.setProductMediaAsThumbnail(product.id, mediaId)
-                    return response.ok
-                  } catch (err) {
-                    logger.error('Set listing thumbnail failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
-                    return false
-                  }
+                  // Just update state - API call will happen on submit
+                  // Accept both number (existing media) and string (temporary media) IDs
+                  setPendingListingThumbnail(mediaId as any)
+                  // Update local state for UI feedback
+                  setProductMedia(prev => prev.map(m => ({
+                    ...m,
+                    isListingThumbnail: m.id === mediaId
+                  })))
+                  return true
                 }}
                 onSetDetailThumbnail={async (mediaId) => {
-                  try {
-                    const headers: any = {}
-                    if (apiKey) headers['x-api-key'] = apiKey
-                    if (appSecretKey) headers['x-app-secret'] = appSecretKey
-                    
-                    const response = await apiService.setProductMediaAsDetailThumbnail(product.id, mediaId)
-                    return response.ok
-                  } catch (err) {
-                    logger.error('Set detail thumbnail failed:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
-                    return false
-                  }
+                  // Just update state - API call will happen on submit
+                  // Accept both number (existing media) and string (temporary media) IDs
+                  setPendingDetailThumbnail(mediaId as any)
+                  // Update local state for UI feedback
+                  setProductMedia(prev => prev.map(m => ({
+                    ...m,
+                    isDetailThumbnail: m.id === mediaId
+                  })))
+                  return true
                 }}
                 loading={loading}
                 disabled={loading}

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { apiService } from '@/lib/api-service'
 import { Coupon, CouponFilters, CouponStatus, DiscountType, TargetScope, BuyXGetYConfig } from '@/types/coupon'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Pagination } from '../common'
 
 // Lazy load modals for better performance
 const CreateCouponModal = lazy(() => import('../CreateCouponModal'))
@@ -28,6 +29,16 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [loadingCoupon, setLoadingCoupon] = useState(false)
+
+  const totalPages = useMemo(() => Math.ceil(total / (filters.limit || 20)), [total, filters.limit])
+
+  const handlePageChange = (page: number) => {
+    setFilters({ ...filters, page })
+  }
+
+  const handleLimitChange = (limit: number) => {
+    setFilters({ ...filters, limit, page: 1 })
+  }
 
   useEffect(() => {
     loadCoupons()
@@ -295,8 +306,8 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
 
       {/* Coupons Table */}
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
         </div>
       ) : coupons.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
@@ -425,32 +436,22 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
               ))}
             </tbody>
           </table>
+        </div>
+      )}
 
-          {/* Pagination */}
-          {total > (filters.limit || 20) && (
-            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
-              <div className="text-sm text-gray-700">
-                Showing {((filters.page || 1) - 1) * (filters.limit || 20) + 1} to{' '}
-                {Math.min((filters.page || 1) * (filters.limit || 20), total)} of {total} coupons
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
-                  disabled={(filters.page || 1) === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-                  disabled={(filters.page || 1) * (filters.limit || 20) >= total}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+      {/* Pagination */}
+      {coupons.length > 0 && (
+        <div className="mt-4">
+          <Pagination
+            totalItems={total}
+            currentPage={filters.page || 1}
+            totalPages={totalPages}
+            itemsPerPage={filters.limit || 20}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleLimitChange}
+            itemLabel="coupons"
+            selectId="coupons-per-page-select"
+          />
         </div>
       )}
 

@@ -306,11 +306,6 @@ export default function MediaManager({
               <h2 className="text-sm font-medium text-gray-700 mb-0.5">Media Gallery</h2>
               <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
             </div>
-            {/* <div className="text-xs text-gray-500 lg:ml-4">
-              <span className={media.length >= MAX_MEDIA ? 'text-orange-600 font-medium' : ''}>
-                {media.length}/{MAX_MEDIA}
-              </span>
-            </div> */}
           </div>
 
           {/* Info Cards - Horizontal */}
@@ -350,6 +345,43 @@ export default function MediaManager({
             </div>
           </div>
         </div>
+        
+        {/* Media Count Card */}
+        {(() => {
+          const imageCount = media.filter(m => m.type === 'image' || !m.type).length
+          const videoCount = media.filter(m => m.type === 'video').length
+          const totalCount = media.length
+          const isAtMax = totalCount >= MAX_MEDIA
+          
+          return (
+            <div className={`p-1.5 border rounded-lg flex-1 min-w-[150px] ${
+              isAtMax 
+                ? 'bg-orange-50 border-orange-200' 
+                : 'bg-purple-50 border-purple-200'
+            }`}>
+              <div className="flex items-center space-x-1.5">
+                <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
+                  isAtMax ? 'bg-orange-500' : 'bg-purple-500'
+                }`}>
+                  <Image className="w-2.5 h-2.5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-xs font-medium ${
+                    isAtMax ? 'text-orange-900' : 'text-purple-900'
+                  }`}>
+                    {totalCount} / {MAX_MEDIA}
+                  </p>
+                  <p className={`text-xs truncate ${
+                    isAtMax ? 'text-orange-700' : 'text-purple-700'
+                  }`}>
+                    {imageCount} {imageCount === 1 ? 'image' : 'images'}
+                    {videoCount > 0 && `, ${videoCount} ${videoCount === 1 ? 'video' : 'videos'}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
           </div>
         </div>
       </div>
