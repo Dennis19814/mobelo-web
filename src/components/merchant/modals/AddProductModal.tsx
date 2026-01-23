@@ -616,14 +616,88 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
             
             const uploadResponse = await apiService.uploadProductMedia(newProductId, uploadFormData)
             if (uploadResponse.ok && uploadResponse.data?.media) {
-              // Update productMedia with uploaded media IDs
-              const uploadedMedia = uploadResponse.data.media
+              const buildMediaStrictKey = (media: ProductMedia) =>
+                `${media.originalFileName || ''}|${media.fileSize || ''}|${media.mimeType || ''}`
+              const buildMediaNameKey = (media: ProductMedia) => media.originalFileName || ''
+
+              const mapUploadedMedia = (uploaded: any): ProductMedia => ({
+                id: uploaded.id,
+                url: uploaded.mediaUrl || uploaded.cdnUrl || uploaded.thumbnailUrl || '',
+                type: uploaded.type || 'image',
+                altText: uploaded.altText || '',
+                displayOrder: uploaded.displayOrder || 0,
+                isPrimary: uploaded.isPrimary || false,
+                isListingThumbnail: uploaded.isListingThumbnail || false,
+                isDetailThumbnail: uploaded.isDetailThumbnail || false,
+                thumbnailUrl: uploaded.thumbnailUrl,
+                duration: uploaded.duration,
+                fileSize: uploaded.fileSize,
+                width: uploaded.width,
+                height: uploaded.height,
+                mimeType: uploaded.mimeType,
+                originalFileName: uploaded.originalFileName
+              })
+
               setProductMedia(prev => {
                 const tempMedia = prev.filter(m => m.isTemporary)
                 const permanentMedia = prev.filter(m => !m.isTemporary)
-                
+
+                const tempMediaStrictMap = new Map<string, ProductMedia[]>()
+                const tempMediaNameMap = new Map<string, ProductMedia[]>()
+                tempMedia.forEach(mediaItem => {
+                  const strictKey = buildMediaStrictKey(mediaItem)
+                  const nameKey = buildMediaNameKey(mediaItem)
+                  const strictList = tempMediaStrictMap.get(strictKey) || []
+                  strictList.push(mediaItem)
+                  tempMediaStrictMap.set(strictKey, strictList)
+                  if (nameKey) {
+                    const nameList = tempMediaNameMap.get(nameKey) || []
+                    nameList.push(mediaItem)
+                    tempMediaNameMap.set(nameKey, nameList)
+                  }
+                })
+
+                const takeTempMatch = (mapped: ProductMedia) => {
+                  const strictKey = buildMediaStrictKey(mapped)
+                  const nameKey = buildMediaNameKey(mapped)
+                  let match = tempMediaStrictMap.get(strictKey)?.shift()
+                  if (!match && nameKey) {
+                    match = tempMediaNameMap.get(nameKey)?.shift()
+                  }
+                  if (match) {
+                    const matchStrictKey = buildMediaStrictKey(match)
+                    const matchNameKey = buildMediaNameKey(match)
+                    const strictList = tempMediaStrictMap.get(matchStrictKey)?.filter(item => item !== match) || []
+                    if (strictList.length > 0) {
+                      tempMediaStrictMap.set(matchStrictKey, strictList)
+                    } else {
+                      tempMediaStrictMap.delete(matchStrictKey)
+                    }
+                    if (matchNameKey) {
+                      const nameList = tempMediaNameMap.get(matchNameKey)?.filter(item => item !== match) || []
+                      if (nameList.length > 0) {
+                        tempMediaNameMap.set(matchNameKey, nameList)
+                      } else {
+                        tempMediaNameMap.delete(matchNameKey)
+                      }
+                    }
+                  }
+                  return match
+                }
+
+                const mappedUploadedMedia = uploadResponse.data.media.map((uploadedItem: any) => {
+                  const mapped = mapUploadedMedia(uploadedItem)
+                  const match = takeTempMatch(mapped)
+                  if (match) {
+                    mapped.isPrimary = !!match.isPrimary
+                    mapped.isListingThumbnail = !!match.isListingThumbnail
+                    mapped.isDetailThumbnail = !!match.isDetailThumbnail
+                  }
+                  return mapped
+                })
+
                 // Replace temporary media with uploaded media
-                const updatedMedia = [...permanentMedia, ...uploadedMedia]
+                const updatedMedia = [...permanentMedia, ...mappedUploadedMedia]
                 
                 // Clean up blob URLs
                 tempMedia.forEach(m => {
@@ -634,6 +708,31 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                 
                 return updatedMedia
               })
+
+              const tempMediaSnapshot = productMedia.filter(m => m.isTemporary)
+              const selectedListing = tempMediaSnapshot.find(m => m.isListingThumbnail)
+              const selectedDetail = tempMediaSnapshot.find(m => m.isDetailThumbnail)
+              const uploadedMedia = uploadResponse.data.media.map(mapUploadedMedia)
+
+              const matchUploadedByTemp = (temp: ProductMedia | undefined) => {
+                if (!temp) return undefined
+                const strictKey = buildMediaStrictKey(temp)
+                const nameKey = buildMediaNameKey(temp)
+                return (
+                  uploadedMedia.find(m => buildMediaStrictKey(m) === strictKey) ||
+                  (nameKey ? uploadedMedia.find(m => buildMediaNameKey(m) === nameKey) : undefined)
+                )
+              }
+
+              const listingTarget = matchUploadedByTemp(selectedListing)
+              const detailTarget = matchUploadedByTemp(selectedDetail)
+
+              if (listingTarget?.id) {
+                await apiService.setProductMediaAsThumbnail(newProductId, listingTarget.id)
+              }
+              if (detailTarget?.id) {
+                await apiService.setProductMediaAsDetailThumbnail(newProductId, detailTarget.id)
+              }
               
               // Clear temporary files
               setTempUploadedMedia([])
@@ -992,6 +1091,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
           <button
             onClick={handleClose}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+            disabled={loading}
           >
             <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
@@ -1015,9 +1115,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   <div key={step.id} className="flex items-center flex-shrink-0 pt-2">
                     <button
                       onClick={() => isClickable && goToStep(index)}
-                      disabled={!isClickable}
+                      disabled={!isClickable || loading}
                       className={`flex flex-col items-center min-w-[80px] transition-all ${
-                        isClickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                        isClickable && !loading ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
                       }`}
                     >
                       <div className={`relative flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-all ${
@@ -1095,6 +1195,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       errors.name ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product name"
+                    disabled={loading}
                   />
                   {errors.name && (
                     <p className="mt-1 text-sm text-red-600">{errors.name}</p>
@@ -1132,6 +1233,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     placeholder="Brief product description"
                     maxLength={500}
+                    disabled={loading}
                   />
                 </div>
 
@@ -1145,6 +1247,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     onChange={(e) => handleInputChange('sku', e.target.value)}
                     className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     placeholder="Stock keeping unit"
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -1159,6 +1262,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   rows={2}
                   className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Enter product description"
+                  disabled={loading}
                 />
               </div>
 
@@ -1173,6 +1277,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     onChange={(e) => handleInputChange('barcode', e.target.value)}
                     className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     placeholder="Product barcode"
+                    disabled={loading}
                   />
                 </div>
 
@@ -1187,6 +1292,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         checked={formData.featured}
                         onChange={(e) => handleInputChange('featured', e.target.checked)}
                         className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                        disabled={loading}
                       />
                       <span className="ml-1.5 text-sm text-gray-700">Featured Product</span>
                     </label>
@@ -1203,6 +1309,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                           }
                         }}
                         className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                        disabled={loading}
                       />
                       <span className="ml-1.5 text-sm text-gray-700">Digital Product</span>
                     </label>
@@ -1213,6 +1320,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         checked={formData.isNew || false}
                         onChange={(e) => handleInputChange('isNew', e.target.checked)}
                         className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                        disabled={loading}
                       />
                       <span className="ml-1.5 text-sm text-gray-700">New Product</span>
                     </label>
@@ -1236,11 +1344,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     maxLength={30}
                     className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     placeholder="Enter tag name"
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={addTag}
-                    disabled={!tagInput.trim()}
+                    disabled={!tagInput.trim() || loading}
                     className="px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -1259,6 +1368,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                           onClick={() => removeTag(tag)}
                           className="ml-2 text-gray-500 hover:text-red-600 transition-colors"
                           title="Remove tag"
+                          disabled={loading}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1309,6 +1419,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   placeholder="0.00"
                   step="0.01"
                   min="0"
+                  disabled={loading}
                 />
                 {errors.basePrice && (
                   <p className="mt-1 text-sm text-red-600">{errors.basePrice}</p>
@@ -1327,6 +1438,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   placeholder="0.00"
                   step="0.01"
                   min="0"
+                  disabled={loading}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Optional - Leave empty for fixed pricing. Set higher than base price to show as "on sale" with strikethrough pricing.
@@ -1345,6 +1457,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   placeholder="0.00"
                   step="0.01"
                   min="0"
+                  disabled={loading}
                 />
                 <p className="mt-1 text-xs text-gray-500">Cost to acquire/produce the product</p>
               </div>
@@ -1361,6 +1474,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   checked={formData.trackInventory}
                   onChange={(e) => handleInputChange('trackInventory', e.target.checked)}
                   className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                  disabled={loading}
                 />
                 <label htmlFor="trackInventory" className="ml-2 text-sm font-medium text-gray-700">
                   Track inventory for this product
@@ -1380,6 +1494,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         onChange={(e) => handleInputChange('minimumQuantity', parseInt(e.target.value) || 1)}
                         className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         min="1"
+                        disabled={loading}
                       />
                     </div>
 
@@ -1394,6 +1509,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         min="1"
                         placeholder="No limit"
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -1413,6 +1529,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     placeholder="0"
                     step="0.01"
                     min="0"
+                    disabled={loading}
                   />
                 </div>
 
@@ -1424,6 +1541,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     value={formData.weightUnit}
                     onChange={(e) => handleInputChange('weightUnit', e.target.value)}
                     className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    disabled={loading}
                   >
                     <optgroup label="Weight Units">
                       <option value="kg">Kilograms (kg)</option>
@@ -1460,6 +1578,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       checked={formData.requiresShipping}
                       onChange={(e) => handleInputChange('requiresShipping', e.target.checked)}
                       className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                      disabled={loading}
                     />
                     <label htmlFor="requiresShipping" className="ml-2 text-sm font-medium text-gray-700">
                       This product requires shipping
@@ -1487,6 +1606,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               placeholder="0"
                               step="0.01"
                               min="0"
+                              disabled={loading}
                             />
                           </div>
                           <div>
@@ -1502,6 +1622,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               placeholder="0"
                               step="0.01"
                               min="0"
+                              disabled={loading}
                             />
                           </div>
                           <div>
@@ -1517,6 +1638,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               placeholder="0"
                               step="0.01"
                               min="0"
+                              disabled={loading}
                             />
                           </div>
                           <div>
@@ -1528,6 +1650,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 dimensionUnit: e.target.value
                               })}
                               className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              disabled={loading}
                             >
                               <option value="cm">cm</option>
                               <option value="in">in</option>
@@ -1551,6 +1674,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               shippingClass: e.target.value
                             })}
                             className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            disabled={loading}
                           >
                             <option value="standard">Standard Shipping</option>
                             <option value="express">Express Shipping</option>
@@ -1574,6 +1698,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             })}
                             className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="1-2 business days"
+                            disabled={loading}
                           />
                         </div>
                       </div>
@@ -1589,6 +1714,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               freeShipping: e.target.checked
                             })}
                             className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                            disabled={loading}
                           />
                           <span className="ml-2 text-sm text-gray-700">Free Shipping</span>
                         </label>
@@ -1602,6 +1728,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               calculatedShipping: e.target.checked
                             })}
                             className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                            disabled={loading}
                           />
                           <span className="ml-2 text-sm text-gray-700">Calculate shipping at checkout</span>
                         </label>
@@ -1624,6 +1751,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             placeholder="0.00"
                             step="0.01"
                             min="0"
+                            disabled={loading}
                           />
                         </div>
                       )}
@@ -1643,6 +1771,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   rows={3}
                   className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Describe your return policy..."
+                  disabled={loading}
                 />
               </div>
 
@@ -1657,6 +1786,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   rows={2}
                   className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Warranty details (e.g., 1 year manufacturer warranty)"
+                  disabled={loading}
                 />
               </div>
 
@@ -1744,6 +1874,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       isListingThumbnail: false,
                       isDetailThumbnail: false,
                       thumbnailUrl: previewUrl,
+                      originalFileName: file.name,
+                      fileSize: file.size,
+                      mimeType: file.type,
                       isTemporary: true // Flag to identify temp uploads
                     }
 
@@ -1794,7 +1927,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                   }
                 }}
                   onSetPrimary={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1808,7 +1943,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetListingThumbnail={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1822,7 +1959,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     }
                   }}
                   onSetDetailThumbnail={async (mediaId) => {
-                    if (!createdProductId) return false
+                    if (!createdProductId || typeof mediaId !== 'number') {
+                      return true
+                    }
                     try {
                       const headers: any = {}
                       if (apiKey) headers['x-api-key'] = apiKey
@@ -1835,7 +1974,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       return false
                     }
                   }}
-                />
+                loading={loading}
+                disabled={loading}
+              />
             </div>
           )}
 
@@ -1859,6 +2000,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                     type="button"
                             onClick={() => handleInputChange('categoryIds', formData.categoryIds?.filter(id => id !== categoryId))}
                             className="text-gray-400 hover:text-red-600"
+                            disabled={loading}
                   >
                             <X className="w-3 h-3" />
                   </button>
@@ -1901,6 +2043,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         }
                       }}
                     className="text-xs text-gray-600 hover:text-gray-900"
+                    disabled={loading}
                   >
                     {showAddCategory ? 'Cancel' : 'Add'}
                   </button>
@@ -1955,7 +2098,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         <select
                           value={selectedParentCategory || ""}
                           onChange={(e) => setSelectedParentCategory(e.target.value ? Number(e.target.value) : null)}
-                          disabled={creatingCategory}
+                          disabled={creatingCategory || loading}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:bg-gray-100"
                         >
                           <option value="">No parent (Top level)</option>
@@ -1979,7 +2122,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="Enter category name"
                           maxLength={30}
-                          disabled={creatingCategory}
+                          disabled={creatingCategory || loading}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:bg-gray-100"
                         />
                       </div>
@@ -1997,11 +2140,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         <button
                           type="button"
                           onClick={() => handleCategoryModeSwitch('image')}
+                          disabled={loading}
                           className={`relative flex items-center justify-center space-x-2 p-2.5 border rounded-lg transition-all ${
                             categoryDisplayMode === 'image'
                               ? 'border-orange-500 bg-orange-50 shadow-sm'
                               : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
-                          }`}
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {categoryDisplayMode === 'image' && (
                             <div className="absolute top-1 right-1">
@@ -2018,11 +2162,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                         <button
                           type="button"
                           onClick={() => handleCategoryModeSwitch('icon')}
+                          disabled={loading}
                           className={`relative flex items-center justify-center space-x-2 p-2.5 border rounded-lg transition-all ${
                             categoryDisplayMode === 'icon'
                               ? 'border-orange-500 bg-orange-50 shadow-sm'
                               : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
-                          }`}
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {categoryDisplayMode === 'icon' && (
                             <div className="absolute top-1 right-1">
@@ -2052,7 +2197,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             <button
                               type="button"
                               onClick={() => categoryFileInputRef.current?.click()}
-                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white"
+                              disabled={loading}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Upload className="w-5 h-5 text-orange-500" />
                               <span className="text-sm font-medium text-gray-700">Click to upload</span>
@@ -2076,7 +2222,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                       categoryFileInputRef.current.value = '';
                                     }
                                   }}
-                                  className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  disabled={loading}
+                                  className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Remove image"
                                 >
                                   <X className="w-3 h-3" />
@@ -2091,7 +2238,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 <button
                                   type="button"
                                   onClick={() => categoryFileInputRef.current?.click()}
-                                  className="text-xs text-orange-600 hover:text-orange-700 font-medium text-left"
+                                  disabled={loading}
+                                  className="text-xs text-orange-600 hover:text-orange-700 font-medium text-left disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Change image
                                 </button>
@@ -2126,7 +2274,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               <button
                                 type="button"
                                 onClick={() => setIsCategoryIconPickerOpen(true)}
-                                className="w-full px-3 py-1.5 text-sm font-medium text-orange-600 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
+                                disabled={loading}
+                                className="w-full px-3 py-1.5 text-sm font-medium text-orange-600 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Change Selection
                         </button>
@@ -2135,7 +2284,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             <button
                               type="button"
                               onClick={() => setIsCategoryIconPickerOpen(true)}
-                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white"
+                              disabled={loading}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 hover:bg-white transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Tags className="w-5 h-5 text-orange-500" />
                               <span className="text-sm font-medium text-gray-700">Click to select</span>
@@ -2167,7 +2317,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                             categoryFileInputRef.current.value = '';
                           }
                         }}
-                        disabled={creatingCategory}
+                        disabled={creatingCategory || loading}
                         className="px-3 py-1.5 text-xs text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
                       >
                         Cancel
@@ -2175,7 +2325,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                       <button
                         type="button"
                         onClick={handleAddCategory}
-                        disabled={creatingCategory || !newCategoryName.trim()}
+                        disabled={creatingCategory || loading || !newCategoryName.trim()}
                         className="px-3 py-1.5 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                       >
                         {creatingCategory ? (
@@ -2228,6 +2378,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                               }
                             }}
                             className="rounded border-gray-300 text-orange-600 focus:ring-blue-500"
+                            disabled={loading}
                           />
                           {editingCategoryId === category.id ? (
                             <div className="ml-2 flex items-center space-x-2 flex-1">
@@ -2239,6 +2390,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
                                 autoFocus
                                 maxLength={30}
+                                disabled={loading}
                               />
                               {editingCategoryName.trim() !== category.name && editingCategoryName.trim() !== '' && (
                                 <button
@@ -2246,6 +2398,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                   onClick={() => handleUpdateCategory(category.id)}
                                   className="p-1 hover:bg-green-100 rounded text-green-600"
                                   title="Save changes"
+                                  disabled={loading}
                                 >
                                   <Check className="w-4 h-4" />
                                 </button>
@@ -2258,6 +2411,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                 }}
                                 className="p-1 hover:bg-red-100 rounded text-red-600"
                                 title="Cancel editing"
+                                disabled={loading}
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
@@ -2273,6 +2427,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                                     setEditingCategoryName(category.name)
                                   }}
                                   className="p-1 hover:bg-blue-100 rounded text-orange-600"
+                                  disabled={loading}
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
