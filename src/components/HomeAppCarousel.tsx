@@ -9,6 +9,10 @@ const carouselImages = [
   { src: '/images/mockups/blue.png' },
   { src: '/images/mockups/orange.png' },
   { src: '/images/mockups/gray.png' },
+  { src: '/images/mockups/1.png' },
+  { src: '/images/mockups/2.png' },
+  { src: '/images/mockups/3.png' },
+  { src: '/images/mockups/4.png' }
 ]
 
 const glowGradient = ''
@@ -30,7 +34,7 @@ export default function HomeAppCarousel() {
     const absOffset = Math.abs(offset)
     const translateX = offset * 125
     const scale = isCenter ? 1.1 : absOffset === 1 ? 0.85 : 0.7
-    const opacity = isCenter ? 1 : absOffset === 1 ? 1 : 0.8
+    const opacity = isCenter ? 1 : absOffset === 1 ? 0.65 : 0.3
     const blur = isCenter ? 0 : absOffset === 1 ? 0 : 0
     const zIndex = 10 - absOffset
     const rotateY = offset * 8
@@ -50,7 +54,7 @@ export default function HomeAppCarousel() {
         <div className="relative">
           <div className="relative mx-auto max-w-6xl">
             {/* Glow effect for center card */}
-            <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[500px] bg-gradient-to-r ${glowGradient} opacity-20 blur-[100px] transition-all duration-700 pointer-events-none`}></div>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[500px] bg-gradient-to-r from-orange-400/20 to-orange-600/20 opacity-30 blur-[100px] transition-all duration-700 pointer-events-none"></div>
             
             <div className="relative mx-auto flex h-[480px] md:h-[540px] items-center justify-center perspective-1000" aria-label="App preview carousel" style={{ perspective: '1000px' }}>
               {visibleSlides.map(({ index, offset, item }) => {
@@ -68,21 +72,31 @@ export default function HomeAppCarousel() {
                     <div className="relative">
                       {/* Enhanced glow for center card */}
                       {isCenter && (
-                        <div className={`absolute -inset-6 bg-gradient-to-r  animate-pulse`}></div>
+                        <div className="absolute -inset-6 bg-gradient-to-r from-orange-400/30 to-orange-600/30 rounded-3xl animate-pulse blur-xl"></div>
                       )}
                       
                       {/* iPhone frame (matched to Templates section) */}
                       <div
-                        className={`relative aspect-[9/19.5] h-[320px] md:h-[380px] w-auto bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50 transition-all duration-700 ${
-                          isCenter ? 'saturate-100' : 'saturate-50'
+                        className={`relative aspect-[9/19.5] h-[320px] md:h-[380px] w-auto p-[1.2%] shadow-2xl flex flex-col transition-all duration-700 ${
+                          isCenter 
+                            ? 'bg-orange-500 saturate-100' 
+                            : 'bg-[#080808] saturate-50 ring-1 ring-black/50'
                         }`}
                         style={{ borderRadius: '18% / 8.5%' }}
                       >
                           {/* Physical Buttons */}
-                          <div className="absolute -left-[1.5px] top-[18%] w-[2px] h-[6%] bg-[#1a1a1a] rounded-l-sm"></div>
-                          <div className="absolute -left-[1.5px] top-[26%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
-                          <div className="absolute -left-[1.5px] top-[40%] w-[2px] h-[12%] bg-[#1a1a1a] rounded-l-sm"></div>
-                          <div className="absolute -right-[1.5px] top-[32%] w-[2px] h-[18%] bg-[#1a1a1a] rounded-r-sm"></div>
+                          <div className={`absolute -left-[1.5px] top-[18%] w-[2px] h-[6%] rounded-l-sm ${
+                            isCenter ? 'bg-orange-600' : 'bg-[#1a1a1a]'
+                          }`}></div>
+                          <div className={`absolute -left-[1.5px] top-[26%] w-[2px] h-[12%] rounded-l-sm ${
+                            isCenter ? 'bg-orange-600' : 'bg-[#1a1a1a]'
+                          }`}></div>
+                          <div className={`absolute -left-[1.5px] top-[40%] w-[2px] h-[12%] rounded-l-sm ${
+                            isCenter ? 'bg-orange-600' : 'bg-[#1a1a1a]'
+                          }`}></div>
+                          <div className={`absolute -right-[1.5px] top-[32%] w-[2px] h-[18%] rounded-r-sm ${
+                            isCenter ? 'bg-orange-600' : 'bg-[#1a1a1a]'
+                          }`}></div>
 
                           {/* Screen Container */}
                           <div
@@ -93,8 +107,12 @@ export default function HomeAppCarousel() {
                             <div className="h-[5%] w-full flex-shrink-0 bg-white z-20"></div>
 
                             {/* Dynamic Island */}
-                            <div className="absolute top-[2.2%] left-1/2 -translate-x-1/2 w-[28%] h-[3%] bg-black rounded-full z-50 flex items-center justify-end px-[1.5%]">
-                              <div className="w-[12%] aspect-square rounded-full bg-[#1a1a2e]"></div>
+                            <div className={`absolute top-[2.2%] left-1/2 -translate-x-1/2 w-[28%] h-[3%] rounded-full z-50 flex items-center justify-end px-[1.5%] ${
+                              isCenter ? 'bg-orange-500' : 'bg-black'
+                            }`}>
+                              <div className={`w-[12%] aspect-square rounded-full ${
+                                isCenter ? 'bg-orange-600' : 'bg-[#1a1a2e]'
+                              }`}></div>
                             </div>
 
                                               {/* Content Area */}
@@ -111,7 +129,9 @@ export default function HomeAppCarousel() {
 
                             {/* Home Bar Area */}
                             <div className="h-[4%] w-full flex items-center justify-center flex-shrink-0 bg-white">
-                              <div className="w-[32%] h-[2.5px] bg-black/15 rounded-full"></div>
+                              <div className={`w-[32%] h-[2.5px] rounded-full ${
+                                isCenter ? 'bg-orange-200' : 'bg-black/15'
+                              }`}></div>
                             </div>
                           </div>
                         </div>

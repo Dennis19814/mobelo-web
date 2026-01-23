@@ -259,16 +259,6 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                   >
                     Pricing
                   </Link>
-                  <Link
-                    href="/spec-test"
-                    className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
-                      isInTechSection 
-                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
-                        : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
-                    }`}
-                  >
-                    Spec-Test
-                  </Link>
            
                 </>
               )}

@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Navigation } from '@/components/layout'
+import HomeAppCarousel from '@/components/HomeAppCarousel'
 import { SigninModal } from '@/components/modals'
 import { apiService } from '@/lib/api-service'
 import {
@@ -52,7 +53,6 @@ import {
   MapPin,
   Loader2,
 } from 'lucide-react'
-import HomeAppCarousel from '@/components/HomeAppCarousel'
 
 type KeyFeature = { feature: string; why: string }
 type PageExpl = { pageId: string; title: string; role: 'promote'|'sell'|'discover'|'retain'|'support'; why: string }
@@ -71,6 +71,7 @@ type SuggestedTheme = {
   colors: ThemeColors
   icon?: string
   category?: string
+  isDark?: boolean
 }
 
 type AppSpec = {
@@ -81,7 +82,7 @@ type AppSpec = {
   }
   explanation: { keyFeatures: KeyFeature[]; pages: PageExpl[] }
   concept: { appName: string; oneLiner: string; heroTagline: string; homepageSections: string[]; recommendedPages: string[] }
-  theme?: { id: string; displayName: string; colors: ThemeColors; usage?: { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } }
+  theme?: { id: string; displayName: string; colors: ThemeColors; usage?: { primary?: string; secondary?: string; accent?: string; background?: string; text?: string }; isDark?: boolean }
   fonts?: { heading: string; body: string }
   menuItems?: string[]
   shortDescription?: string
@@ -93,6 +94,53 @@ function AppSpecContent() {
   const token = params.get('spec')
   const [data, setData] = useState<{ prompt: string; spec: AppSpec } | null>(null)
   const [showSigninModal, setShowSigninModal] = useState(false)
+  const themeMenuRef = useRef<HTMLDivElement | null>(null)
+  const darkThemes: SuggestedTheme[] = [
+    {
+      id: 'dark-midnight',
+      displayName: 'Midnight Neon',
+      colors: {
+        primary: '#38BDF8',
+        secondary: '#A855F7',
+        accent: '#F97316',
+        background: '#0B1120',
+        text: '#E2E8F0',
+      },
+      icon: '🌙',
+      category: 'Dark',
+      isDark: true,
+    },
+    {
+      id: 'dark-forest',
+      displayName: 'Forest Night',
+      colors: {
+        primary: '#22C55E',
+        secondary: '#0EA5E9',
+        accent: '#F59E0B',
+        background: '#0B1F17',
+        text: '#E5F0EA',
+      },
+      icon: '🌲',
+      category: 'Dark',
+      isDark: true,
+    },
+    {
+      id: 'dark-graphite',
+      displayName: 'Graphite Pro',
+      colors: {
+        primary: '#F97316',
+        secondary: '#64748B',
+        accent: '#38BDF8',
+        background: '#0F172A',
+        text: '#E2E8F0',
+      },
+      icon: '⚡',
+      category: 'Dark',
+      isDark: true,
+    },
+  ]
+  const [selectedThemeId, setSelectedThemeId] = useState('theme')
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
 
   // Load Google Fonts dynamically based on API response
   useEffect(() => {
@@ -138,6 +186,33 @@ function AppSpecContent() {
     router.replace('/')
   }, [router, token])
 
+  useEffect(() => {
+    if (!isThemeMenuOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (themeMenuRef.current && !themeMenuRef.current.contains(target)) {
+        setIsThemeMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isThemeMenuOpen])
+
+  useEffect(() => {
+    const spec = data?.spec
+    if (!spec) return
+    const baseThemes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
+      ? spec.best.suggestedThemes
+      : (spec.theme ? [spec.theme] : [])
+    const themes = [...baseThemes, ...darkThemes.filter((theme) => !baseThemes.some((t) => t.id === theme.id))]
+    const defaultId = spec.theme?.id || themes[0]?.id
+    if (!defaultId) return
+    const isCurrentValid = themes.some((theme) => theme.id === selectedThemeId)
+    if (selectedThemeId === 'theme' || !isCurrentValid) {
+      setSelectedThemeId(defaultId)
+    }
+  }, [data, selectedThemeId, darkThemes])
+
   const roleClass = (role: string) =>
     `inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
       role === 'promote' ? 'border-orange-200 text-orange-700 bg-orange-50' :
@@ -176,7 +251,7 @@ function AppSpecContent() {
   const FeatureIcon = ({ name }: { name: string }) => {
     const key = (name || '').toLowerCase()
     const wrap = (cls: string, node: React.ReactElement) => (
-      <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${cls}`}>{node}</div>
+      <div className={`h-12 w-28 rounded-xl flex items-center justify-center ${cls}`}>{node}</div>
     )
 
     // Search & Filter
@@ -303,6 +378,39 @@ function AppSpecContent() {
     return wrap('bg-gray-50 text-gray-600', <ClipboardList className="h-6 w-6" />)
   }
 
+  const defaultThemeColors = {
+    primary: '#4F46E5',
+    secondary: '#10B981',
+    accent: '#06B6D4',
+    background: '#FFFFFF',
+    text: '#1F2937'
+  }
+
+  const baseThemes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
+    ? spec.best.suggestedThemes
+    : (spec.theme ? [spec.theme] : [])
+  const availableThemes = [...baseThemes, ...darkThemes.filter((theme) => !baseThemes.some((t) => t.id === theme.id))]
+
+  const chosenTheme = spec.theme || availableThemes[0]
+  const selectedTheme = availableThemes.find((theme) => theme.id === selectedThemeId) || chosenTheme
+  const themeColors = selectedTheme?.colors || chosenTheme?.colors || defaultThemeColors
+  const themeSwatches = [
+    themeColors.primary,
+    themeColors.secondary,
+    themeColors.accent,
+    themeColors.background,
+    themeColors.text,
+  ]
+  const isDarkTheme = selectedTheme?.isDark ?? (() => {
+    const hex = (selectedTheme?.colors?.background || selectedTheme?.colors?.text || '#FFFFFF').replace('#', '')
+    if (hex.length !== 6) return false
+    const r = parseInt(hex.slice(0, 2), 16) / 255
+    const g = parseInt(hex.slice(2, 4), 16) / 255
+    const b = parseInt(hex.slice(4, 6), 16) / 255
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return luminance < 0.45
+  })()
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation hideMenuItems={true} showGenerateNewApp={true} />
@@ -340,7 +448,7 @@ function AppSpecContent() {
             </div>
           </div>
           <p className="mt-2 text-lg text-gray-700">{spec.concept.oneLiner}</p>
-          {/* Wizard Steps (after primary subtitle) */}
+        {/* Wizard Steps (after primary subtitle) */}
           <div className="mt-8 mb-8">
             <div className="flex items-center justify-center gap-4 sm:gap-6 mx-auto w-fit">
               {/* Step 1 - Completed */}
@@ -381,138 +489,277 @@ function AppSpecContent() {
               </div>
             </div>
           </div>
-        </header>
+        <div className="mb-8">
+          <HomeAppCarousel />
+        </div>
 
-        {/* Concept Canvas (static sample visual spec) */}
-        <section className="mb-8">
-          {(() => {
-            // Get theme colors from API response, fallback to defaults
-            const chosenTheme = spec.theme || spec.best?.suggestedThemes?.[0]
-            const themeColors = chosenTheme?.colors || {
-              primary: '#4F46E5',
-              secondary: '#10B981',
-              accent: '#06B6D4',
-              background: '#FFFFFF',
-              text: '#1F2937'
-            }
+        <section className="mb-10">
+  {(() => {
+    const colorSwatches = [
+      themeColors.primary,
+      themeColors.secondary,
+      themeColors.accent,
+      themeColors.background,
+      themeColors.text,
+      '#F5F5F5',
+      '#D1D5DB',
+      '#9CA3AF'
+    ]
 
-            // Sample static visual spec for concept visualization
-            const visualSpec = {
-              palette: {
-                primary: themeColors.primary,
-                accent: themeColors.accent,
-                neutrals: ['#F5F5F5', '#E5E7EB', '#D1D5DB', '#9CA3AF'],
-                swatches: [
-                  themeColors.primary,
-                  themeColors.secondary,
-                  themeColors.accent,
-                  themeColors.background,
-                  themeColors.text,
-                  '#F5F5F5',
-                  '#D1D5DB',
-                  '#9CA3AF'
-                ]
-              },
-              typography: {
-                heading: { name: spec.fonts?.heading || 'Inter', sample: 'Aa' },
-                body: { name: spec.fonts?.body || 'Inter', sample: 'The quick brown fox jumps over the lazy dog' },
-              },
-              screenshots: [
-                { id: 's1', url: '/images/app1.png', alt: 'App Screen 1' },
-                { id: 's2', url: '/images/app2.png', alt: 'App Screen 2' },
-              ],
-              menus: (spec.menuItems && spec.menuItems.length > 0 ? spec.menuItems : ['Home','Browse','Product','Wishlist','Cart','Orders','Profile']).slice(0,7),
-              icons: ['home','search','shopping-bag','heart','shopping-cart','package','user'],
-            } as const
+    const menus = (
+      spec.menuItems?.length
+        ? spec.menuItems
+        : ['Home', 'Browse', 'Product', 'Wishlist', 'Cart', 'Profile']
+    ).slice(0, 6)
 
-            const iconNode = (key: string) => {
-              switch (key) {
-                case 'home': return <HomeIcon className="h-4 w-4" />
-                case 'search': return <Search className="h-4 w-4" />
-                case 'shopping-bag': return <ShoppingBag className="h-4 w-4" />
-                case 'heart': return <Heart className="h-4 w-4" />
-                case 'shopping-cart': return <ShoppingCart className="h-4 w-4" />
-                case 'package': return <Package className="h-4 w-4" />
-                case 'user': return <User className="h-4 w-4" />
-                default: return <ClipboardList className="h-4 w-4" />
-              }
-            }
+    const icons = ['home', 'search', 'shopping-bag', 'heart', 'shopping-cart', 'user']
 
-            return (
-              <div className="relative overflow-hidden rounded-2xl bg-[#8C8C8C] text-white shadow-lg px-4 sm:px-6 py-6 min-h-[420px]">
+    const iconNode = (key: string) => {
+      switch (key) {
+        case 'home': return <HomeIcon className="h-4 w-4" />
+        case 'search': return <Search className="h-4 w-4" />
+        case 'shopping-bag': return <ShoppingBag className="h-4 w-4" />
+        case 'heart': return <Heart className="h-4 w-4" />
+        case 'shopping-cart': return <ShoppingCart className="h-4 w-4" />
+        case 'user': return <User className="h-4 w-4" />
+        default: return <ClipboardList className="h-4 w-4" />
+      }
+    }
 
-                {/* Left mid: Theme palette */}
-                <div className="absolute left-6 top-28">
-                  <div className="text-xs font-semibold opacity-90 mb-2">{chosenTheme?.displayName || 'Product Catalog'}</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {visualSpec.palette.swatches.slice(0,8).map((hex, i) => (
-                      <div key={i} className="h-10 w-10 rounded-lg border border-white/10 shadow-inner" style={{ backgroundColor: hex }} />
-                    ))}
-                  </div>
+    return (
+      <div
+        className={`rounded-2xl border p-6 shadow-[0_30px_80px_rgba(15,23,42,0.04)] ${
+          isDarkTheme
+            ? 'border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+            : 'border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white'
+        }`}
+      >
+        <div className="grid gap-6 md:grid-cols-3">
+
+          {/* 🎨 Colors */}
+          <div
+            className={`rounded-2xl border p-5 shadow-sm ${
+              isDarkTheme ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'
+            }`}
+          >
+            <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
+              {selectedTheme?.displayName || spec.concept.appName || 'App Theme'}
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {colorSwatches.map((hex, i) => (
+                <div
+                  key={i}
+                  className={`h-11 w-11 rounded-xl border shadow-sm transition hover:scale-105 ${
+                    isDarkTheme ? 'border-slate-800' : 'border-slate-200'
+                  }`}
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 🔤 Typography */}
+          <div
+            className={`rounded-2xl border p-5 shadow-sm ${
+              isDarkTheme ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'
+            }`}
+          >
+            <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
+              Typography
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-xl text-xl font-bold shadow-inner ${
+                  isDarkTheme
+                    ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-slate-100'
+                    : 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700'
+                }`}
+                style={{ fontFamily: spec.fonts?.heading || 'Inter' }}
+              >
+                Aa
+              </div>
+
+              <div>
+                <div className={`text-sm font-medium ${isDarkTheme ? 'text-slate-100' : 'text-slate-700'}`}>
+                  {spec.fonts?.heading || 'Inter'}
                 </div>
-
-                {/* Left top: secondary screenshot (left device) */}
-                <div className="absolute left-56 top-6 drop-shadow-xl">
-                  <div className="rounded-[22px] bg-white/5 border border-white/10 h-80 w-44 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={visualSpec.screenshots[1].url}
-                      alt={visualSpec.screenshots[1].alt}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e:any)=>{e.currentTarget.src='https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=400&auto=format&fit=crop'}}
-                    />
-                  </div>
-                </div>
-
-                {/* Right device near center */}
-                <div className="absolute left-1/2 -translate-x-12 top-6 drop-shadow-xl">
-                  <div className="rounded-[22px] bg-white/5 border border-white/10 h-80 w-44 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={visualSpec.screenshots[0].url}
-                      alt={visualSpec.screenshots[0].alt}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e:any)=>{e.currentTarget.src='https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=400&auto=format&fit=crop'}}
-                    />
-                  </div>
-                </div>
-
-                {/* Bottom-left: Typography */}
-                <div className="absolute left-6 bottom-10 max-w-xs">
-                  <div className="text-sm font-semibold opacity-90 mb-2">Typography</div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-lg font-bold" style={{ fontFamily: visualSpec.typography.heading.name + ', system-ui, sans-serif' }}>{visualSpec.typography.heading.sample}</div>
-                    <div className="text-xs opacity-80">{visualSpec.typography.heading.name}</div>
-                  </div>
-                  <div className="mt-3 text-[11px] opacity-90 leading-snug" style={{ fontFamily: visualSpec.typography.body.name + ', system-ui, sans-serif' }}>{visualSpec.typography.body.sample}</div>
-                </div>
-
-                {/* Right side: Menus + Icons */}
-                <div className="absolute right-[25px] top-24 max-w-[320px]">
-                  <div className="text-sm font-semibold opacity-90 mb-2">Menus</div>
-                  <div className="flex flex-wrap gap-2 gap-y-2 mb-3 justify-start">
-                    {visualSpec.menus.map((m, i) => (
-                      <span key={i} className="inline-flex items-center rounded-full bg-white/10 border border-white/20 px-2 py-0.5 text-[11px] opacity-90">{m}</span>
-                    ))}
-                  </div>
-                  <div className="text-sm font-semibold opacity-90 mb-2 text-left">Icons</div>
-                  <div className="flex flex-wrap gap-2 justify-start max-w-[320px]">
-                    {visualSpec.icons.map((ic, i) => (
-                      <span key={i} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 border border-white/20 text-white/90">
-                        {iconNode(ic)}
-                      </span>
-                    ))}
-                  </div>
+                <div
+                  className={`text-xs mt-1 ${isDarkTheme ? 'text-slate-400' : 'text-slate-500'}`}
+                  style={{ fontFamily: spec.fonts?.body || 'Inter' }}
+                >
+                  The quick brown fox jumps over the lazy dog
                 </div>
               </div>
-            )
-          })()}
-        </section>
+            </div>
+          </div>
+
+          {/* 🧩 Icons + Menu */}
+          <div
+            className={`rounded-2xl border p-5 shadow-sm ${
+              isDarkTheme ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'
+            }`}
+          >
+            <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
+              Navigation
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {icons.map((ic) => (
+                <div
+                  key={ic}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm ${
+                    isDarkTheme
+                      ? 'border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {iconNode(ic)}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {menus.map((m) => (
+                <span
+                  key={m}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    isDarkTheme ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {m}
+                </span>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    )
+  })()}
+</section>
+
+
+        
+        <section className="mb-10">
+  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    
+    {/* Theme Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        🎨 App Color Theme
+      </div>
+
+              <div className="relative" ref={themeMenuRef}>
+        <button
+          type="button"
+          onClick={() => setIsThemeMenuOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm transition hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        >
+          <span className="font-medium">
+            {selectedTheme?.displayName || "Default Theme"}
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            {(selectedTheme?.colors
+              ? [
+                  selectedTheme.colors.primary,
+                  selectedTheme.colors.secondary,
+                  selectedTheme.colors.accent,
+                ]
+              : themeSwatches.slice(0, 3)
+            ).map((hex, index) => (
+              <span
+                key={index}
+                className="h-4 w-4 rounded-full border border-gray-200"
+                style={{ backgroundColor: hex }}
+              />
+            ))}
+          </div>
+        </button>
+
+        {isThemeMenuOpen && (
+          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+            {availableThemes.length ? (
+              availableThemes.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => {
+                    setSelectedThemeId(theme.id)
+                    setIsThemeMenuOpen(false)
+                  }}
+                  className="flex w-full items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50 transition"
+                >
+                  <span className="font-medium text-gray-800">
+                    {theme.displayName}
+                  </span>
+                  <div className="flex gap-1.5">
+                    {[theme.colors.primary, theme.colors.secondary, theme.colors.accent].map(
+                      (hex, i) => (
+                        <span
+                          key={i}
+                          className="h-4 w-4 rounded-full border"
+                          style={{ backgroundColor: hex }}
+                        />
+                      )
+                    )}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500">
+                Default theme applied
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Font Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        🔤 App Font
+      </div>
+
+      <select
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        defaultValue="poppins"
+      >
+        <option value="poppins">Poppins</option>
+        <option value="inter">Inter</option>
+        <option value="montserrat">Montserrat</option>
+        <option value="source-sans">Source Sans 3</option>
+      </select>
+    </div>
+
+    {/* Icon Selector */}
+    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-5 shadow-sm hover:shadow-md transition">
+      <div className="mb-3 text-sm font-semibold text-gray-900">
+        📱 App Icon
+      </div>
+
+      <select
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+        defaultValue="leaf"
+      >
+        <option value="leaf">Leaf</option>
+        <option value="cart">Cart</option>
+        <option value="sparkle">Sparkle</option>
+        <option value="badge">Badge</option>
+      </select>
+    </div>
+
+  </div>
+</section>
+
+        </header>
+
 
         {/* Secondary Tagline (hero tagline) moved below visual spec */}
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-gray-800">{spec.concept.heroTagline}</p>
         </div>
 
@@ -553,7 +800,7 @@ function AppSpecContent() {
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Merchant Panel</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600">
                 <Package className="h-6 w-6" />
               </div>
               <div>
@@ -563,7 +810,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600">
                 <BadgePercent className="h-6 w-6" />
               </div>
               <div>
@@ -573,7 +820,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-slate-50 text-slate-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-slate-50 text-slate-600">
                 <ClipboardList className="h-6 w-6" />
               </div>
               <div>
@@ -583,7 +830,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-violet-50 text-violet-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-violet-50 text-violet-600">
                 <Package className="h-6 w-6" />
               </div>
               <div>
@@ -593,7 +840,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-orange-50 text-orange-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-orange-50 text-orange-600">
                 <RotateCcw className="h-6 w-6" />
               </div>
               <div>
@@ -603,7 +850,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600">
                 <Users className="h-6 w-6" />
               </div>
               <div>
@@ -613,7 +860,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-yellow-50 text-yellow-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-yellow-50 text-yellow-600">
                 <Star className="h-6 w-6" />
               </div>
               <div>
@@ -623,7 +870,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-sky-50 text-sky-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-sky-50 text-sky-600">
                 <BarChart3 className="h-6 w-6" />
               </div>
               <div>
@@ -633,7 +880,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-purple-50 text-purple-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-purple-50 text-purple-600">
                 <UserCog className="h-6 w-6" />
               </div>
               <div>
@@ -643,7 +890,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-green-50 text-green-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-green-50 text-green-600">
                 <CreditCard className="h-6 w-6" />
               </div>
               <div>
@@ -653,7 +900,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-cyan-50 text-cyan-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-cyan-50 text-cyan-600">
                 <Calculator className="h-6 w-6" />
               </div>
               <div>
@@ -663,7 +910,7 @@ function AppSpecContent() {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-4 flex gap-3 items-start">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-pink-50 text-pink-600">
+              <div className="h-12 w-16 rounded-xl flex items-center justify-center bg-pink-50 text-pink-600">
                 <Megaphone className="h-6 w-6" />
               </div>
               <div>
@@ -674,90 +921,7 @@ function AppSpecContent() {
           </div>
         </section>
 
-        {/* Suggested Themes Section */}
-        {spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900">Suggested Themes</h3>
-            <p className="mb-6 text-sm text-gray-600">
-              Based on your app concept, we recommend these professionally designed themes
-            </p>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {spec.best.suggestedThemes.map((theme) => (
-                <div
-                  key={theme.id}
-                  className="rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
-                >
-                  {/* Theme Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {theme.icon && (
-                        <div className="text-2xl">{theme.icon}</div>
-                      )}
-                      <div>
-                        <div className="text-base font-semibold text-gray-900">
-                          {theme.displayName}
-                        </div>
-                        {theme.category && (
-                          <span className="inline-block mt-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                            {theme.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Color Palette Grid */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-gray-500 mb-2">Color Palette</div>
-                    <div className="grid grid-cols-5 gap-2">
-                      <div className="space-y-1">
-                        <div
-                          className="h-12 w-full rounded-lg border border-gray-200 shadow-sm"
-                          style={{ backgroundColor: theme.colors.primary }}
-                          title={`Primary: ${theme.colors.primary}`}
-                        />
-                        <div className="text-[10px] text-gray-500 text-center">Primary</div>
-                      </div>
-                      <div className="space-y-1">
-                        <div
-                          className="h-12 w-full rounded-lg border border-gray-200 shadow-sm"
-                          style={{ backgroundColor: theme.colors.secondary }}
-                          title={`Secondary: ${theme.colors.secondary}`}
-                        />
-                        <div className="text-[10px] text-gray-500 text-center">Secondary</div>
-                      </div>
-                      <div className="space-y-1">
-                        <div
-                          className="h-12 w-full rounded-lg border border-gray-200 shadow-sm"
-                          style={{ backgroundColor: theme.colors.accent }}
-                          title={`Accent: ${theme.colors.accent}`}
-                        />
-                        <div className="text-[10px] text-gray-500 text-center">Accent</div>
-                      </div>
-                      <div className="space-y-1">
-                        <div
-                          className="h-12 w-full rounded-lg border border-gray-200 shadow-sm"
-                          style={{ backgroundColor: theme.colors.background }}
-                          title={`Background: ${theme.colors.background}`}
-                        />
-                        <div className="text-[10px] text-gray-500 text-center">BG</div>
-                      </div>
-                      <div className="space-y-1">
-                        <div
-                          className="h-12 w-full rounded-lg border border-gray-200 shadow-sm"
-                          style={{ backgroundColor: theme.colors.text }}
-                          title={`Text: ${theme.colors.text}`}
-                        />
-                        <div className="text-[10px] text-gray-500 text-center">Text</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
+        
         {/* Meta footer removed per requirement (no Vertical/Confidence display) */}
       </div>
 
@@ -778,7 +942,6 @@ export default function AppSpecPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-600">Loading...</div></div>}>
       <AppSpecContent />
-    <HomeAppCarousel/>
     </Suspense>
   )
 }
