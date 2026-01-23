@@ -2049,7 +2049,7 @@ function AppBuilderContent() {
       <div className="h-14 md:h-16 lg:h-20 flex-shrink-0"></div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 p-1.5 sm:p-2 md:p-3 lg:p-4 max-w-[1800px] mx-auto w-full overflow-y-auto lg:overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 p-1.5 sm:p-2 md:p-3 lg:p-4 max-w-6xl mx-auto w-full overflow-y-auto lg:overflow-hidden min-h-0">
 
         {/* Wrapper for Left + Middle Panels (for tablet layout) */}
         <div className="flex flex-col md:flex-row lg:contents gap-2 sm:gap-2.5 md:gap-3 md:h-full">
@@ -2307,8 +2307,8 @@ function AppBuilderContent() {
     {/* iPhone 16 Pro Frame (Black Hardware)
         - The borderRadius uses percentage to scale perfectly without becoming a circle
     */}
-    <div className="relative aspect-[9/19.5] h-full max-h-full w-auto bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50"
-         style={{ borderRadius: '18% / 8.5%' }}>
+    <div className="relative aspect-[9/19.5] h-full max-h-[550px] w-auto max-w-[240px] bg-[#080808] p-[1.2%] shadow-2xl flex flex-col ring-1 ring-black/50"
+         style={{ borderRadius: '18% / 8.5%', maxHeight: 'min(550px, 65vh)' }}>
       
       {/* Side Buttons */}
       <div className="absolute -left-[2px] top-[18%] w-[3px] h-[6%] bg-[#1a1a1a] rounded-l-sm"></div>
