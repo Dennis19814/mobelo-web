@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ideabits/Documents/SourceCode/**)",
+      "Bash(npm run type-check:*)",
+      "Bash(cat:*)",
+      "Bash(ssh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

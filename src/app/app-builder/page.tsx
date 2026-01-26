@@ -96,6 +96,7 @@ function AppBuilderContent() {
   const [historyIndex, setHistoryIndex] = useState<number>(-1)
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [historyOffset, setHistoryOffset] = useState(0)
   const [totalHistoryCount, setTotalHistoryCount] = useState(0)
   const [hideProgressBar, setHideProgressBar] = useState(false)
@@ -533,6 +534,7 @@ function AppBuilderContent() {
       logger.error('❌ [ChatHistory] Error loading chat history:', error)
     } finally {
       setIsLoadingHistory(false)
+      setIsInitialLoad(false)
       logger.debug('🏁 [ChatHistory] loadChatHistory finished')
     }
     // abortController deliberately excluded from deps (new object on every render)
@@ -961,6 +963,7 @@ function AppBuilderContent() {
         // App will show stopped status and user can restart manually
       } finally {
         setIsLoadingExpoInfo(false)
+        setIsInitialLoad(false)
       }
     }
 
@@ -2133,7 +2136,15 @@ function AppBuilderContent() {
                 </button>
               </div>
             )}
-            {isLoadingHistory && (
+            {/* Prominent Initial Loading Spinner */}
+            {(isInitialLoad || isLoadingHistory || isLoadingExpoInfo) && chatMessages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 sm:py-16 md:py-20">
+                <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-orange-500 animate-spin mb-4 sm:mb-5 md:mb-6" />
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">Mobile app development settings are loading...</p>
+                <p className="text-xs sm:text-sm text-gray-500">Please wait while we prepare your workspace</p>
+              </div>
+            )}
+            {isLoadingHistory && chatMessages.length > 0 && (
               <div className="flex justify-center mb-2">
                 <div className="w-full">
                   <div className="h-3 w-16 bg-gray-200 rounded mb-2 animate-pulse" />
@@ -2151,7 +2162,7 @@ function AppBuilderContent() {
                 </div>
               </div>
             )}
-            {!isLoadingHistory && chatMessages.length === 0 && progressState.status === 'idle' && !isGenerating && !isCreating && (
+            {!isInitialLoad && !isLoadingHistory && !isLoadingExpoInfo && chatMessages.length === 0 && progressState.status === 'idle' && !isGenerating && !isCreating && (
               <div className="border border-gray-200 bg-gray-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 text-center">
                 <p className="font-semibold text-gray-800 mb-0.5 sm:mb-1 text-xs sm:text-sm">No active build</p>
                 <p className="text-gray-500 text-[10px] sm:text-xs">Start a new run to see progress and chat updates here.</p>
