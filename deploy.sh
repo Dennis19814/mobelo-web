@@ -73,6 +73,9 @@ build_web_on_server() {
         set -e
         cd /var/www/mobelo-web
 
+        echo "[SERVER] Clearing build cache to prevent Server Action mismatch..."
+        rm -rf .next .turbo node_modules/.cache
+
         echo "[SERVER] Installing dependencies..."
         npm ci --legacy-peer-deps
 
@@ -318,6 +321,10 @@ main() {
     echo ""
     log_info "Production URL: https://mobelo.dev (or configured domain)"
     log_info "App running on: http://localhost:3001"
+    echo ""
+    log_warn "IMPORTANT: Users may need to hard refresh their browser to clear cached JavaScript:"
+    log_warn "  • Chrome/Edge: Ctrl+Shift+F5 (Windows) or Cmd+Shift+R (Mac)"
+    log_warn "  • Firefox: Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)"
     echo ""
     log_info "Monitor logs: ssh -i $SSH_KEY $SERVER 'pm2 logs mobelo-web'"
     log_info "Check status:  ssh -i $SSH_KEY $SERVER 'pm2 status'"
