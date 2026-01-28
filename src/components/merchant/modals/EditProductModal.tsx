@@ -78,6 +78,18 @@ export default function EditProductModal({
     metadata: product.metadata || {}
   })
 
+  const totalVariantInventory = useMemo(() => {
+    const variants = formData.variants || []
+    if (!variants.length) return 0
+    return variants.reduce((sum, variant) => {
+      const qty =
+        typeof variant.inventoryQuantity === 'number'
+          ? variant.inventoryQuantity
+          : parseInt((variant.inventoryQuantity as any) || '0') || 0
+      return sum + qty
+    }, 0)
+  }, [formData.variants])
+
   const [productMedia, setProductMedia] = useState<ProductMedia[]>(product.media || [])
   const [tempUploadedMedia, setTempUploadedMedia] = useState<File[]>([]) // Track temporary uploads
   const [pendingMediaDeletions, setPendingMediaDeletions] = useState<number[]>([]) // Track media IDs to delete
@@ -193,6 +205,14 @@ export default function EditProductModal({
       setBasePriceInput(formData.basePrice.toString())
     }
   }, [formData.basePrice])
+
+  useEffect(() => {
+    if (!(formData.variants || []).length) return
+    setFormData(prev => {
+      if (prev.inventoryQuantity === totalVariantInventory) return prev
+      return { ...prev, inventoryQuantity: totalVariantInventory }
+    })
+  }, [formData.variants, totalVariantInventory])
 
   // Fetch existing media when modal opens
   useEffect(() => {
@@ -1999,15 +2019,17 @@ export default function EditProductModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.inventoryQuantity}
+                      value={(formData.variants || []).length ? totalVariantInventory : formData.inventoryQuantity}
                       onChange={(e) => handleInputChange('inventoryQuantity', parseInt(e.target.value) || 0)}
                       className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="0"
                       min="0"
-                      disabled={loading}
+                      disabled={loading || (formData.variants || []).length > 0}
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      Current inventory stock level
+                      {(formData.variants || []).length
+                        ? 'Total stock from all variants'
+                        : 'Current inventory stock level'}
                     </p>
                   </div>
 
