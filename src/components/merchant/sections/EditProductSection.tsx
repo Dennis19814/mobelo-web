@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { logger } from '@/lib/logger'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
@@ -1135,11 +1135,11 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
   return (
     <div className="w-full max-w-full min-w-0">
   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center ">
-        <div>
+        <div className="flex items-center gap-2 text-gray-900">
+          <Tags className="w-6 h-6 text-gray-700" />
+          <ChevronRightIcon className="w-5 h-5 text-gray-400" />
           <h2 className="text-2xl font-semibold text-gray-900">Edit Product</h2>
-
         </div>
-   
       </div>
 
       {/* Main Layout - Shopify Style: Two Column Grid */}

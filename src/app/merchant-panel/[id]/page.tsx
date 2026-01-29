@@ -436,6 +436,7 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={finalAppSecretKey || undefined}
+          onAddProduct={() => handleSectionChange('add-product')}
         />
       case 'product-reviews':
         // Use same API key logic as products section

@@ -316,6 +316,9 @@ export default function ShopifyVariantManager({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [variantPrices, setVariantPrices] = useState<Record<string, number>>({})
   const [variantInventory, setVariantInventory] = useState<Record<string, number>>({})
+  const [variantIds, setVariantIds] = useState<Record<string, number>>({})
+  const [variantSkus, setVariantSkus] = useState<Record<string, string>>({})
+  const variantsByPositionRef = useRef<ProductVariant[]>([])
   const [expandAll, setExpandAll] = useState(true)
   const [validationErrors, setValidationErrors] = useState<Record<string, { name?: boolean; values?: boolean }>>({})
   const [draggedValueOptionId, setDraggedValueOptionId] = useState<string | null>(null)
@@ -421,15 +424,22 @@ export default function ShopifyVariantManager({
         // Load prices and inventory from variants
         const prices: Record<string, number> = {}
         const inventory: Record<string, number> = {}
+        const ids: Record<string, number> = {}
+        const skus: Record<string, string> = {}
+        variantsByPositionRef.current = [...variants].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
         
         variants.forEach(variant => {
           const key = getVariantKey(variant)
           if (variant.price !== undefined) prices[key] = variant.price
           if (variant.inventoryQuantity !== undefined) inventory[key] = variant.inventoryQuantity
+          if (variant.id !== undefined) ids[key] = variant.id
+          if (variant.sku) skus[key] = variant.sku
         })
         
         setVariantPrices(prices)
         setVariantInventory(inventory)
+        setVariantIds(ids)
+        setVariantSkus(skus)
         setIsInitialized(true)
         processedVariantsHashRef.current = variantsHash
       }
@@ -478,14 +488,21 @@ export default function ShopifyVariantManager({
         isDefault: index === 0
       }
       
-      // Preserve existing price and inventory
+      // Preserve existing metadata (id/sku) and price/inventory
       const key = getVariantKey(variant)
+      const fallback = variantsByPositionRef.current[index]
+      if (variantIds[key] !== undefined) variant.id = variantIds[key]
+      else if (fallback?.id !== undefined) variant.id = fallback.id
+      if (variantSkus[key]) variant.sku = variantSkus[key]
+      else if (fallback?.sku) variant.sku = fallback.sku
       if (variantPrices[key] !== undefined) variant.price = variantPrices[key]
+      else if (fallback?.price !== undefined) variant.price = fallback.price
       if (variantInventory[key] !== undefined) variant.inventoryQuantity = variantInventory[key]
+      else if (fallback?.inventoryQuantity !== undefined) variant.inventoryQuantity = fallback.inventoryQuantity
       
       return variant
     })
-  }, [variantPrices, variantInventory])
+  }, [variantPrices, variantInventory, variantIds, variantSkus])
 
   // Update variants when options change (including during editing for real-time preview)
   const prevVariantsRef = useRef<string>('')
@@ -634,18 +651,30 @@ export default function ShopifyVariantManager({
       return newErrors
     })
 
-    setOptions(prev => prev.map(opt => 
-      opt.id === optionId 
+    const nextOptions = options.map(opt =>
+      opt.id === optionId
         ? { ...opt, values: cleanedValues, isEditing: false }
         : opt
-    ))
-    
+    )
+    setOptions(nextOptions)
     setEditingOptionId(null)
-    
+
     // Set groupBy if not set
     if (!groupBy) {
       setGroupBy(option.name)
     }
+
+    // Push updated variants immediately so parent has latest values
+    const newVariants = generateVariants(nextOptions)
+    const variantsKey = JSON.stringify(newVariants.map(v => ({
+      option1: `${v.option1Name}:${v.option1Value}`,
+      option2: `${v.option2Name}:${v.option2Value}`,
+      option3: `${v.option3Name}:${v.option3Value}`,
+      price: v.price,
+      inventory: v.inventoryQuantity
+    })))
+    onVariantsChangeRef.current(newVariants)
+    prevVariantsRef.current = variantsKey
   }
 
   const handleDelete = (optionId: string) => {

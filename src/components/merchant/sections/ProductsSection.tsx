@@ -28,6 +28,7 @@ interface ProductsSectionProps {
   appId: number
   apiKey?: string
   appSecretKey?: string
+  onAddProduct?: () => void
 }
 
 /**
@@ -40,7 +41,7 @@ interface ProductsSectionProps {
  * This is critical to prevent header duplication issues that cause 401 authentication errors.
  * The lowercase format is consistently used throughout the request chain.
  */
-const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSectionProps) => {
+const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }: ProductsSectionProps) => {
   const router = useRouter()
   // Use custom hooks for auth and CRUD operations
   const { headers, isReady } = useMerchantAuth(apiKey, appSecretKey)
@@ -704,7 +705,13 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
           </button>
           {canCreateProducts && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                if (onAddProduct) {
+                  onAddProduct()
+                } else {
+                  setShowAddModal(true)
+                }
+              }}
               className="flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />

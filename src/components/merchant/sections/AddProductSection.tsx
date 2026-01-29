@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { logger } from '@/lib/logger'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
@@ -38,6 +38,8 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
   const [selectedParentCategory, setSelectedParentCategory] = useState<number | null>(null)
   // Category display feature state
   const [categoryDisplayMode, setCategoryDisplayMode] = useState<'image' | 'icon'>('image')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const basePriceInputRef = useRef<HTMLInputElement>(null)
   const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null)
   const [categoryImagePreview, setCategoryImagePreview] = useState<string | null>(null)
   const [categorySelectedIcon, setCategorySelectedIcon] = useState<any>(null)
@@ -593,17 +595,24 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
     }
     
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return newErrors
+  }
+
+  const scrollToField = (ref: React.RefObject<HTMLInputElement | null>) => {
+    if (!ref.current) return
+    ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    ref.current.focus()
   }
 
   const handleSubmit = async (status: 'draft' | 'active') => {
-    if (!validateForm()) {
+    const formErrors = validateForm()
+    if (Object.keys(formErrors).length > 0) {
       // Switch to the step with the first error
-      const errorFields = Object.keys(errors)
+      const errorFields = Object.keys(formErrors)
       if (errorFields.includes('name') || errorFields.includes('description')) {
-        goToStep(0) // basic step
+        scrollToField(nameInputRef)
       } else if (errorFields.includes('basePrice')) {
-        goToStep(1) // pricing step
+        scrollToField(basePriceInputRef)
       }
       return
     }
@@ -970,11 +979,11 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
   return (
     <div className="w-full max-w-full min-w-0">
   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center ">
-        <div>
+        <div className="flex items-center gap-2 text-gray-900">
+          <Tags className="w-6 h-6 text-gray-700" />
+          <ChevronRightIcon className="w-5 h-5 text-gray-400" />
           <h2 className="text-2xl font-semibold text-gray-900">Add Product</h2>
-
         </div>
-   
       </div>
 
       {/* Main Layout - Shopify Style: Two Column Grid */}
@@ -1006,6 +1015,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                   </label>
                   <input
                     type="text"
+                    ref={nameInputRef}
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
@@ -1243,6 +1253,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                 </label>
                 <input
                   type="number"
+                  ref={basePriceInputRef}
                   value={basePriceInput}
                   onChange={(e) => {
                     const value = e.target.value

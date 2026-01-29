@@ -98,12 +98,6 @@ export default function MediaManager({
     }
   }, [error])
 
-  // Auto-scroll to top when delete confirmation appears
-  useEffect(() => {
-    if (confirmDeleteId !== null && containerRef.current) {
-      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [confirmDeleteId])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -261,9 +255,9 @@ export default function MediaManager({
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col relative ">
-      {/* Delete Confirmation Toolbar - Absolute overlay at top */}
+      {/* Delete Confirmation Toolbar */}
       {confirmDeleteId !== null && (
-        <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-800 shadow-lg">
+        <div className="mb-3 flex items-center justify-between px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-800 shadow-lg">
           <span className="text-sm">Delete this media file?</span>
           <div className="flex gap-2">
             <button
@@ -284,9 +278,9 @@ export default function MediaManager({
         </div>
       )}
 
-      {/* Error Alert - Absolute overlay at top */}
+      {/* Error Alert */}
       {error && (
-        <div className="absolute top-0 left-0 right-0 z-50 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start justify-between shadow-lg">
+        <div className="mb-3 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start justify-between shadow-lg">
           <div className="flex items-start space-x-2">
             <AlertCircle className="w-3.5 h-3.5 text-orange-800 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-orange-800">{error}</p>
@@ -297,18 +291,11 @@ export default function MediaManager({
         </div>
       )}
 
-      {/* Header and Info Cards - One row on large screens */}
+      {/* Header and Info Cards */}
       <div className="mb-3 flex-shrink-0">
-
-                  <div className="flex items-center justify-between lg:justify-start lg:flex-1">
-           
-          </div>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          {/* Header */}
-
-
-          {/* Info Cards - Horizontal */}
-          <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+          {/* Info Cards - wrap on small/medium screens, single row on large desktops */}
+          <div className="flex flex-wrap gap-2 xl:flex-nowrap">
         <div className="p-1.5 bg-blue-50 border border-blue-100 rounded-lg flex-1 min-w-[150px]">
           <div className="flex items-center space-x-1.5">
             <div className="w-5 h-5 bg-blue-500 rounded-md flex items-center justify-center flex-shrink-0">
