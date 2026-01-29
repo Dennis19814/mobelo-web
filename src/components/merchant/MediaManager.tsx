@@ -260,7 +260,7 @@ export default function MediaManager({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col relative">
+    <div ref={containerRef} className="w-full h-full flex flex-col relative ">
       {/* Delete Confirmation Toolbar - Absolute overlay at top */}
       {confirmDeleteId !== null && (
         <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-800 shadow-lg">
@@ -299,14 +299,13 @@ export default function MediaManager({
 
       {/* Header and Info Cards - One row on large screens */}
       <div className="mb-3 flex-shrink-0">
+
+                  <div className="flex items-center justify-between lg:justify-start lg:flex-1">
+           
+          </div>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           {/* Header */}
-          <div className="flex items-center justify-between lg:justify-start lg:flex-1">
-            <div>
-              <h2 className="text-sm font-medium text-gray-700 mb-0.5">Media Gallery</h2>
-              <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
-            </div>
-          </div>
+
 
           {/* Info Cards - Horizontal */}
           <div className="flex flex-wrap gap-2 lg:flex-nowrap">
@@ -354,7 +353,7 @@ export default function MediaManager({
           const isAtMax = totalCount >= MAX_MEDIA
           
           return (
-            <div className={`p-1.5 border rounded-lg flex-1 min-w-[150px] ${
+            <div className={`p-1.5 border rounded-lg flex-1 min-w-[130px] ${
               isAtMax 
                 ? 'bg-orange-50 border-orange-200' 
                 : 'bg-purple-50 border-purple-200'

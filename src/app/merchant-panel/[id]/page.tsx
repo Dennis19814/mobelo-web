@@ -35,6 +35,7 @@ const RolesSection = lazy(() => import('@/components/merchant/sections/RolesSect
 const HelpCenterSection = lazy(() => import('@/components/merchant/sections/HelpCenterSection'))
 const HelpFaqSection = lazy(() => import('@/components/merchant/sections/HelpFaqSection'))
 const HelpTutorialsSection = lazy(() => import('@/components/merchant/sections/HelpTutorialsSection'))
+const AddProductSection = lazy(() => import('@/components/merchant/sections/AddProductSection'))
 
 interface App {
   id: number
@@ -64,9 +65,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -444,6 +445,17 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={reviewsFinalAppSecretKey || undefined}
+        />
+      case 'add-product':
+        // Use same API key logic as products section
+        const addProductAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const addProductFinalAppSecretKey = addProductAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <AddProductSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={addProductFinalAppSecretKey || undefined}
+          onSuccess={() => handleSectionChange('products')}
         />
       case 'brands':
         const brandsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
