@@ -611,7 +611,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     }
   }, [hasUnsavedVariant, errors.variants])
 
-  const handleInputChange = (field: keyof CreateProductDto, value: any) => {
+  const handleInputChange = (field: keyof UpdateProductDto, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -878,17 +878,85 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         sigSet.add(sig)
       }
 
-      // Prepare update data
+      // Clean variants - remove any extra fields and ensure proper structure
+      // Don't include id field - API handles variant creation/update differently
+      const cleanedVariants = normalizedVariants.map((v: ProductVariant) => {
+        const cleaned: any = {
+          option1Name: v.option1Name || '',
+          option1Value: v.option1Value || '',
+          price: typeof v.price === 'number' ? v.price : 0,
+          inventoryQuantity: typeof v.inventoryQuantity === 'number' ? v.inventoryQuantity : 0
+        }
+        
+        // DO NOT include id - the API doesn't expect variant_id
+        // Variants are identified by their option combinations
+        
+        // Optional fields - only include if they have values (don't send undefined)
+        if (v.option2Name && v.option2Value) {
+          cleaned.option2Name = v.option2Name
+          cleaned.option2Value = v.option2Value
+        }
+        if (v.option3Name && v.option3Value) {
+          cleaned.option3Name = v.option3Name
+          cleaned.option3Value = v.option3Value
+        }
+        
+        // SKU - include if not empty
+        if (v.sku && v.sku.trim()) {
+          cleaned.sku = v.sku.trim()
+        }
+        
+        // Position and isDefault if they exist
+        if (v.position !== undefined && v.position !== null) {
+          cleaned.position = v.position
+        }
+        if (v.isDefault !== undefined) {
+          cleaned.isDefault = v.isDefault
+        }
+        
+        return cleaned
+      })
+
+      // Prepare update data - explicitly set fields to avoid sending unwanted data
       const updateData: any = {
-        ...formData,
-        variants: normalizedVariants,
+        name: formData.name,
+        brand: formData.brand,
+        brandId: (formData as any).brandId === -1 ? null : (formData as any).brandId,
+        description: formData.description,
+        shortDescription: formData.shortDescription,
+        sku: formData.sku,
+        barcode: formData.barcode,
+        basePrice: formData.basePrice,
         compareAtPrice: formData.compareAtPrice === undefined || formData.compareAtPrice === null || formData.compareAtPrice === 0 ? null : formData.compareAtPrice,
         costPrice: formData.costPrice === undefined || formData.costPrice === null || formData.costPrice === 0 ? null : formData.costPrice,
+        thumbnailUrl: productMedia.find(m => m.isPrimary)?.url || formData.thumbnailUrl,
         weight: formData.weight === undefined || formData.weight === null || formData.weight === 0 ? null : formData.weight,
-        brandId: (formData as any).brandId === -1 ? null : (formData as any).brandId,
-        thumbnailUrl: productMedia.find(m => m.isPrimary)?.url || formData.thumbnailUrl
+        weightUnit: formData.weightUnit,
+        status: formData.status,
+        featured: formData.featured,
+        isNew: formData.isNew,
+        isDigital: formData.isDigital,
+        requiresShipping: formData.requiresShipping,
+        shippingInfo: formData.shippingInfo,
+        returnPolicy: formData.returnPolicy,
+        warranty: formData.warranty,
+        categoryIds: formData.categoryIds,
+        tags: formData.tags,
+        trackInventory: formData.trackInventory,
+        inventoryQuantity: formData.inventoryQuantity,
+        minimumQuantity: formData.minimumQuantity,
+        maximumQuantity: formData.maximumQuantity,
+        variants: cleanedVariants,
+        metadata: formData.metadata
       }
-      delete updateData.media
+      
+      // Log the data being sent for debugging
+      logger.debug('Updating product with data:', {
+        productId,
+        variantCount: cleanedVariants.length,
+        variants: cleanedVariants,
+        updateDataKeys: Object.keys(updateData)
+      })
 
       const response = await apiService.updateProduct(productId, updateData)
 
@@ -990,11 +1058,23 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         onSuccess?.()
         router.back()
       } else {
-        setErrors({ submit: response.data?.message || 'Failed to update product' })
+        const errorMessage = response.data?.message || response.data?.error || 'Failed to update product'
+        logger.error('Update product failed:', { 
+          status: response.status,
+          message: errorMessage,
+          data: response.data,
+          variants: normalizedVariants
+        })
+        setErrors({ submit: errorMessage })
       }
     } catch (error) {
-      logger.error('Error updating product:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
-      setErrors({ submit: 'An error occurred while updating the product' })
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error('Error updating product:', { 
+        error: errorMessage, 
+        stack: error instanceof Error ? error.stack : undefined,
+        variants: formData.variants
+      })
+      setErrors({ submit: `An error occurred while updating the product: ${errorMessage}` })
     } finally {
       setLoading(false)
     }
@@ -1132,11 +1212,34 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     router.back()
   }
 
+  const handleNavigateToProducts = useCallback(() => {
+    try {
+      // Get hashed appId from current URL
+      const currentPath = window.location.pathname
+      const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+      if (pathMatch && pathMatch[1]) {
+        const hashedAppId = pathMatch[1]
+        // Navigate to products section
+        router.push(`/merchant-panel/${hashedAppId}?section=products`)
+      } else {
+        logger.error('Could not find hashed appId in URL path')
+      }
+    } catch (error) {
+      logger.error('Error navigating to products section:', { error: error instanceof Error ? error.message : String(error) })
+    }
+  }, [router])
+
   return (
     <div className="w-full max-w-full min-w-0">
   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center ">
         <div className="flex items-center gap-2 text-gray-900">
-          <Tags className="w-6 h-6 text-gray-700" />
+          <button
+            onClick={handleNavigateToProducts}
+            className="flex items-center justify-center hover:bg-gray-100 rounded-lg p-1 transition-colors cursor-pointer"
+            title="Go to Products"
+          >
+            <Tags className="w-6 h-6 text-gray-700 hover:text-orange-600 transition-colors" />
+          </button>
           <ChevronRightIcon className="w-5 h-5 text-gray-400" />
           <h2 className="text-2xl font-semibold text-gray-900">Edit Product</h2>
         </div>

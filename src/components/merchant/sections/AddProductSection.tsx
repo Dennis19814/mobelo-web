@@ -976,11 +976,34 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
     router.back()
   }
 
+  const handleNavigateToProducts = useCallback(() => {
+    try {
+      // Get hashed appId from current URL
+      const currentPath = window.location.pathname
+      const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+      if (pathMatch && pathMatch[1]) {
+        const hashedAppId = pathMatch[1]
+        // Navigate to products section
+        router.push(`/merchant-panel/${hashedAppId}?section=products`)
+      } else {
+        logger.error('Could not find hashed appId in URL path')
+      }
+    } catch (error) {
+      logger.error('Error navigating to products section:', { error: error instanceof Error ? error.message : String(error) })
+    }
+  }, [router])
+
   return (
     <div className="w-full max-w-full min-w-0">
   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center ">
         <div className="flex items-center gap-2 text-gray-900">
-          <Tags className="w-6 h-6 text-gray-700" />
+          <button
+            onClick={handleNavigateToProducts}
+            className="flex items-center justify-center hover:bg-gray-100 rounded-lg p-1 transition-colors cursor-pointer"
+            title="Go to Products"
+          >
+            <Tags className="w-6 h-6 text-gray-700 hover:text-orange-600 transition-colors" />
+          </button>
           <ChevronRightIcon className="w-5 h-5 text-gray-400" />
           <h2 className="text-2xl font-semibold text-gray-900">Add Product</h2>
         </div>
