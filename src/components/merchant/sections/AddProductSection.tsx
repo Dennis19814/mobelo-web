@@ -1843,27 +1843,32 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
             {/* Hierarchical Category Picker Dropdown */}
             {categoryPickerOpen && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
-                {/* Breadcrumb Navigation */}
-                {categoryPickerPath.length > 0 && (
-                  <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPath = [...categoryPickerPath];
-                        newPath.pop();
-                        setCategoryPickerPath(newPath);
-                      }}
-                      className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-1" />
-                      {(() => {
-                        const parentId = categoryPickerPath[categoryPickerPath.length - 1];
-                        const parent = categories.find(c => c.id === parentId);
-                        return parent?.name || 'Back';
-                      })()}
-                    </button>
-                  </div>
-                )}
+                {/* Breadcrumb Navigation - full path, each segment clickable */}
+                <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center gap-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryPickerPath([])}
+                    className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                  >
+                    All
+                  </button>
+                  {categoryPickerPath.map((categoryId, index) => {
+                    const category = categories.find(c => c.id === categoryId);
+                    const isLast = index === categoryPickerPath.length - 1;
+                    return (
+                      <span key={categoryId} className="flex items-center gap-1">
+                        <span className="text-gray-400">/</span>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryPickerPath(categoryPickerPath.slice(0, index + 1))}
+                          className={`text-sm font-medium ${isLast ? 'text-gray-900 cursor-default' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                          {category?.name || 'Category'}
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
 
                 {/* Category List */}
                 <div className="overflow-y-auto flex-1">

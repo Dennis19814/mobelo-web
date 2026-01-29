@@ -23,6 +23,10 @@ export interface ProductVariant {
   option2Value?: string
   option3Name?: string
   option3Value?: string
+  option4Name?: string
+  option4Value?: string
+  option5Name?: string
+  option5Value?: string
   price?: number
   inventoryQuantity?: number
   position?: number
