@@ -356,11 +356,30 @@ export default function ShopifyVariantManager({
     return parts.join('|')
   }
 
-  // Initialize options from variants (only once on mount)
+  // Initialize options from variants - handle async loading
   const [isInitialized, setIsInitialized] = useState(false)
+  const prevVariantsLengthRef = useRef<number>(0)
+  const processedVariantsHashRef = useRef<string>('')
   
   useEffect(() => {
-    if (isInitialized) return
+    // Create a hash of variant keys to detect actual changes
+    const variantsHash = variants.map(v => getVariantKey(v)).sort().join('|')
+    
+    // Process variants if:
+    // 1. We have variants but haven't initialized options yet (initial load or async load)
+    // 2. Variants changed from empty to non-empty (async load scenario)
+    const wasEmpty = prevVariantsLengthRef.current === 0
+    const nowHasVariants = variants.length > 0
+    const hasNoOptions = options.length === 0
+    const variantsChanged = variantsHash !== processedVariantsHashRef.current
+    
+    // Process if: (not initialized AND has variants) OR (was empty, now has variants, and no options) OR (variants changed and we have no options)
+    const shouldProcess = nowHasVariants && (!isInitialized || (wasEmpty && hasNoOptions) || (variantsChanged && hasNoOptions))
+    
+    if (!shouldProcess) {
+      prevVariantsLengthRef.current = variants.length
+      return
+    }
     
     if (variants.length > 0) {
       const optionMap = new Map<string, Set<string>>()
@@ -395,7 +414,9 @@ export default function ShopifyVariantManager({
 
       if (newOptions.length > 0) {
         setOptions(newOptions)
-        setGroupBy(newOptions[0].name)
+        if (!groupBy || groupBy === '') {
+          setGroupBy(newOptions[0].name)
+        }
 
         // Load prices and inventory from variants
         const prices: Record<string, number> = {}
@@ -409,11 +430,13 @@ export default function ShopifyVariantManager({
         
         setVariantPrices(prices)
         setVariantInventory(inventory)
+        setIsInitialized(true)
+        processedVariantsHashRef.current = variantsHash
       }
     }
     
-    setIsInitialized(true)
-  }, [variants, isInitialized])
+    prevVariantsLengthRef.current = variants.length
+  }, [variants, isInitialized, groupBy, options.length])
 
   // Generate variants from options
   const generateVariants = useCallback((currentOptions: VariantOption[]): ProductVariant[] => {

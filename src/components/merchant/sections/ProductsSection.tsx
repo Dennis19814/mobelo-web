@@ -2,6 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState, useEffect, useCallback, useMemo, memo, lazy, Suspense, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, RefreshCw, Trash2, Package, Grid3X3, List, SlidersHorizontal, AlertTriangle, Copy, X, XCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import { useMerchantAuth, useCrudOperations } from '@/hooks'
@@ -13,6 +14,7 @@ import ProductFilters from '../ProductFilters'
 import ProductGridSkeleton from '../ProductGridSkeleton'
 import ProductTableSkeleton from '../ProductTableSkeleton'
 import { Pagination } from '../common'
+import { hashId } from '@/lib/url-hash'
 
 // Lazy load modals for better performance
 const AddProductModal = lazy(() => import('../modals/AddProductModal'))
@@ -39,6 +41,7 @@ interface ProductsSectionProps {
  * The lowercase format is consistently used throughout the request chain.
  */
 const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSectionProps) => {
+  const router = useRouter()
   // Use custom hooks for auth and CRUD operations
   const { headers, isReady } = useMerchantAuth(apiKey, appSecretKey)
   const {
@@ -351,68 +354,24 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
   }, [products])
 
   const handleEdit = useCallback(async (productId: number) => {
-    // Fetch fresh product data before opening the edit modal
-    if (!headers) return
-
-    setLoadingProductData(true)
+    // Navigate to edit-product page instead of opening modal
     try {
-      const response = await apiService.getProduct(productId)
-
-      if (response.ok && response.data) {
-        logger.debug('Fetched fresh product data for edit', {
-          compareAtPrice: response.data.compareAtPrice,
-          hasMetadata: !!response.data.metadata
-        })
-        // Ensure null values are properly handled as undefined for the form
-        const freshProduct = {
-          ...response.data,
-          compareAtPrice: response.data.compareAtPrice === null ? undefined : response.data.compareAtPrice,
-          costPrice: response.data.costPrice === null ? undefined : response.data.costPrice,
-          weight: response.data.weight === null ? undefined : response.data.weight,
-          metadata: response.data.metadata || {}
-        }
-        setSelectedProduct(freshProduct)
-        setShowEditModal(true)
+      // Get hashed appId from current URL
+      const currentPath = window.location.pathname
+      const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+      if (pathMatch && pathMatch[1]) {
+        const hashedAppId = pathMatch[1]
+        // Navigate to edit-product section with productId as query param
+        router.push(`/merchant-panel/${hashedAppId}?section=edit-product&productId=${productId}`)
       } else {
-        // Fallback to local data if fetch fails
-        const product = products.find(p => p.id === productId)
-        if (product) {
-          logger.debug('Using cached product data for edit', {
-            compareAtPrice: product.compareAtPrice,
-            hasMetadata: !!product.metadata
-          })
-          const cleanProduct = {
-            ...product,
-            compareAtPrice: product.compareAtPrice === null ? undefined : product.compareAtPrice,
-            costPrice: product.costPrice === null ? undefined : product.costPrice,
-            weight: product.weight === null ? undefined : product.weight,
-            metadata: product.metadata || {}
-          }
-          setSelectedProduct(cleanProduct)
-          setShowEditModal(true)
-        } else {
-          setError('Product not found')
-        }
+        logger.error('Could not find hashed appId in URL path')
+        setError('Unable to navigate to edit page')
       }
     } catch (error) {
-      logger.error('Error fetching product for edit:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
-      // Fallback to local data
-      const product = products.find(p => p.id === productId)
-      if (product) {
-        const cleanProduct = {
-          ...product,
-          compareAtPrice: product.compareAtPrice === null ? undefined : product.compareAtPrice,
-          costPrice: product.costPrice === null ? undefined : product.costPrice,
-          weight: product.weight === null ? undefined : product.weight,
-          metadata: product.metadata || {}
-        }
-        setSelectedProduct(cleanProduct)
-        setShowEditModal(true)
-      }
-    } finally {
-      setLoadingProductData(false)
+      logger.error('Error navigating to edit page:', { error: error instanceof Error ? error.message : String(error) })
+      setError('Failed to navigate to edit page')
     }
-  }, [headers, products, setError])
+  }, [router, setError])
 
   // Lightweight prefetch cache to speed up edit modal opening
   const prefetchCache = useRef<Map<number, any>>(new Map())
@@ -879,60 +838,10 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
         />
       </Suspense>
 
+      {/* EditProductModal removed - now using EditProductSection page instead */}
+
       {selectedProduct && (
         <Suspense fallback={null}>
-          <EditProductModal
-            isOpen={showEditModal}
-            onClose={async () => {
-              const wasOpen = showEditModal
-              setShowEditModal(false)
-
-              // If modal was open, refresh the product to show any changes
-              if (wasOpen && selectedProduct) {
-                try {
-                  const response = await apiService.getProduct(selectedProduct.id)
-                  if (response.ok && response.data) {
-                    // Update this product in the list with fresh data
-                    setProducts(prev => prev.map(p =>
-                      p.id === selectedProduct.id ? response.data : p
-                    ))
-                  }
-                } catch (error) {
-                  logger.error('Failed to refresh product after modal close:', { error: error instanceof Error ? error.message : String(error) })
-                }
-              }
-
-              setSelectedProduct(null)
-            }}
-            product={selectedProduct}
-            apiKey={apiKey}
-            appSecretKey={appSecretKey}
-            onSuccess={async () => {
-              const productName = selectedProduct.name
-              const productId = selectedProduct.id
-              setShowEditModal(false)
-              setSelectedProduct(null)
-              setSuccessMessage(`Product "${productName}" has been updated successfully! ✨`)
-
-              // Efficient update: fetch only the changed product
-              try {
-                const response = await apiService.getProduct(productId)
-                if (response.ok && response.data) {
-                  // Update only this product in the list
-                  setProducts(prev => prev.map(p =>
-                    p.id === productId ? response.data : p
-                  ))
-                } else {
-                  // Fallback: debounced refresh to prevent rapid calls
-                  debouncedRefresh(500)
-                }
-              } catch (error) {
-                // Fallback on error with debouncing
-                debouncedRefresh(500)
-              }
-            }}
-          />
-
           <ProductDetailsModal
             isOpen={showDetailsModal}
             onClose={() => {
@@ -954,7 +863,6 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey }: ProductsSecti
             confirmText="Delete"
             isDestructive={true}
           />
-
         </Suspense>
       )}
 
