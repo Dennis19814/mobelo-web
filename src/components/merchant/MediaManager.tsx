@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Upload, Trash2, Star, Loader2, GripVertical, AlertCircle, Play, Clock, X, Check, Image } from 'lucide-react'
+import { Upload, Trash2, Star, Loader2, GripVertical, AlertCircle, Play, Clock, X, Check, Image, Plus } from 'lucide-react'
 import { ProductMedia } from '@/types/product.types'
 
 interface MediaManagerProps {
@@ -40,6 +40,7 @@ export default function MediaManager({
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [newlyUploadedIds, setNewlyUploadedIds] = useState<Set<number | string>>(new Set())
+  const [isExpanded, setIsExpanded] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaContainerRef = useRef<HTMLDivElement>(null)
   const mediaItemRefs = useRef<Map<number | string, HTMLDivElement>>(new Map())
@@ -81,6 +82,13 @@ export default function MediaManager({
     }
   }, [media])
 
+  // Auto-collapse if media count drops to 9 or less (1 large + 8 small)
+  useEffect(() => {
+    if (media.length <= 9 && isExpanded) {
+      setIsExpanded(false)
+    }
+  }, [media.length, isExpanded])
+
   // Auto-hide error after 5 seconds
   useEffect(() => {
     if (error) {
@@ -98,12 +106,6 @@ export default function MediaManager({
     }
   }, [error])
 
-  // Auto-scroll to top when delete confirmation appears
-  useEffect(() => {
-    if (confirmDeleteId !== null && containerRef.current) {
-      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [confirmDeleteId])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -189,12 +191,11 @@ export default function MediaManager({
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
-      setConfirmDeleteId(null)
     }
   }
 
   const handleDeleteClick = (mediaId: number) => {
-    setConfirmDeleteId(mediaId)
+    void handleDelete(mediaId)
   }
 
   const handleSetListingThumbnail = async (mediaId: number) => {
@@ -260,33 +261,10 @@ export default function MediaManager({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col relative">
-      {/* Delete Confirmation Toolbar - Absolute overlay at top */}
-      {confirmDeleteId !== null && (
-        <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-800 shadow-lg">
-          <span className="text-sm">Delete this media file?</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => void handleDelete(confirmDeleteId)}
-              disabled={deletingId !== null}
-              className="px-3 py-1 text-sm bg-white border border-orange-200 rounded hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed text-orange-700"
-            >
-              Delete
-            </button>
-            <button
-              onClick={() => setConfirmDeleteId(null)}
-              disabled={deletingId !== null}
-              className="px-3 py-1 text-sm bg-white border border-orange-200 rounded hover:bg-gray-100 transition-colors text-orange-700"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Error Alert - Absolute overlay at top */}
+    <div ref={containerRef} className="w-full h-full flex flex-col relative ">
+      {/* Error Alert */}
       {error && (
-        <div className="absolute top-0 left-0 right-0 z-50 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start justify-between shadow-lg">
+        <div className="mb-3 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start justify-between shadow-lg">
           <div className="flex items-start space-x-2">
             <AlertCircle className="w-3.5 h-3.5 text-orange-800 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-orange-800">{error}</p>
@@ -297,19 +275,11 @@ export default function MediaManager({
         </div>
       )}
 
-      {/* Header and Info Cards - One row on large screens */}
-      <div className="mb-3 flex-shrink-0">
+      {/* Header and Info Cards */}
+      <div className=" flex-shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          {/* Header */}
-          <div className="flex items-center justify-between lg:justify-start lg:flex-1">
-            <div>
-              <h2 className="text-sm font-medium text-gray-700 mb-0.5">Media Gallery</h2>
-              <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
-            </div>
-          </div>
-
-          {/* Info Cards - Horizontal */}
-          <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+          {/* Info Cards - wrap on small/medium screens, single row on large desktops */}
+          {/* <div className="flex flex-wrap gap-2 xl:flex-nowrap">
         <div className="p-1.5 bg-blue-50 border border-blue-100 rounded-lg flex-1 min-w-[150px]">
           <div className="flex items-center space-x-1.5">
             <div className="w-5 h-5 bg-blue-500 rounded-md flex items-center justify-center flex-shrink-0">
@@ -346,7 +316,7 @@ export default function MediaManager({
           </div>
         </div>
         
-        {/* Media Count Card */}
+
         {(() => {
           const imageCount = media.filter(m => m.type === 'image' || !m.type).length
           const videoCount = media.filter(m => m.type === 'video').length
@@ -354,7 +324,7 @@ export default function MediaManager({
           const isAtMax = totalCount >= MAX_MEDIA
           
           return (
-            <div className={`p-1.5 border rounded-lg flex-1 min-w-[150px] ${
+            <div className={`p-1.5 border rounded-lg flex-1 min-w-[130px] ${
               isAtMax 
                 ? 'bg-orange-50 border-orange-200' 
                 : 'bg-purple-50 border-purple-200'
@@ -382,13 +352,13 @@ export default function MediaManager({
             </div>
           )
         })()}
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Upload Media Card - Full Width */}
       <div 
-        className={`relative border-2 border-dashed rounded-lg p-4 transition-all duration-300 flex-1 min-h-0 flex flex-col ${
+        className={`relative border-2 border-dashed rounded-lg p-4 transition-all duration-300 mb-4 ${
           isDraggingOver
             ? 'border-orange-500 bg-orange-50'
             : 'border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-orange-400'
@@ -431,8 +401,9 @@ export default function MediaManager({
           disabled={disabled || uploading}
         />
         
-        {/* Upload Zone Header */}
-        <div className="text-center mb-4 flex-shrink-0">
+        {/* Upload Zone Header - Show when no images or always show */}
+        {media.length === 0 ? (
+          <div className="text-center">
           <div className="mb-1.5 flex justify-center">
             {uploading ? (
               <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center">
@@ -471,17 +442,17 @@ export default function MediaManager({
             </div>
           </div>
         </div>
-
-        {/* Media Grid - Inside Upload Card - Horizontal Scrollable */}
+        ) : (
+          /* Shopify Style Media Grid - First image large, rest in grid */
         <div 
           ref={mediaContainerRef} 
-          className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-        >
-          {media.length > 0 ? (
-            <div className="flex gap-2.5 pb-4 pt-4 px-4" style={{ minWidth: 'max-content' }}>
-              {media.map((item, index) => {
-                // Create a unique identifier for each item
-                const itemId = item.id || (item as any).tempId || `item-${index}-${item.url}`
+            className="w-full"
+          >
+            <div className="grid grid-cols-6 gap-3" style={{ gridAutoRows: 'minmax(120px, auto)' }}>
+            {/* First Image - Large (spans 2x2 for prominence) */}
+            {media[0] && (() => {
+              const item = media[0]
+              const itemId = item.id || (item as any).tempId || `item-0-${item.url}`
                 const isNewlyUploaded = newlyUploadedIds.has(itemId)
                 return (
                 <div
@@ -494,13 +465,13 @@ export default function MediaManager({
                     }
                   }}
                   draggable={!disabled}
-                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragStart={(e) => handleDragStart(e, 0)}
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
+                  onDrop={(e) => handleDrop(e, 0)}
                   onDragEnd={handleDragEnd}
-                  onMouseEnter={() => setHoveredItem(index)}
+                  onMouseEnter={() => setHoveredItem(0)}
                   onMouseLeave={() => setHoveredItem(null)}
-                  className="relative flex-shrink-0 w-32 h-32"
+                  className="relative col-span-2 row-span-2"
                 >
                   {/* Green shadow wrapper that pulses - only for newly uploaded */}
                   {isNewlyUploaded && (
@@ -515,7 +486,7 @@ export default function MediaManager({
                   <div
                     className={`
                       relative group aspect-square rounded-xl overflow-hidden bg-white transition-all duration-300 cursor-pointer w-full h-full
-                      ${draggedItem === index ? 'opacity-40 scale-95' : 'hover:scale-[1.02]'}
+                      ${draggedItem === 0 ? 'opacity-40 scale-95' : 'hover:scale-[1.02]'}
                       ${isNewlyUploaded ? '' : 'shadow-sm hover:shadow-lg'}
                       ${
                         !isNewlyUploaded && item.isListingThumbnail && item.isDetailThumbnail
@@ -576,7 +547,7 @@ export default function MediaManager({
                   </div>
 
                   {/* Hover Actions */}
-                  {hoveredItem === index && !item.isUploading && deletingId !== item.id && (
+                    {hoveredItem === 0 && !item.isUploading && deletingId !== item.id && (
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-3 z-10 animate-in fade-in duration-200">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-center space-x-1.5">
@@ -663,21 +634,259 @@ export default function MediaManager({
                   </div>
                 </div>
                 )
-              })}
+            })()}
+
+            {/* Rest of the images - Smaller thumbnails (show 4 per row, 2 rows = 8 images initially, then show +X) */}
+            {(() => {
+              const remainingMedia = media.slice(1)
+              const initialVisibleCount = 8 // Show 8 small thumbnails initially (4 per row x 2 rows = 8, total 9 with large one)
+              const visibleCount = isExpanded ? remainingMedia.length : Math.min(remainingMedia.length, initialVisibleCount)
+              const overflowCount = remainingMedia.length - initialVisibleCount
+              const firstHiddenImage = remainingMedia[initialVisibleCount] // Get the first hidden image for blur effect
+              
+              return (
+                <>
+                  {remainingMedia.slice(0, visibleCount).map((item, index) => {
+              const actualIndex = index + 1
+              const itemId = item.id || (item as any).tempId || `item-${actualIndex}-${item.url}`
+              const isNewlyUploaded = newlyUploadedIds.has(itemId)
+              return (
+                <div
+                  key={itemId}
+                  ref={(el) => {
+                    if (el) {
+                      mediaItemRefs.current.set(itemId, el)
+                    } else {
+                      mediaItemRefs.current.delete(itemId)
+                    }
+                  }}
+                  draggable={!disabled}
+                  onDragStart={(e) => handleDragStart(e, actualIndex)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, actualIndex)}
+                  onDragEnd={handleDragEnd}
+                  onMouseEnter={() => setHoveredItem(actualIndex)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="relative col-span-1"
+                >
+                  {/* Green shadow wrapper that pulses - only for newly uploaded */}
+                  {isNewlyUploaded && (
+                    <div 
+                      className="absolute inset-0 rounded-xl pointer-events-none z-0"
+                      style={{
+                        boxShadow: '0 0 20px rgba(34, 197, 94, 1)',
+                        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                      }}
+                    />
+                  )}
+                  <div
+                    className={`
+                      relative group aspect-square rounded-xl overflow-hidden bg-white transition-all duration-300 cursor-pointer w-full h-full
+                      ${draggedItem === actualIndex ? 'opacity-40 scale-95' : 'hover:scale-[1.02]'}
+                      ${isNewlyUploaded ? '' : 'shadow-sm hover:shadow-lg'}
+                      ${
+                        !isNewlyUploaded && item.isListingThumbnail && item.isDetailThumbnail
+                          ? 'ring-3 ring-orange-400'
+                          : !isNewlyUploaded && item.isListingThumbnail
+                          ? 'ring-3 ring-blue-400'
+                          : !isNewlyUploaded && item.isDetailThumbnail
+                          ? 'ring-3 ring-green-400'
+                          : ''
+                      }
+                    `}
+                  >
+                    {/* Badges */}
+                    <div className="absolute top-1.5 left-1.5 z-20 flex flex-col space-y-0.5">
+                      {item.isListingThumbnail && (
+                        <div className="px-1.5 py-0.5 bg-blue-500 text-white text-[10px] font-semibold rounded-full shadow-md flex items-center space-x-0.5">
+                          <Star className="w-2 h-2 fill-current" />
+                          <span>List</span>
+                        </div>
+                      )}
+                      {item.isDetailThumbnail && (
+                        <div className="px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-semibold rounded-full shadow-md flex items-center space-x-0.5">
+                          <Star className="w-2 h-2 fill-current" />
+                          <span>Detail</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Media Content */}
+                    <div className="w-full h-full relative bg-gray-100">
+                      {item.type === 'video' ? (
+                        <>
+                          <video
+                            src={item.url}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+                              <Play className="w-4 h-4 text-gray-800 ml-0.5" />
+                            </div>
+                          </div>
+                          {item.duration && (
+                            <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 backdrop-blur-sm text-white text-[10px] rounded flex items-center space-x-0.5">
+                              <Clock className="w-2 h-2" />
+                              <span>{formatDuration(item.duration)}</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <img
+                          src={item.url}
+                          alt={item.altText || 'Product image'}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
             </div>
-          ) : (
-            <div className="text-center py-5 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-200 h-full flex flex-col items-center justify-center">
-              <div className="flex justify-center mb-3">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Image className="w-8 h-8 text-gray-400" />
+
+                    {/* Hover Actions */}
+                    {hoveredItem === actualIndex && !item.isUploading && deletingId !== item.id && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-2 z-10 animate-in fade-in duration-200">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-center space-x-1">
+                            {onSetListingThumbnail && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  item.id && handleSetListingThumbnail(item.id)
+                                }}
+                                disabled={settingListingThumbnailId === item.id}
+                                className={`p-1.5 rounded-lg transition-all shadow-md ${
+                                  item.isListingThumbnail 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-white/90 backdrop-blur-sm text-blue-600 hover:bg-blue-50'
+                                }`}
+                                title="Listing"
+                              >
+                                {settingListingThumbnailId === item.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : item.isListingThumbnail ? (
+                                  <Check className="w-3 h-3" />
+                                ) : (
+                                  <Star className="w-3 h-3" />
+                                )}
+                              </button>
+                            )}
+                            
+                            {onSetDetailThumbnail && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  item.id && handleSetDetailThumbnail(item.id)
+                                }}
+                                disabled={settingDetailThumbnailId === item.id}
+                                className={`p-1.5 rounded-lg transition-all shadow-md ${
+                                  item.isDetailThumbnail 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-white/90 backdrop-blur-sm text-green-600 hover:bg-green-50'
+                                }`}
+                                title="Detail"
+                              >
+                                {settingDetailThumbnailId === item.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : item.isDetailThumbnail ? (
+                                  <Check className="w-3 h-3" />
+                                ) : (
+                                  <Star className="w-3 h-3" />
+                                )}
+                              </button>
+                            )}
+                            
+                            {onDelete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  item.id && handleDeleteClick(item.id)
+                                }}
+                                className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-red-50 text-red-600 transition-all shadow-md"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center justify-center">
+                            <div className="px-1.5 py-0.5 bg-white/20 backdrop-blur-sm rounded">
+                              <GripVertical className="w-3 h-3 text-white" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Loading States */}
+                    {(item.isUploading || deletingId === item.id) && (
+                      <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                        <Loader2 className="w-5 h-5 text-orange-600 animate-spin mb-1" />
+                        <p className="text-[10px] font-medium text-gray-700">
+                          {item.isUploading ? 'Uploading...' : 'Deleting...'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+                  )
+                })}
+                
+                {/* Show "+X" placeholder if there are more items and not expanded */}
+                {overflowCount > 0 && !isExpanded && firstHiddenImage && (
+                  <div 
+                    className="relative col-span-1 aspect-square rounded-xl overflow-hidden cursor-pointer group"
+                    onClick={() => setIsExpanded(true)}
+                  >
+                    {/* Blurred background image */}
+                    <div className="absolute inset-0 bg-gray-200">
+                      {firstHiddenImage.type === 'video' ? (
+                        <video
+                          src={firstHiddenImage.url}
+                          className="w-full h-full object-cover blur-sm scale-105"
+                          preload="metadata"
+                          muted
+                        />
+                      ) : (
+                        <img
+                          src={firstHiddenImage.url}
+                          alt={firstHiddenImage.altText || 'Product image'}
+                          className="w-full h-full object-cover blur-sm scale-105"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            console.error('Image failed to load:', firstHiddenImage.url)
+                          }}
+                        />
+                      )}
+                      {/* Very minimal overlay - just enough for text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/15" />
+                    </div>
+                    {/* Text overlay with background for visibility */}
+                    <div className="relative z-10 w-full h-full flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className=" rounded-full px-3 py-1.5 backdrop-blur-sm">
+                          <span className="text-white text-lg font-semibold">+{overflowCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                </>
+              )
+            })()}
+
+            {/* Add more placeholder if there's space - only show if not showing overflow card or if expanded */}
+            {media.length < MAX_MEDIA && (isExpanded || media.length <= 10) && (
+              <div
+                className="relative col-span-1 aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-orange-400 hover:bg-orange-50 transition-all cursor-pointer flex items-center justify-center"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Plus className="w-6 h-6 text-gray-400" />
               </div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">No media yet</h3>
-              <p className="text-xs text-gray-500">Upload images and videos to get started</p>
+            )}
             </div>
-    
+          </div>
           )}
-        </div>
       </div>
     </div>
   )

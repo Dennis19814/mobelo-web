@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
 interface App {
   id: number
@@ -49,6 +49,7 @@ const menuItems: MenuItem[] = [
     children: [
       { id: 'products' as SectionType, label: 'Product Catalog', icon: Package },
       { id: 'product-reviews' as SectionType, label: 'Product Reviews', icon: MessageSquare },
+      { id: 'add-product' as SectionType, label: 'Add Product', icon: Plus },
     ]
   },
   { id: 'brands' as SectionType, label: 'Brands', icon: Building2 },
