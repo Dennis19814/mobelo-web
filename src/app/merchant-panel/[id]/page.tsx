@@ -35,6 +35,8 @@ const RolesSection = lazy(() => import('@/components/merchant/sections/RolesSect
 const HelpCenterSection = lazy(() => import('@/components/merchant/sections/HelpCenterSection'))
 const HelpFaqSection = lazy(() => import('@/components/merchant/sections/HelpFaqSection'))
 const HelpTutorialsSection = lazy(() => import('@/components/merchant/sections/HelpTutorialsSection'))
+const AddProductSection = lazy(() => import('@/components/merchant/sections/AddProductSection'))
+const EditProductSection = lazy(() => import('@/components/merchant/sections/EditProductSection'))
 
 interface App {
   id: number
@@ -64,9 +66,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -434,6 +436,7 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={finalAppSecretKey || undefined}
+          onAddProduct={() => handleSectionChange('add-product')}
         />
       case 'product-reviews':
         // Use same API key logic as products section
@@ -444,6 +447,45 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={reviewsFinalAppSecretKey || undefined}
+        />
+      case 'add-product':
+        // Use same API key logic as products section
+        const addProductAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const addProductFinalAppSecretKey = addProductAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <AddProductSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={addProductFinalAppSecretKey || undefined}
+          onSuccess={() => handleSectionChange('products')}
+        />
+      case 'edit-product':
+        // Use same API key logic as products section
+        const editProductAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const editProductFinalAppSecretKey = editProductAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+        const productIdParam = searchParams?.get('productId')
+        const productId = productIdParam ? parseInt(productIdParam, 10) : null
+
+        if (!productId) {
+          return (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">Product ID is required. Please go back and try again.</p>
+              <button
+                onClick={() => handleSectionChange('products')}
+                className="mt-2 px-4 py-2 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+              >
+                Go Back to Products
+              </button>
+            </div>
+          )
+        }
+
+        return <EditProductSection
+          appId={currentApp.id}
+          productId={productId}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={editProductFinalAppSecretKey || undefined}
+          onSuccess={() => handleSectionChange('products')}
         />
       case 'brands':
         const brandsAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
