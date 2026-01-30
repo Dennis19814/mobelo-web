@@ -747,8 +747,8 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                 const strictKey = buildMediaStrictKey(temp)
                 const nameKey = buildMediaNameKey(temp)
                 return (
-                  uploadedMedia.find(m => buildMediaStrictKey(m) === strictKey) ||
-                  (nameKey ? uploadedMedia.find(m => buildMediaNameKey(m) === nameKey) : undefined)
+                  uploadedMedia.find((m: ProductMedia) => buildMediaStrictKey(m) === strictKey) ||
+                  (nameKey ? uploadedMedia.find((m: ProductMedia) => buildMediaNameKey(m) === nameKey) : undefined)
                 )
               }
 
@@ -2236,9 +2236,9 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Selected Categories
                   </label>
-                {formData.categoryIds && formData.categoryIds.length > 0 ? (
+                {(formData.categoryIds?.length ?? 0) > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {formData.categoryIds.map(categoryId => {
+                    {formData.categoryIds?.map(categoryId => {
                       const category = categories.find(c => c.id === categoryId);
                       return category ? (
                         <div key={categoryId} className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-lg">
@@ -2456,7 +2456,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                               <div className="relative inline-block">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={categoryImagePreview}
+                                  src={categoryImagePreview ?? undefined}
                                   alt="Category preview"
                                   className="w-24 h-24 object-cover rounded-lg border-2 border-orange-300"
                                 />
@@ -2480,7 +2480,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                                 <div className="flex items-center space-x-2 text-xs text-gray-600 mb-1">
                                   <span className="truncate">{categoryImageFile?.name}</span>
                                   <span className="text-gray-400">â€¢</span>
-                                  <span>{(categoryImageFile?.size ? (categoryImageFile.size / 1024).toFixed(1) : '0')} KB</span>
+                                  <span>{categoryImageFile?.size ? ((categoryImageFile!.size / 1024).toFixed(1)) : '0'} KB</span>
                                 </div>
                                 <button
                                   type="button"

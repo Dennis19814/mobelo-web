@@ -51,7 +51,7 @@ function DraggableOption({
 }: {
   option: VariantOption
   editingOptionId: string | null
-  validationErrors: Record<string, { name?: boolean; values?: boolean; duplicateName?: string }>
+  validationErrors: Record<string, { name?: boolean; values?: boolean; duplicateName?: string; duplicateValues?: Record<number, string> }>
   onOptionNameChange: (optionId: string, name: string) => void
   onOptionValueChange: (optionId: string, valueIndex: number, value: string) => void
   onRemoveOptionValue: (optionId: string, valueIndex: number) => void

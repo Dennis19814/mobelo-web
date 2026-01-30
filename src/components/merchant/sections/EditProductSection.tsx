@@ -518,7 +518,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             },
             returnPolicy: productData.returnPolicy || '',
             warranty: productData.warranty || '',
-            categoryIds: productData.categories?.map(c => c.id) || [],
+            categoryIds: productData.categories?.map((c: ProductCategory) => c.id) || [],
             tags: productData.tags || [],
             trackInventory: productData.trackInventory || false,
             inventoryQuantity: productData.inventoryQuantity || 0,
@@ -576,9 +576,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     if (formData.basePrice === 0 && basePriceInput !== '') {
       // Only update if input is not empty (user might be typing)
       // This prevents clearing while user is typing
-    } else if (formData.basePrice !== 0 && basePriceInput !== formData.basePrice.toString()) {
+    } else if (formData.basePrice !== 0 && basePriceInput !== formData.basePrice?.toString()) {
       // Sync if formData changed externally and input doesn't match
-      setBasePriceInput(formData.basePrice.toString())
+      setBasePriceInput(formData.basePrice?.toString() ?? '')
     }
   }, [formData.basePrice])
 
@@ -661,13 +661,13 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     switch (stepId) {
       case 'basic':
         stepFields.push('name')
-        if (!formData.name.trim()) {
+        if (!formData.name?.trim()) {
           newErrors.name = 'Product name is required'
         }
         break
       case 'pricing':
         stepFields.push('basePrice')
-        if (formData.basePrice <= 0) {
+        if ((formData.basePrice ?? 0) <= 0) {
           newErrors.basePrice = 'Price must be greater than 0'
         }
         break
@@ -701,11 +701,11 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
-    if (!formData.name.trim()) {
+
+    if (!formData.name?.trim()) {
       newErrors.name = 'Product name is required'
     }
-    if (formData.basePrice <= 0) {
+    if ((formData.basePrice ?? 0) <= 0) {
       newErrors.basePrice = 'Price must be greater than 0'
     }
     if (formData.trackInventory && formData.minimumQuantity && formData.minimumQuantity < 0) {
@@ -1518,7 +1518,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                     if (formData.basePrice === 0) {
                       setBasePriceInput('')
                     } else {
-                      setBasePriceInput(formData.basePrice.toString())
+                      setBasePriceInput(formData.basePrice?.toString() ?? '')
                     }
                   }}
                   className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
@@ -2458,9 +2458,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Selected Categories
                   </label>
-                {formData.categoryIds && formData.categoryIds.length > 0 ? (
+                {(formData.categoryIds?.length ?? 0) > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {formData.categoryIds.map(categoryId => {
+                    {formData.categoryIds?.map(categoryId => {
                       const category = categories.find(c => c.id === categoryId);
                       return category ? (
                         <div key={categoryId} className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-lg">
@@ -2678,7 +2678,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                               <div className="relative inline-block">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={categoryImagePreview}
+                                  src={categoryImagePreview ?? undefined}
                                   alt="Category preview"
                                   className="w-24 h-24 object-cover rounded-lg border-2 border-orange-300"
                                 />
@@ -2702,7 +2702,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                                 <div className="flex items-center space-x-2 text-xs text-gray-600 mb-1">
                                   <span className="truncate">{categoryImageFile?.name}</span>
                                   <span className="text-gray-400">â€¢</span>
-                                  <span>{(categoryImageFile?.size ? (categoryImageFile.size / 1024).toFixed(1) : '0')} KB</span>
+                                  <span>{categoryImageFile?.size ? ((categoryImageFile!.size / 1024).toFixed(1)) : '0'} KB</span>
                                 </div>
                                 <button
                                   type="button"
