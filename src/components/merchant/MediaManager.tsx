@@ -276,7 +276,7 @@ export default function MediaManager({
       )}
 
       {/* Header and Info Cards */}
-      <div className="mb-3 flex-shrink-0">
+      <div className=" flex-shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           {/* Info Cards - wrap on small/medium screens, single row on large desktops */}
           {/* <div className="flex flex-wrap gap-2 xl:flex-nowrap">
