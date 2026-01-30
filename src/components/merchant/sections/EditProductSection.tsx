@@ -1627,6 +1627,52 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
 
                   {formData.trackInventory && (
                     <>
+                      {/* Current Stock Quantity */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Current Stock Quantity
+                        </label>
+                        {(() => {
+                          const hasVariants = formData.variants && formData.variants.length > 0
+                          const totalInventory = hasVariants 
+                            ? (formData.variants || []).reduce((sum: number, variant: any) => {
+                                const qty = typeof variant.inventoryQuantity === 'number' 
+                                  ? variant.inventoryQuantity 
+                                  : (variant.inventoryQuantity ? parseInt(variant.inventoryQuantity) : 0)
+                                return sum + qty
+                              }, 0)
+                            : (formData.inventoryQuantity || 0)
+                          
+                          return (
+                            <input
+                              type="number"
+                              value={totalInventory}
+                              onChange={(e) => {
+                                if (!hasVariants) {
+                                  handleInputChange('inventoryQuantity', parseInt(e.target.value) || 0)
+                                }
+                              }}
+                              className={`w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                                hasVariants ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                              }`}
+                              min="0"
+                              disabled={loading || hasVariants}
+                              placeholder="0"
+                            />
+                          )
+                        })()}
+                        {formData.variants && formData.variants.length > 0 && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            Total inventory: {formData.variants.reduce((sum: number, variant: any) => {
+                              const qty = typeof variant.inventoryQuantity === 'number' 
+                                ? variant.inventoryQuantity 
+                                : (variant.inventoryQuantity ? parseInt(variant.inventoryQuantity) : 0)
+                              return sum + qty
+                            }, 0)} (calculated from variants)
+                          </p>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
