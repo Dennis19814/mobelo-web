@@ -453,13 +453,53 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
       
       setLoadingProduct(true)
       try {
-        const headers: any = {}
-        if (apiKey) headers['x-api-key'] = apiKey
-        if (appSecretKey) headers['x-app-secret'] = appSecretKey
+        // Check if product data was pre-fetched and stored in sessionStorage
+        const storageKey = `pendingEditProduct_${productId}`
+        const mediaKey = `pendingEditProductMedia_${productId}`
+        const cachedProductData = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null
+        const cachedMediaData = typeof window !== 'undefined' ? sessionStorage.getItem(mediaKey) : null
         
-        const response = await apiService.getProduct(productId)
-        if (response.ok && response.data) {
-          const productData = response.data
+        let productData: Product | null = null
+        let mediaData: any[] | null = null
+        
+        if (cachedProductData) {
+          // Use cached data immediately
+          try {
+            productData = JSON.parse(cachedProductData)
+            // Clear from sessionStorage after use
+            sessionStorage.removeItem(storageKey)
+          } catch (parseErr) {
+            logger.error('Failed to parse cached product data:', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) })
+          }
+        }
+        
+        if (cachedMediaData) {
+          try {
+            mediaData = JSON.parse(cachedMediaData)
+            // Clear from sessionStorage after use
+            sessionStorage.removeItem(mediaKey)
+          } catch (parseErr) {
+            logger.error('Failed to parse cached media data:', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) })
+          }
+        }
+        
+        // If no cached data, fetch from API
+        if (!productData) {
+          const headers: any = {}
+          if (apiKey) headers['x-api-key'] = apiKey
+          if (appSecretKey) headers['x-app-secret'] = appSecretKey
+          
+          const response = await apiService.getProduct(productId)
+          if (response.ok && response.data) {
+            productData = response.data
+          } else {
+            setErrors({ submit: 'Failed to load product data' })
+            setLoadingProduct(false)
+            return
+          }
+        }
+        
+        if (productData) {
           setProduct(productData)
           
           // Map variants to ensure all fields are properly set
@@ -536,10 +576,10 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             setBasePriceInput(productData.basePrice.toString())
           }
           
-          // Load media
-          const mediaResponse = await apiService.getProductMedia(productId)
-          if (mediaResponse.ok && mediaResponse.data?.media) {
-            const mappedMedia = mediaResponse.data.media.map((m: any) => ({
+          // Load media - use cached data if available, otherwise fetch
+          if (mediaData) {
+            // Use cached media data
+            const mappedMedia = mediaData.map((m: any) => ({
               id: m.id,
               url: m.mediaUrl || m.cdnUrl || m.thumbnailUrl || '',
               type: m.type || 'image',
@@ -557,6 +597,29 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
               originalFileName: m.originalFileName
             }))
             setProductMedia(mappedMedia)
+          } else {
+            // Fetch media from API
+            const mediaResponse = await apiService.getProductMedia(productId)
+            if (mediaResponse.ok && mediaResponse.data?.media) {
+              const mappedMedia = mediaResponse.data.media.map((m: any) => ({
+                id: m.id,
+                url: m.mediaUrl || m.cdnUrl || m.thumbnailUrl || '',
+                type: m.type || 'image',
+                altText: m.altText || '',
+                displayOrder: m.displayOrder || 0,
+                isPrimary: m.isPrimary || false,
+                isListingThumbnail: m.isListingThumbnail || false,
+                isDetailThumbnail: m.isDetailThumbnail || false,
+                thumbnailUrl: m.thumbnailUrl,
+                duration: m.duration,
+                fileSize: m.fileSize,
+                width: m.width,
+                height: m.height,
+                mimeType: m.mimeType,
+                originalFileName: m.originalFileName
+              }))
+              setProductMedia(mappedMedia)
+            }
           }
         }
       } catch (error) {

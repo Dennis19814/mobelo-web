@@ -82,6 +82,26 @@ export default function MediaManager({
     }
   }, [media])
 
+  // Ensure first image is always the listing thumbnail
+  useEffect(() => {
+    if (media.length > 0 && media[0] && !media[0].isListingThumbnail) {
+      const firstImage = media[0]
+      // Update local state to ensure first image is always listing thumbnail
+      const updatedMedia = media.map((m, idx) => ({ 
+        ...m, 
+        isListingThumbnail: idx === 0 
+      }))
+      onMediaChange(updatedMedia)
+      
+      // If API is available and first image has an ID, sync with backend
+      if (firstImage.id && onSetListingThumbnail && !settingListingThumbnailId) {
+        onSetListingThumbnail(firstImage.id).catch(() => {
+          // Silently fail - don't show error for auto-setting
+        })
+      }
+    }
+  }, [media.length, media[0]?.id])
+
   // Auto-collapse if media count drops to 9 or less (1 large + 8 small)
   useEffect(() => {
     if (media.length <= 9 && isExpanded) {
@@ -139,7 +159,34 @@ export default function MediaManager({
       const results = await Promise.all(uploadPromises)
       const newMedia = results.filter((m): m is ProductMedia => m !== null)
       if (newMedia.length > 0) {
-        onMediaChange([...media, ...newMedia])
+        const wasEmpty = media.length === 0
+        const updatedMedia = [...media, ...newMedia]
+        
+        // If this is the first image uploaded, set it as both listing and detail thumbnail
+        if (wasEmpty && newMedia.length > 0) {
+          const firstImage = newMedia[0]
+          // Always set both thumbnails in local state for the first image
+          updatedMedia[0] = {
+            ...updatedMedia[0],
+            isListingThumbnail: true,
+            isDetailThumbnail: true
+          }
+          
+          // If API handlers are available and first image has an ID, sync with backend
+          if (firstImage.id && onSetListingThumbnail && onSetDetailThumbnail) {
+            try {
+              await Promise.all([
+                onSetListingThumbnail(firstImage.id),
+                onSetDetailThumbnail(firstImage.id)
+              ])
+            } catch (err) {
+              console.error('Failed to set initial thumbnails:', err)
+              // Don't show error to user - local state is already updated
+            }
+          }
+        }
+        
+        onMediaChange(updatedMedia)
         
         // Track newly uploaded items for highlighting
         const newIds = newMedia.map((m, idx) => {
@@ -183,7 +230,66 @@ export default function MediaManager({
     try {
       const success = await onDelete(mediaId)
       if (success) {
-        onMediaChange(media.filter(m => m.id !== mediaId))
+        // Check if we're deleting the first image
+        const deletedIndex = media.findIndex(m => m.id === mediaId)
+        const isFirstImage = deletedIndex === 0
+        
+        const updatedMedia = media.filter(m => m.id !== mediaId)
+        
+        // If we deleted the first image, check if it had Detail thumbnail
+        if (isFirstImage && updatedMedia.length > 0 && updatedMedia[0]) {
+          const deletedFirstImage = media[0]
+          const hadDetailThumbnail = deletedFirstImage?.isDetailThumbnail === true
+          
+          // If the deleted first image had Detail thumbnail, set the next image as both List and Detail
+          // Otherwise, only set it as List (since Detail is on another image)
+          if (hadDetailThumbnail) {
+            updatedMedia[0] = {
+              ...updatedMedia[0],
+              isListingThumbnail: true,
+              isDetailThumbnail: true
+            }
+            
+            // Sync with backend if API is available
+            if (updatedMedia[0].id && onSetListingThumbnail && onSetDetailThumbnail) {
+              try {
+                await Promise.all([
+                  onSetListingThumbnail(updatedMedia[0].id),
+                  onSetDetailThumbnail(updatedMedia[0].id)
+                ])
+              } catch (err) {
+                console.error('Failed to set thumbnails after deletion:', err)
+                // Silently fail - local state is already updated
+              }
+            }
+          } else {
+            // Only set as List thumbnail, Detail remains on another image
+            updatedMedia[0] = {
+              ...updatedMedia[0],
+              isListingThumbnail: true
+            }
+            
+            // Sync with backend if API is available
+            if (updatedMedia[0].id && onSetListingThumbnail) {
+              onSetListingThumbnail(updatedMedia[0].id).catch(() => {
+                // Silently fail - local state is already updated
+              })
+            }
+          }
+        } else if (!isFirstImage && updatedMedia.length > 0 && updatedMedia[0] && !updatedMedia[0].isListingThumbnail) {
+          // If we deleted a non-first image, just ensure first image still has listing thumbnail
+          updatedMedia[0] = {
+            ...updatedMedia[0],
+            isListingThumbnail: true
+          }
+          // Sync with backend if API is available
+          if (updatedMedia[0].id && onSetListingThumbnail) {
+            onSetListingThumbnail(updatedMedia[0].id).catch(() => {
+              // Silently fail - local state is already updated
+            })
+          }
+        }
+        onMediaChange(updatedMedia)
       } else {
         setError('Failed to delete')
       }
@@ -200,6 +306,20 @@ export default function MediaManager({
 
   const handleSetListingThumbnail = async (mediaId: number) => {
     if (!onSetListingThumbnail || !mediaId) return
+    
+    // First image must always be the listing thumbnail - prevent any changes
+    const firstImage = media[0]
+    if (firstImage && firstImage.id === mediaId) {
+      // First image is already the listing thumbnail, no action needed
+      return
+    }
+    
+    // Prevent setting any other image as listing thumbnail - only first image can be listing thumbnail
+    if (firstImage && firstImage.id !== mediaId) {
+      setError('The first image must always be the listing thumbnail')
+      return
+    }
+    
     setSettingListingThumbnailId(mediaId)
     setError(null)
     try {
@@ -251,7 +371,20 @@ export default function MediaManager({
     const draggedMedia = newMedia[draggedItem]
     newMedia.splice(draggedItem, 1)
     newMedia.splice(dropIndex, 0, draggedMedia)
-    const updatedMedia = newMedia.map((m, idx) => ({ ...m, displayOrder: idx }))
+    const updatedMedia = newMedia.map((m, idx) => ({ 
+      ...m, 
+      displayOrder: idx,
+      // Ensure first image is always the listing thumbnail
+      isListingThumbnail: idx === 0
+    }))
+    
+    // If a new image became first, sync with backend
+    if (updatedMedia[0] && updatedMedia[0].id && onSetListingThumbnail) {
+      onSetListingThumbnail(updatedMedia[0].id).catch(() => {
+        // Silently fail - local state is already updated
+      })
+    }
+    
     onMediaChange(updatedMedia)
     setDraggedItem(null)
   }
@@ -551,27 +684,18 @@ export default function MediaManager({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-3 z-10 animate-in fade-in duration-200">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-center space-x-1.5">
+                          {/* Listing thumbnail button - always shown for first image but disabled since it's always the listing thumbnail */}
                           {onSetListingThumbnail && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                item.id && handleSetListingThumbnail(item.id)
+                                // First image is always listing thumbnail, so this is disabled
                               }}
-                              disabled={settingListingThumbnailId === item.id}
-                              className={`p-2 rounded-lg transition-all shadow-md ${
-                                item.isListingThumbnail 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-white/90 backdrop-blur-sm text-blue-600 hover:bg-blue-50'
-                              }`}
-                              title="Listing"
+                              disabled={true}
+                              className="p-2 rounded-lg transition-all shadow-md bg-blue-500 text-white cursor-not-allowed opacity-75"
+                              title="Listing (Always set for first image)"
                             >
-                              {settingListingThumbnailId === item.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : item.isListingThumbnail ? (
-                                <Check className="w-3.5 h-3.5" />
-                              ) : (
-                                <Star className="w-3.5 h-3.5" />
-                              )}
+                              <Check className="w-3.5 h-3.5" />
                             </button>
                           )}
                           
@@ -747,29 +871,7 @@ export default function MediaManager({
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-2 z-10 animate-in fade-in duration-200">
                         <div className="space-y-1">
                           <div className="flex items-center justify-center space-x-1">
-                            {onSetListingThumbnail && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  item.id && handleSetListingThumbnail(item.id)
-                                }}
-                                disabled={settingListingThumbnailId === item.id}
-                                className={`p-1.5 rounded-lg transition-all shadow-md ${
-                                  item.isListingThumbnail 
-                                    ? 'bg-blue-500 text-white' 
-                                    : 'bg-white/90 backdrop-blur-sm text-blue-600 hover:bg-blue-50'
-                                }`}
-                                title="Listing"
-                              >
-                                {settingListingThumbnailId === item.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : item.isListingThumbnail ? (
-                                  <Check className="w-3 h-3" />
-                                ) : (
-                                  <Star className="w-3 h-3" />
-                                )}
-                              </button>
-                            )}
+                            {/* Listing thumbnail button is hidden for non-first images since only first image can be listing thumbnail */}
                             
                             {onSetDetailThumbnail && (
                               <button

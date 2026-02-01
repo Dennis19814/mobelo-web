@@ -355,22 +355,48 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
   }, [products])
 
   const handleEdit = useCallback(async (productId: number) => {
-    // Navigate to edit-product page instead of opening modal
+    // Fetch product data first before navigating
+    setLoadingProductData(true)
     try {
-      // Get hashed appId from current URL
-      const currentPath = window.location.pathname
-      const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
-      if (pathMatch && pathMatch[1]) {
-        const hashedAppId = pathMatch[1]
-        // Navigate to edit-product section with productId as query param
-        router.push(`/merchant-panel/${hashedAppId}?section=edit-product&productId=${productId}`)
+      // Fetch product data
+      const response = await apiService.getProduct(productId)
+      if (response.ok && response.data) {
+        // Store product data in sessionStorage for EditProductSection to use
+        const storageKey = `pendingEditProduct_${productId}`
+        sessionStorage.setItem(storageKey, JSON.stringify(response.data))
+        
+        // Also fetch media data
+        try {
+          const mediaResponse = await apiService.getProductMedia(productId)
+          if (mediaResponse.ok && mediaResponse.data?.media) {
+            const mediaKey = `pendingEditProductMedia_${productId}`
+            sessionStorage.setItem(mediaKey, JSON.stringify(mediaResponse.data.media))
+          }
+        } catch (mediaErr) {
+          logger.error('Failed to fetch product media before navigation:', { error: mediaErr instanceof Error ? mediaErr.message : String(mediaErr) })
+          // Continue navigation even if media fetch fails
+        }
+        
+        // Get hashed appId from current URL
+        const currentPath = window.location.pathname
+        const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+        if (pathMatch && pathMatch[1]) {
+          const hashedAppId = pathMatch[1]
+          // Navigate to edit-product section with productId as query param
+          router.push(`/merchant-panel/${hashedAppId}?section=edit-product&productId=${productId}`)
+        } else {
+          logger.error('Could not find hashed appId in URL path')
+          setError('Unable to navigate to edit page')
+          setLoadingProductData(false)
+        }
       } else {
-        logger.error('Could not find hashed appId in URL path')
-        setError('Unable to navigate to edit page')
+        setError('Failed to load product data')
+        setLoadingProductData(false)
       }
     } catch (error) {
-      logger.error('Error navigating to edit page:', { error: error instanceof Error ? error.message : String(error) })
-      setError('Failed to navigate to edit page')
+      logger.error('Error fetching product before navigation:', { error: error instanceof Error ? error.message : String(error) })
+      setError('Failed to load product data')
+      setLoadingProductData(false)
     }
   }, [router, setError])
 
