@@ -453,13 +453,53 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
       
       setLoadingProduct(true)
       try {
-        const headers: any = {}
-        if (apiKey) headers['x-api-key'] = apiKey
-        if (appSecretKey) headers['x-app-secret'] = appSecretKey
+        // Check if product data was pre-fetched and stored in sessionStorage
+        const storageKey = `pendingEditProduct_${productId}`
+        const mediaKey = `pendingEditProductMedia_${productId}`
+        const cachedProductData = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null
+        const cachedMediaData = typeof window !== 'undefined' ? sessionStorage.getItem(mediaKey) : null
         
-        const response = await apiService.getProduct(productId)
-        if (response.ok && response.data) {
-          const productData = response.data
+        let productData: Product | null = null
+        let mediaData: any[] | null = null
+        
+        if (cachedProductData) {
+          // Use cached data immediately
+          try {
+            productData = JSON.parse(cachedProductData)
+            // Clear from sessionStorage after use
+            sessionStorage.removeItem(storageKey)
+          } catch (parseErr) {
+            logger.error('Failed to parse cached product data:', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) })
+          }
+        }
+        
+        if (cachedMediaData) {
+          try {
+            mediaData = JSON.parse(cachedMediaData)
+            // Clear from sessionStorage after use
+            sessionStorage.removeItem(mediaKey)
+          } catch (parseErr) {
+            logger.error('Failed to parse cached media data:', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) })
+          }
+        }
+        
+        // If no cached data, fetch from API
+        if (!productData) {
+          const headers: any = {}
+          if (apiKey) headers['x-api-key'] = apiKey
+          if (appSecretKey) headers['x-app-secret'] = appSecretKey
+          
+          const response = await apiService.getProduct(productId)
+          if (response.ok && response.data) {
+            productData = response.data
+          } else {
+            setErrors({ submit: 'Failed to load product data' })
+            setLoadingProduct(false)
+            return
+          }
+        }
+        
+        if (productData) {
           setProduct(productData)
           
           // Map variants to ensure all fields are properly set
@@ -518,7 +558,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             },
             returnPolicy: productData.returnPolicy || '',
             warranty: productData.warranty || '',
-            categoryIds: productData.categories?.map(c => c.id) || [],
+            categoryIds: productData.categories?.map((c: ProductCategory) => c.id) || [],
             tags: productData.tags || [],
             trackInventory: productData.trackInventory || false,
             inventoryQuantity: productData.inventoryQuantity || 0,
@@ -536,10 +576,10 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             setBasePriceInput(productData.basePrice.toString())
           }
           
-          // Load media
-          const mediaResponse = await apiService.getProductMedia(productId)
-          if (mediaResponse.ok && mediaResponse.data?.media) {
-            const mappedMedia = mediaResponse.data.media.map((m: any) => ({
+          // Load media - use cached data if available, otherwise fetch
+          if (mediaData) {
+            // Use cached media data
+            const mappedMedia = mediaData.map((m: any) => ({
               id: m.id,
               url: m.mediaUrl || m.cdnUrl || m.thumbnailUrl || '',
               type: m.type || 'image',
@@ -557,6 +597,29 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
               originalFileName: m.originalFileName
             }))
             setProductMedia(mappedMedia)
+          } else {
+            // Fetch media from API
+            const mediaResponse = await apiService.getProductMedia(productId)
+            if (mediaResponse.ok && mediaResponse.data?.media) {
+              const mappedMedia = mediaResponse.data.media.map((m: any) => ({
+                id: m.id,
+                url: m.mediaUrl || m.cdnUrl || m.thumbnailUrl || '',
+                type: m.type || 'image',
+                altText: m.altText || '',
+                displayOrder: m.displayOrder || 0,
+                isPrimary: m.isPrimary || false,
+                isListingThumbnail: m.isListingThumbnail || false,
+                isDetailThumbnail: m.isDetailThumbnail || false,
+                thumbnailUrl: m.thumbnailUrl,
+                duration: m.duration,
+                fileSize: m.fileSize,
+                width: m.width,
+                height: m.height,
+                mimeType: m.mimeType,
+                originalFileName: m.originalFileName
+              }))
+              setProductMedia(mappedMedia)
+            }
           }
         }
       } catch (error) {
@@ -576,9 +639,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     if (formData.basePrice === 0 && basePriceInput !== '') {
       // Only update if input is not empty (user might be typing)
       // This prevents clearing while user is typing
-    } else if (formData.basePrice !== 0 && basePriceInput !== formData.basePrice.toString()) {
+    } else if (formData.basePrice !== 0 && basePriceInput !== formData.basePrice?.toString()) {
       // Sync if formData changed externally and input doesn't match
-      setBasePriceInput(formData.basePrice.toString())
+      setBasePriceInput(formData.basePrice?.toString() ?? '')
     }
   }, [formData.basePrice])
 
@@ -661,13 +724,13 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     switch (stepId) {
       case 'basic':
         stepFields.push('name')
-        if (!formData.name.trim()) {
+        if (!formData.name?.trim()) {
           newErrors.name = 'Product name is required'
         }
         break
       case 'pricing':
         stepFields.push('basePrice')
-        if (formData.basePrice <= 0) {
+        if ((formData.basePrice ?? 0) <= 0) {
           newErrors.basePrice = 'Price must be greater than 0'
         }
         break
@@ -701,11 +764,11 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
-    if (!formData.name.trim()) {
+
+    if (!formData.name?.trim()) {
       newErrors.name = 'Product name is required'
     }
-    if (formData.basePrice <= 0) {
+    if ((formData.basePrice ?? 0) <= 0) {
       newErrors.basePrice = 'Price must be greater than 0'
     }
     if (formData.trackInventory && formData.minimumQuantity && formData.minimumQuantity < 0) {
@@ -1518,7 +1581,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                     if (formData.basePrice === 0) {
                       setBasePriceInput('')
                     } else {
-                      setBasePriceInput(formData.basePrice.toString())
+                      setBasePriceInput(formData.basePrice?.toString() ?? '')
                     }
                   }}
                   className={`w-full px-2.5 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
@@ -2458,9 +2521,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Selected Categories
                   </label>
-                {formData.categoryIds && formData.categoryIds.length > 0 ? (
+                {(formData.categoryIds?.length ?? 0) > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {formData.categoryIds.map(categoryId => {
+                    {formData.categoryIds?.map(categoryId => {
                       const category = categories.find(c => c.id === categoryId);
                       return category ? (
                         <div key={categoryId} className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-lg">
@@ -2678,7 +2741,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                               <div className="relative inline-block">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={categoryImagePreview}
+                                  src={categoryImagePreview ?? undefined}
                                   alt="Category preview"
                                   className="w-24 h-24 object-cover rounded-lg border-2 border-orange-300"
                                 />
@@ -2702,7 +2765,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                                 <div className="flex items-center space-x-2 text-xs text-gray-600 mb-1">
                                   <span className="truncate">{categoryImageFile?.name}</span>
                                   <span className="text-gray-400">â€¢</span>
-                                  <span>{(categoryImageFile?.size ? (categoryImageFile.size / 1024).toFixed(1) : '0')} KB</span>
+                                  <span>{categoryImageFile?.size ? ((categoryImageFile!.size / 1024).toFixed(1)) : '0'} KB</span>
                                 </div>
                                 <button
                                   type="button"

@@ -719,8 +719,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, appId, api
                 const strictKey = buildMediaStrictKey(temp)
                 const nameKey = buildMediaNameKey(temp)
                 return (
-                  uploadedMedia.find(m => buildMediaStrictKey(m) === strictKey) ||
-                  (nameKey ? uploadedMedia.find(m => buildMediaNameKey(m) === nameKey) : undefined)
+                  uploadedMedia.find((m: ProductMedia) => buildMediaStrictKey(m) === strictKey) ||
+                  (nameKey ? uploadedMedia.find((m: ProductMedia) => buildMediaNameKey(m) === nameKey) : undefined)
                 )
               }
 
