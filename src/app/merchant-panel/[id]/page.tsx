@@ -151,6 +151,17 @@ export default function MerchantPanel() {
     if (typeof window !== 'undefined' && appId) {
       localStorage.setItem(`merchant-panel-section-${appId}`, section)
     }
+
+    // Scroll to top when switching to products (e.g. after edit/add product)
+    if (section === 'products') {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      })
+      // Also scroll after a short delay to override browser scroll restoration (e.g. from router.back())
+      setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      }, 50)
+    }
   }, [router, appId])
   
   // Redirect 'settings' to 'settings-general' if needed
@@ -171,6 +182,11 @@ export default function MerchantPanel() {
         // Update localStorage to match URL
         if (typeof window !== 'undefined' && appId) {
           localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
+        }
+        // Scroll to top when navigating to products (e.g. via router.back() from edit)
+        if (sectionFromUrl === 'products') {
+          requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
+          setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 50)
         }
       }
     }

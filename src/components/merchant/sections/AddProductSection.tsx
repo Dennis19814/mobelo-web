@@ -72,6 +72,8 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
   const [additionalPricesExpanded, setAdditionalPricesExpanded] = useState(false)
   const [shippingDetailsExpanded, setShippingDetailsExpanded] = useState(false)
   const [inventoryExpanded, setInventoryExpanded] = useState(false) // Collapsed by default
+  const variantErrorRef = useRef<HTMLDivElement>(null)
+  const pageTopRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
@@ -494,6 +496,17 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
     }
   }, [hasUnsavedVariant, errors.variants])
 
+  // Scroll to page top (title with icon) when variant or submit error appears
+  useEffect(() => {
+    if (errors.variants || errors.submit) {
+      const scrollToTop = () => {
+        pageTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+      }
+      requestAnimationFrame(() => requestAnimationFrame(scrollToTop))
+    }
+  }, [errors.variants, errors.submit])
+
   const handleInputChange = (field: keyof CreateProductDto, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -524,17 +537,8 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
     // If there's an unsaved variant on variants step, prevent validation
     if (stepId === 'variants' && hasUnsavedVariant) {
       setErrors({ variants: 'Please save or cancel the current variant before proceeding to the next step' })
-      // Trigger shake animation
       setTriggerVariantShake(true)
       setTimeout(() => setTriggerVariantShake(false), 100)
-      // Clear error after 4 seconds
-      setTimeout(() => {
-        setErrors(prev => {
-          const newErrors = { ...prev }
-          delete newErrors.variants
-          return newErrors
-        })
-      }, 4000)
       return false
     }
     
@@ -771,10 +775,15 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
           }
         }
 
-        // Call success callback and navigate back
+        // Call success callback and navigate to products page
         onSuccess?.()
         resetForm()
-        router.back()
+        // Explicitly navigate to products (router.back() can land on wrong page)
+        const currentPath = window.location.pathname
+        const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+        if (pathMatch?.[1]) {
+          router.replace(`/merchant-panel/${pathMatch[1]}?section=products`)
+        }
       } else {
         setErrors({ submit: response.data?.message || 'Failed to create product' })
       }
@@ -995,7 +1004,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
   }, [router])
 
   return (
-    <div className="w-full max-w-full min-w-0">
+    <div ref={pageTopRef} className="w-full max-w-full min-w-0">
   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center ">
         <div className="flex items-center gap-2 text-gray-900">
           <button
@@ -1014,15 +1023,19 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
       <div className="grid grid-cols-12 gap-6 bg-gray-50">
         {/* Main Content Area - Left Column */}
         <div className="col-span-12 lg:col-span-8 pt-4">
-          {errors.submit && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {errors.submit}
-            </div>
-          )}
-          {errors.variants && (
-            <div className="sticky top-0 z-50 mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm flex items-center space-x-2 shadow-md">
-              <span className="font-medium">âš ï¸</span>
-              <span>{errors.variants}</span>
+          {(errors.submit || errors.variants) && (
+            <div ref={variantErrorRef} className="space-y-2 mb-4">
+              {errors.submit && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {errors.submit}
+                </div>
+              )}
+              {errors.variants && (
+                <div className="sticky top-16 md:top-20 z-40 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm flex items-center space-x-2 shadow-md">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{errors.variants}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -1135,8 +1148,13 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
 
           {/* Media Section */}
           <div className="bg-white border border-gray-200 rounded-lg mb-4 p-4">
-            <h2 className="text-sm font-semibold text-gray-900">Media</h2>
-                          <p className="text-xs text-gray-500  mb-4">Upload and manage product images and videos</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Media</h2>
+                <p className="text-xs text-gray-500">Upload and manage product images and videos</p>
+              </div>
+              <span className="text-xs text-gray-500 whitespace-nowrap">{productMedia.length}/10 images</span>
+            </div>
 
             <MediaManager
               productId={createdProductId || undefined}
@@ -1798,10 +1816,15 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
               variants={formData.variants || []}
               onVariantsChange={(variants) => handleInputChange('variants', variants)}
               onEditingStateChange={(hasUnsaved, editingIndex) => {
-                // Debug: Log when editing state changes
-                console.log('[AddProductSection] Variant editing state changed:', { hasUnsaved, editingIndex })
                 setHasUnsavedVariant(hasUnsaved)
                 setEditingVariantIndex(editingIndex)
+                if (!hasUnsaved && errors.variants) {
+                  setErrors(prev => {
+                    const next = { ...prev }
+                    delete next.variants
+                    return next
+                  })
+                }
               }}
               triggerShake={triggerVariantShake}
             />
