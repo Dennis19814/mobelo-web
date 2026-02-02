@@ -610,6 +610,14 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
   }
 
   const handleSubmit = async (status: 'draft' | 'active') => {
+    // If there's an unsaved variant being edited, prevent submission
+    if (hasUnsavedVariant) {
+      setErrors({ variants: 'Please save or cancel the current variant before updating the product' })
+      setTriggerVariantShake(true)
+      setTimeout(() => setTriggerVariantShake(false), 100)
+      return
+    }
+
     const formErrors = validateForm()
     if (Object.keys(formErrors).length > 0) {
       // Switch to the step with the first error
