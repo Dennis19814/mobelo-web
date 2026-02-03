@@ -9,7 +9,7 @@ import {
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
 interface App {
   id: number
@@ -270,7 +270,8 @@ export default function MerchantSidebar({
               const Icon = item.icon
               const hasChildren = item.children && item.children.length > 0
               const isExpanded = isMenuExpanded(item.id)
-              const isActive = activeSection === item.id
+              // For inventory, also consider inventory-management as active
+              const isActive = activeSection === item.id || (item.id === 'inventory' && activeSection === 'inventory-management')
               const hasActiveChild = item.children?.some(child => child.id === activeSection)
               
               // RBAC visibility: hide menu items staff cannot access
