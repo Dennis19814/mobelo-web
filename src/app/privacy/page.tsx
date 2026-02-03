@@ -149,7 +149,7 @@ export default function PrivacyPage() {
                   <li><strong>Restriction:</strong> Limit how we process your information</li>
                 </ul>
                 <p className="text-gray-700 leading-relaxed mt-4">
-                  To exercise these rights, please contact us using the information provided in Section 11.
+                  To exercise these rights, please contact us using the information provided in Section 11. To request deletion of your data, please visit our <a href="/data-deletion-request" className="text-orange-600 hover:text-orange-700 font-medium underline">Data Deletion Request</a> page.
                 </p>
               </section>
 
@@ -215,7 +215,9 @@ export default function PrivacyPage() {
                 <a href="/terms" className="text-orange-600 hover:text-orange-700 font-medium">
                   Terms of Service
                 </a>
-                
+                <a href="/data-deletion-request" className="text-orange-600 hover:text-orange-700 font-medium">
+                  Data Deletion Request
+                </a>
               </div>
             </div>
           </div>

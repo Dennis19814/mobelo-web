@@ -114,7 +114,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Privacy and Data Protection</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the Service, to understand our practices regarding the collection, use, and disclosure of your personal information.
+                  Your privacy is important to us. Please review our <a href="/privacy" className="text-orange-600 hover:text-orange-700 font-medium underline">Privacy Policy</a>, which also governs your use of the Service, to understand our practices regarding the collection, use, and disclosure of your personal information. You have the right to request deletion of your personal data at any time through our <a href="/data-deletion-request" className="text-orange-600 hover:text-orange-700 font-medium underline">Data Deletion Request</a> page.
                 </p>
               </section>
 
@@ -183,7 +183,9 @@ export default function TermsPage() {
                 <a href="/privacy" className="text-orange-600 hover:text-orange-700 font-medium">
                   Privacy Policy
                 </a>
-                
+                <a href="/data-deletion-request" className="text-orange-600 hover:text-orange-700 font-medium">
+                  Data Deletion Request
+                </a>
               </div>
             </div>
           </div>
