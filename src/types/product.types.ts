@@ -93,6 +93,7 @@ export interface Product {
   requiresShipping?: boolean
   trackInventory?: boolean
   inventoryQuantity?: number
+  incomingStock?: number
   minimumQuantity?: number
   maximumQuantity?: number
   badge?: {

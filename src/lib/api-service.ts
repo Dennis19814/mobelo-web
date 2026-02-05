@@ -1167,6 +1167,351 @@ class ApiService {
     const response = await httpClient.get(`/v1/admin/content-generation/jobs/by-app/${appId}`);
     return { ok: response.ok, status: response.status, data: response.data };
   }
+
+  // ==================== Locations API ====================
+  /**
+   * Get all locations for the current app
+   */
+  async getLocations(filters?: {
+    status?: 'active' | 'inactive';
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    if (filters?.offset) params.append('offset', String(filters.offset));
+
+    const queryString = params.toString();
+    const url = queryString ? `/v1/merchant/locations?${queryString}` : '/v1/merchant/locations';
+
+    const response = await httpClient.get(url, { cancelKey: 'getLocations' });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get a specific location by ID
+   */
+  async getLocation(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/locations/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create a new location
+   */
+  async createLocation(data: {
+    name: string;
+    address: string;
+    apartment?: string;
+    city: string;
+    country: string;
+    postalCode: string;
+    isDefault?: boolean;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/locations', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update an existing location
+   */
+  async updateLocation(id: number, data: {
+    name?: string;
+    address?: string;
+    apartment?: string;
+    city?: string;
+    country?: string;
+    postalCode?: string;
+    isDefault?: boolean;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/locations/${id}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Delete a location (soft delete)
+   */
+  async deleteLocation(id: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/merchant/locations/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Reactivate a deleted location
+   */
+  async activateLocation(id: number): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/locations/${id}/activate`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  // ==================== Suppliers API ====================
+  /**
+   * Get all suppliers for the current app
+   */
+  async getSuppliers(filters?: {
+    status?: 'active' | 'inactive';
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    if (filters?.offset) params.append('offset', String(filters.offset));
+
+    const queryString = params.toString();
+    const url = queryString ? `/v1/merchant/suppliers?${queryString}` : '/v1/merchant/suppliers';
+
+    const response = await httpClient.get(url, { cancelKey: 'getSuppliers' });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get a specific supplier by ID
+   */
+  async getSupplier(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/suppliers/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create a new supplier
+   */
+  async createSupplier(data: {
+    company: string;
+    country: string;
+    address: string;
+    apartment?: string;
+    city: string;
+    postalCode: string;
+    contactName: string;
+    email: string;
+    phoneNumber: string;
+    phoneCountryCode: string;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/suppliers', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update an existing supplier
+   */
+  async updateSupplier(id: number, data: {
+    company?: string;
+    country?: string;
+    address?: string;
+    apartment?: string;
+    city?: string;
+    postalCode?: string;
+    contactName?: string;
+    email?: string;
+    phoneNumber?: string;
+    phoneCountryCode?: string;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/suppliers/${id}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Deactivate a supplier (soft delete)
+   */
+  async deactivateSupplier(id: number): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/suppliers/${id}/deactivate`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Reactivate a supplier
+   */
+  async activateSupplier(id: number): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/suppliers/${id}/activate`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get supplier statistics (total POs, active POs, total spent)
+   */
+  async getSupplierStats(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/suppliers/${id}/stats`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  // ==================== Purchase Orders API ====================
+  /**
+   * Get all purchase orders for the current app
+   */
+  async getPurchaseOrders(filters?: {
+    status?: 'draft' | 'ordered' | 'partial' | 'received' | 'closed';
+    supplierId?: number;
+    locationId?: number;
+    search?: string;
+    createdFrom?: string;
+    createdTo?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.supplierId) params.append('supplierId', String(filters.supplierId));
+    if (filters?.locationId) params.append('locationId', String(filters.locationId));
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.createdFrom) params.append('createdFrom', filters.createdFrom);
+    if (filters?.createdTo) params.append('createdTo', filters.createdTo);
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    if (filters?.offset) params.append('offset', String(filters.offset));
+
+    const queryString = params.toString();
+    const url = queryString ? `/v1/merchant/purchase-orders?${queryString}` : '/v1/merchant/purchase-orders';
+
+    const response = await httpClient.get(url, { cancelKey: 'getPurchaseOrders' });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get a specific purchase order by ID
+   */
+  async getPurchaseOrder(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/purchase-orders/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create a new purchase order
+   */
+  async createPurchaseOrder(data: {
+    supplierId: number;
+    locationId: number;
+    referenceNumber: string;
+    paymentTerms?: string;
+    supplierCurrency?: string;
+    estimatedArrival?: string;
+    shippingCarrier?: string;
+    trackingNumber?: string;
+    noteToSupplier?: string;
+    tags?: string[];
+    shippingCost?: number;
+    customsDuties?: number;
+    otherFees?: number;
+    items: Array<{
+      productId?: number;
+      variantId?: number;
+      quantity: number;
+      unitCost: number;
+      taxPercent?: number;
+    }>;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/purchase-orders', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update an existing purchase order
+   */
+  async updatePurchaseOrder(id: number, data: {
+    referenceNumber?: string;
+    estimatedArrival?: string;
+    shippingCarrier?: string;
+    trackingNumber?: string;
+    shippingCost?: number;
+    customsDuties?: number;
+    otherFees?: number;
+    noteToSupplier?: string;
+    tags?: string[];
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/purchase-orders/${id}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Delete a draft purchase order
+   */
+  async deletePurchaseOrder(id: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/merchant/purchase-orders/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Add a new item to a purchase order
+   */
+  async addPurchaseOrderItem(poId: number, data: {
+    productId?: number;
+    variantId?: number;
+    quantity: number;
+    unitCost: number;
+    taxPercent?: number;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/merchant/purchase-orders/${poId}/items`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update a purchase order item
+   */
+  async updatePurchaseOrderItem(poId: number, itemId: number, data: {
+    quantity?: number;
+    unitCost?: number;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/purchase-orders/${poId}/items/${itemId}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Remove an item from a purchase order
+   */
+  async removePurchaseOrderItem(poId: number, itemId: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/merchant/purchase-orders/${poId}/items/${itemId}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Mark a purchase order as ordered (transitions from draft to ordered)
+   */
+  async markPurchaseOrderAsOrdered(poId: number): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/merchant/purchase-orders/${poId}/mark-ordered`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Receive items from a purchase order
+   */
+  async receivePurchaseOrderItems(poId: number, data: {
+    items: Array<{
+      itemId: number;
+      quantity: number;
+      notes?: string;
+    }>;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/merchant/purchase-orders/${poId}/receive`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Close a purchase order
+   */
+  async closePurchaseOrder(poId: number): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/merchant/purchase-orders/${poId}/close`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get receiving history for a purchase order
+   */
+  async getPurchaseOrderReceivingHistory(poId: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/purchase-orders/${poId}/receiving-history`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get incoming stock details for a specific product
+   */
+  async getProductIncomingStock(productId: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/purchase-orders/products/${productId}/incoming-stock`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
 }
 
 // Export singleton instance

@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus, MapPin
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders'
 
 interface App {
   id: number
@@ -54,6 +54,16 @@ const menuItems: MenuItem[] = [
   },
   { id: 'brands' as SectionType, label: 'Brands', icon: Building2 },
   { id: 'inventory' as SectionType, label: 'Inventory', icon: Boxes },
+  {
+    id: 'purchasing' as SectionType,
+    label: 'Purchasing',
+    icon: FileText,
+    children: [
+      { id: 'locations' as SectionType, label: 'Locations', icon: MapPin },
+      { id: 'suppliers' as SectionType, label: 'Suppliers', icon: Users },
+      { id: 'purchase-orders' as SectionType, label: 'Purchase Orders', icon: FileText },
+    ]
+  },
   { id: 'categories' as SectionType, label: 'Categories', icon: FolderTree },
   { id: 'orders' as SectionType, label: 'Orders', icon: ShoppingCart },
   { id: 'coupons' as SectionType, label: 'Coupons', icon: Ticket },
@@ -291,6 +301,10 @@ export default function MerchantSidebar({
                 case 'brands':
                   // Treat brands similar to categories
                   isVisible = hasPermission('products', 'view', 'categories')
+                  break
+                case 'purchasing':
+                  // Hide purchasing menu if staff has no purchase order permissions
+                  isVisible = hasPermission('purchase_orders', 'view')
                   break
                 default:
                   isVisible = true
