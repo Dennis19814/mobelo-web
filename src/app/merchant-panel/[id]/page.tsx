@@ -24,6 +24,9 @@ const OrdersSection = lazy(() => import('@/components/merchant/sections/OrdersSe
 const ActivitySection = lazy(() => import('@/components/merchant/sections/ActivitySection'))
 const SettingsSection = lazy(() => import('@/components/merchant/sections/SettingsSection'))
 const InventorySection = lazy(() => import('@/components/merchant/sections/InventorySection'))
+const InventoryManagementSection = lazy(() => import('@/components/merchant/sections/InventoryManagementSection'))
+const PurchaseOrdersSection = lazy(() => import('@/components/merchant/sections/PurchaseOrdersSection'))
+const CreatePurchaseOrderSection = lazy(() => import('@/components/merchant/sections/CreatePurchaseOrderSection'))
 const ReviewsSection = lazy(() => import('@/components/merchant/sections/ReviewsSection'))
 const BrandsSection = lazy(() => import('@/components/merchant/sections/BrandsSection'))
 const AppUsersSection = lazy(() => import('@/components/merchant/sections/AppUsersSection'))
@@ -66,9 +69,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'purchase-orders' | 'create-purchase-order' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'purchase-orders', 'create-purchase-order', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -522,6 +525,16 @@ export default function MerchantPanel() {
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={inventoryFinalAppSecretKey || undefined}
         />
+      case 'inventory-management':
+        // Use same API key logic as products section
+        const inventoryManagementAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const inventoryManagementFinalAppSecretKey = inventoryManagementAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <InventoryManagementSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={inventoryManagementFinalAppSecretKey || undefined}
+        />
       case 'categories':
         // Use same API key logic as other sections
         const categoriesAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
@@ -541,6 +554,26 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={ordersFinalAppSecretKey || undefined}
+        />
+      case 'purchase-orders':
+        // Use same API key logic as other sections
+        const purchaseOrdersAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const purchaseOrdersFinalAppSecretKey = purchaseOrdersAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <PurchaseOrdersSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={purchaseOrdersFinalAppSecretKey || undefined}
+        />
+      case 'create-purchase-order':
+        // Use same API key logic as other sections
+        const createPurchaseOrderAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const createPurchaseOrderFinalAppSecretKey = createPurchaseOrderAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <CreatePurchaseOrderSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={createPurchaseOrderFinalAppSecretKey || undefined}
         />
       case 'app-users':
         // Use same API key logic as other sections

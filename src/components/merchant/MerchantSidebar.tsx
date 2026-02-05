@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus, ShoppingBag
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'purchase-orders' | 'create-purchase-order' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
 interface App {
   id: number
@@ -56,6 +56,7 @@ const menuItems: MenuItem[] = [
   { id: 'inventory' as SectionType, label: 'Inventory', icon: Boxes },
   { id: 'categories' as SectionType, label: 'Categories', icon: FolderTree },
   { id: 'orders' as SectionType, label: 'Orders', icon: ShoppingCart },
+  { id: 'purchase-orders' as SectionType, label: 'Purchase Orders', icon: ShoppingBag },
   { id: 'coupons' as SectionType, label: 'Coupons', icon: Ticket },
   {
     id: 'taxes' as SectionType,
@@ -260,7 +261,11 @@ export default function MerchantSidebar({
               const Icon = item.icon
               const hasChildren = item.children && item.children.length > 0
               const isExpanded = isMenuExpanded(item.id)
-              const isActive = activeSection === item.id
+              // For inventory, also consider inventory-management as active
+              // For purchase-orders, also consider create-purchase-order as active
+              const isActive = activeSection === item.id || 
+                (item.id === 'inventory' && activeSection === 'inventory-management') ||
+                (item.id === 'purchase-orders' && activeSection === 'create-purchase-order')
               const hasActiveChild = item.children?.some(child => child.id === activeSection)
               
               // RBAC visibility: hide menu items staff cannot access
