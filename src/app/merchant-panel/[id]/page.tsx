@@ -24,6 +24,9 @@ const OrdersSection = lazy(() => import('@/components/merchant/sections/OrdersSe
 const ActivitySection = lazy(() => import('@/components/merchant/sections/ActivitySection'))
 const SettingsSection = lazy(() => import('@/components/merchant/sections/SettingsSection'))
 const InventorySection = lazy(() => import('@/components/merchant/sections/InventorySection'))
+const InventoryManagementSection = lazy(() => import('@/components/merchant/sections/InventoryManagementSection'))
+const PurchaseOrdersSection = lazy(() => import('@/components/merchant/sections/PurchaseOrdersSection'))
+const CreatePurchaseOrderSection = lazy(() => import('@/components/merchant/sections/CreatePurchaseOrderSection'))
 const ReviewsSection = lazy(() => import('@/components/merchant/sections/ReviewsSection'))
 const BrandsSection = lazy(() => import('@/components/merchant/sections/BrandsSection'))
 const AppUsersSection = lazy(() => import('@/components/merchant/sections/AppUsersSection'))
@@ -37,9 +40,6 @@ const HelpFaqSection = lazy(() => import('@/components/merchant/sections/HelpFaq
 const HelpTutorialsSection = lazy(() => import('@/components/merchant/sections/HelpTutorialsSection'))
 const AddProductSection = lazy(() => import('@/components/merchant/sections/AddProductSection'))
 const EditProductSection = lazy(() => import('@/components/merchant/sections/EditProductSection'))
-const LocationsSection = lazy(() => import('@/components/merchant/sections/LocationsSection'))
-const SuppliersSection = lazy(() => import('@/components/merchant/sections/SuppliersSection'))
-const PurchaseOrdersSection = lazy(() => import('@/components/merchant/sections/PurchaseOrdersSection'))
 
 interface App {
   id: number
@@ -69,9 +69,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'purchase-orders' | 'create-purchase-order' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials', 'purchasing', 'locations', 'suppliers', 'purchase-orders']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'purchase-orders', 'create-purchase-order', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -105,25 +105,23 @@ export default function MerchantPanel() {
   // Initialize section from URL params or localStorage on mount
   useEffect(() => {
     if (sectionInitialized) return
-
-    const transientSections: SectionType[] = ['edit-product', 'add-product']
-
+    
     // First, check URL search params
     const sectionFromUrl = searchParams.get('section') as SectionType | null
     if (sectionFromUrl && validSections.includes(sectionFromUrl)) {
       setActiveSection(sectionFromUrl)
-      // Update localStorage to match URL (except for transient sections)
-      if (typeof window !== 'undefined' && appId && !transientSections.includes(sectionFromUrl)) {
+      // Update localStorage to match URL
+      if (typeof window !== 'undefined' && appId) {
         localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
       }
       setSectionInitialized(true)
       return
     }
-
-    // Then, check localStorage (but skip transient sections)
+    
+    // Then, check localStorage
     if (typeof window !== 'undefined' && appId) {
       const sectionFromStorage = localStorage.getItem(`merchant-panel-section-${appId}`) as SectionType | null
-      if (sectionFromStorage && validSections.includes(sectionFromStorage) && !transientSections.includes(sectionFromStorage)) {
+      if (sectionFromStorage && validSections.includes(sectionFromStorage)) {
         setActiveSection(sectionFromStorage)
         // Update URL to match localStorage
         const currentUrl = new URL(window.location.href)
@@ -133,7 +131,7 @@ export default function MerchantPanel() {
         return
       }
     }
-
+    
     // Default to dashboard - ensure URL reflects this
     const currentUrl = new URL(window.location.href)
     if (!currentUrl.searchParams.has('section')) {
@@ -146,15 +144,14 @@ export default function MerchantPanel() {
   // Update URL and localStorage when section changes (after initialization)
   const handleSectionChange = useCallback((section: SectionType) => {
     setActiveSection(section)
-
+    
     // Update URL with section parameter
     const currentUrl = new URL(window.location.href)
     currentUrl.searchParams.set('section', section)
     router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
-
-    // Update localStorage for persistence (except for transient sections that require context)
-    const transientSections: SectionType[] = ['edit-product', 'add-product']
-    if (typeof window !== 'undefined' && appId && !transientSections.includes(section)) {
+    
+    // Update localStorage for persistence
+    if (typeof window !== 'undefined' && appId) {
       localStorage.setItem(`merchant-panel-section-${appId}`, section)
     }
 
@@ -180,14 +177,13 @@ export default function MerchantPanel() {
   // Sync section from URL when URL changes (for browser back/forward)
   useEffect(() => {
     if (!sectionInitialized) return
-
+    
     const sectionFromUrl = searchParams.get('section') as SectionType | null
     if (sectionFromUrl && validSections.includes(sectionFromUrl)) {
       if (sectionFromUrl !== activeSection) {
         setActiveSection(sectionFromUrl)
-        // Update localStorage to match URL (except for transient sections)
-        const transientSections: SectionType[] = ['edit-product', 'add-product']
-        if (typeof window !== 'undefined' && appId && !transientSections.includes(sectionFromUrl)) {
+        // Update localStorage to match URL
+        if (typeof window !== 'undefined' && appId) {
           localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
         }
         // Scroll to top when navigating to products (e.g. via router.back() from edit)
@@ -529,6 +525,16 @@ export default function MerchantPanel() {
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={inventoryFinalAppSecretKey || undefined}
         />
+      case 'inventory-management':
+        // Use same API key logic as products section
+        const inventoryManagementAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const inventoryManagementFinalAppSecretKey = inventoryManagementAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <InventoryManagementSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={inventoryManagementFinalAppSecretKey || undefined}
+        />
       case 'categories':
         // Use same API key logic as other sections
         const categoriesAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
@@ -548,6 +554,26 @@ export default function MerchantPanel() {
           appId={currentApp.id}
           apiKey={apiKeys?.userApiKey || undefined}
           appSecretKey={ordersFinalAppSecretKey || undefined}
+        />
+      case 'purchase-orders':
+        // Use same API key logic as other sections
+        const purchaseOrdersAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const purchaseOrdersFinalAppSecretKey = purchaseOrdersAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <PurchaseOrdersSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={purchaseOrdersFinalAppSecretKey || undefined}
+        />
+      case 'create-purchase-order':
+        // Use same API key logic as other sections
+        const createPurchaseOrderAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const createPurchaseOrderFinalAppSecretKey = createPurchaseOrderAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <CreatePurchaseOrderSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || undefined}
+          appSecretKey={createPurchaseOrderFinalAppSecretKey || undefined}
         />
       case 'app-users':
         // Use same API key logic as other sections
@@ -661,12 +687,6 @@ export default function MerchantPanel() {
             } catch { /* noop */ }
           }}
         />
-      case 'locations':
-        return <LocationsSection />
-      case 'suppliers':
-        return <SuppliersSection />
-      case 'purchase-orders':
-        return <PurchaseOrdersSection />
       default:
         return <DashboardSection app={currentApp} onSectionChange={(section) => handleSectionChange(section as SectionType)} />
     }

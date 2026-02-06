@@ -2,13 +2,14 @@
 import { logger } from '@/lib/logger'
 
 import React, { useState, useEffect, useCallback, useMemo, memo, lazy, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMerchantAuth, useCrudOperations } from '@/hooks'
 import Image from 'next/image'
 import {
   Package, Search, Plus, Minus, AlertCircle,
   RefreshCw, History, TrendingUp, TrendingDown,
   Filter, Download, Upload, Calendar, ArrowUpDown,
-  Grid3X3, List, X, Box
+  Grid3X3, List, X, Box, Edit
 } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { Product, ProductVariant } from '@/types/product.types'
@@ -51,6 +52,7 @@ interface StockAdjustment {
 }
 
 const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySectionProps) => {
+  const router = useRouter()
   const { headers } = useMerchantAuth(apiKey, appSecretKey)
   const {
     loading: crudLoading,
@@ -461,7 +463,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                 key={product.id}
                 className={`
                   bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer border border-gray-200 overflow-hidden flex flex-col h-full
-                  ${selectedProduct?.id === product.id ? 'ring-2 ring-blue-500' : ''}
+                  ${selectedProduct?.id === product.id ? '' : ''}
                 `}
                 onClick={() => {
                   setSelectedProduct(product)
@@ -518,36 +520,19 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setSelectedProduct(product)
-                        setAdjustment({
-                          ...adjustment,
-                          productId: product.id,
-                          movementType: 'in'
-                        })
-                        setShowAddStock(true)
+                        // Navigate to inventory management page with productId
+                        const currentPath = window.location.pathname
+                        const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+                        if (pathMatch && pathMatch[1]) {
+                          const hashedAppId = pathMatch[1]
+                          router.push(`/merchant-panel/${hashedAppId}?section=inventory-management&productId=${product.id}`)
+                        }
                       }}
-                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium min-w-0"
-                      title="Add Stock"
+                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 text-xs font-medium min-w-0"
+                      title="Edit Stock"
                     >
-                      <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">Add</span>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedProduct(product)
-                        setAdjustment({
-                          ...adjustment,
-                          productId: product.id,
-                          movementType: 'out'
-                        })
-                        setShowAddStock(true)
-                      }}
-                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium min-w-0"
-                      title="Remove Stock"
-                    >
-                      <Minus className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">Remove</span>
+                      <Edit className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">Edit Stock</span>
                     </button>
                     <button
                       onClick={(e) => {
@@ -555,7 +540,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                         setHistoryProduct(product)
                         setShowHistoryModal(true)
                       }}
-                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 text-xs font-medium min-w-0"
+                      className="flex-1 flex items-center justify-center px-2 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 text-xs font-medium min-w-0"
                       title="View History"
                     >
                       <History className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -642,34 +627,18 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            setSelectedProduct(product)
-                            setAdjustment({
-                              ...adjustment,
-                              productId: product.id,
-                              movementType: 'in'
-                            })
-                            setShowAddStock(true)
+                            // Navigate to inventory management page with productId
+                            const currentPath = window.location.pathname
+                            const pathMatch = currentPath.match(/\/merchant-panel\/([^\/]+)/)
+                            if (pathMatch && pathMatch[1]) {
+                              const hashedAppId = pathMatch[1]
+                              router.push(`/merchant-panel/${hashedAppId}?section=inventory-management&productId=${product.id}`)
+                            }
                           }}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                          title="Add Stock"
+                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          title="Edit Stock"
                         >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedProduct(product)
-                            setAdjustment({
-                              ...adjustment,
-                              productId: product.id,
-                              movementType: 'out'
-                            })
-                            setShowAddStock(true)
-                          }}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Remove Stock"
-                        >
-                          <Minus className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -677,7 +646,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                             setHistoryProduct(product)
                             setShowHistoryModal(true)
                           }}
-                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          className="p-1 text-gray-600 hover:bg-gray-50 rounded"
                           title="View History"
                         >
                           <History className="w-4 h-4" />
