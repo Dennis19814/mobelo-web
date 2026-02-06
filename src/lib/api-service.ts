@@ -1412,7 +1412,11 @@ class ApiService {
    * Update an existing purchase order
    */
   async updatePurchaseOrder(id: number, data: {
+    supplierId?: number;
+    locationId?: number;
     referenceNumber?: string;
+    paymentTerms?: string;
+    supplierCurrency?: string;
     estimatedArrival?: string;
     shippingCarrier?: string;
     trackingNumber?: string;
@@ -1454,6 +1458,7 @@ class ApiService {
   async updatePurchaseOrderItem(poId: number, itemId: number, data: {
     quantity?: number;
     unitCost?: number;
+    taxPercent?: number;
   }): Promise<ApiResponse> {
     const response = await httpClient.patch(`/v1/merchant/purchase-orders/${poId}/items/${itemId}`, data);
     return { ok: response.ok, status: response.status, data: response.data };

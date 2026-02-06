@@ -198,7 +198,11 @@ export interface CreatePurchaseOrderDto {
 }
 
 export interface UpdatePurchaseOrderDto {
+  supplierId?: number
+  locationId?: number
   referenceNumber?: string
+  paymentTerms?: string
+  supplierCurrency?: string
   estimatedArrival?: string
   shippingCarrier?: string
   trackingNumber?: string
@@ -212,6 +216,7 @@ export interface UpdatePurchaseOrderDto {
 export interface UpdatePurchaseOrderItemDto {
   quantity?: number
   unitCost?: number
+  taxPercent?: number
 }
 
 export interface PurchaseOrderFilters {
