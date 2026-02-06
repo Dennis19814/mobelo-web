@@ -41,6 +41,8 @@ const EditProductSection = lazy(() => import('@/components/merchant/sections/Edi
 const LocationsSection = lazy(() => import('@/components/merchant/sections/LocationsSection'))
 const SuppliersSection = lazy(() => import('@/components/merchant/sections/SuppliersSection'))
 const PurchaseOrdersSection = lazy(() => import('@/components/merchant/sections/PurchaseOrdersSection'))
+const CreatePurchaseOrderPage = lazy(() => import('@/components/merchant/sections/CreatePurchaseOrderPage'))
+const EditPurchaseOrderPage = lazy(() => import('@/components/merchant/sections/EditPurchaseOrderPage'))
 
 interface App {
   id: number
@@ -70,9 +72,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials', 'purchase-orders', 'create-purchase-order', 'edit-purchase-order']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -107,7 +109,7 @@ export default function MerchantPanel() {
   useEffect(() => {
     if (sectionInitialized) return
 
-    const transientSections: SectionType[] = ['edit-product', 'add-product']
+    const transientSections: SectionType[] = ['edit-product', 'add-product', 'create-purchase-order', 'edit-purchase-order']
 
     // First, check URL search params
     const sectionFromUrl = searchParams.get('section') as SectionType | null
@@ -154,7 +156,7 @@ export default function MerchantPanel() {
     router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
 
     // Update localStorage for persistence (except for transient sections that require context)
-    const transientSections: SectionType[] = ['edit-product', 'add-product']
+    const transientSections: SectionType[] = ['edit-product', 'add-product', 'create-purchase-order', 'edit-purchase-order']
     if (typeof window !== 'undefined' && appId && !transientSections.includes(section)) {
       localStorage.setItem(`merchant-panel-section-${appId}`, section)
     }
@@ -187,7 +189,7 @@ export default function MerchantPanel() {
       if (sectionFromUrl !== activeSection) {
         setActiveSection(sectionFromUrl)
         // Update localStorage to match URL (except for transient sections)
-        const transientSections: SectionType[] = ['edit-product', 'add-product']
+        const transientSections: SectionType[] = ['edit-product', 'add-product', 'create-purchase-order', 'edit-purchase-order']
         if (typeof window !== 'undefined' && appId && !transientSections.includes(sectionFromUrl)) {
           localStorage.setItem(`merchant-panel-section-${appId}`, sectionFromUrl)
         }
@@ -678,6 +680,10 @@ export default function MerchantPanel() {
         return <SuppliersSection />
       case 'purchase-orders':
         return <PurchaseOrdersSection />
+      case 'create-purchase-order':
+        return <CreatePurchaseOrderPage />
+      case 'edit-purchase-order':
+        return <EditPurchaseOrderPage />
       default:
         return <DashboardSection app={currentApp} onSectionChange={(section) => handleSectionChange(section as SectionType)} />
     }
