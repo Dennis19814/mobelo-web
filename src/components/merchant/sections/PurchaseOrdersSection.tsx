@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   FileText,
   Search,
@@ -25,11 +26,9 @@ import { useActiveSuppliers } from '@/hooks/useSuppliers'
 import { useActiveLocations } from '@/hooks/useLocations'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/types/purchase-order.types'
 import {
-  CreatePurchaseOrderModal,
   ReceiveItemsModal,
   PurchaseOrderDetailsModal,
 } from '../modals/PurchaseOrderModals'
-import { EditPurchaseOrderModal } from '../modals/EditPurchaseOrderModal'
 import toast from 'react-hot-toast'
 
 const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
@@ -49,15 +48,20 @@ const STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
 }
 
 export default function PurchaseOrdersSection() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | 'all'>('all')
   const [supplierFilter, setSupplierFilter] = useState<number | 'all'>('all')
   const [locationFilter, setLocationFilter] = useState<number | 'all'>('all')
   const [showFilters, setShowFilters] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null)
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null)
   const [receivingPO, setReceivingPO] = useState<PurchaseOrder | null>(null)
+
+  const handleCreatePurchaseOrder = () => {
+    const currentUrl = new URL(window.location.href)
+    currentUrl.searchParams.set('section', 'create-purchase-order')
+    router.push(currentUrl.pathname + currentUrl.search)
+  }
 
   // Fetch data
   const { data: purchaseOrdersData, isLoading, error } = usePurchaseOrders({
@@ -129,19 +133,16 @@ export default function PurchaseOrdersSection() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="overflow-x-hidden min-w-0">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+      <div className="mb-8 ">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <FileText className="w-7 h-7 text-orange-600" />
-              Purchase Orders
-            </h1>
-            <p className="text-gray-600 mt-1">Manage purchase orders and receiving</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Purchase Orders</h1>
+            <p className="text-gray-600">Manage purchase orders and receiving</p>
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleCreatePurchaseOrder}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -150,7 +151,7 @@ export default function PurchaseOrdersSection() {
         </div>
 
         {/* Search and Filters */}
-        <div className="space-y-3">
+        <div className="space-y-3 pt-6">
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -246,7 +247,7 @@ export default function PurchaseOrdersSection() {
           </p>
           {!searchQuery && statusFilter === 'all' && (
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreatePurchaseOrder}
               className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               <Plus className="w-4 h-4" />
@@ -258,7 +259,7 @@ export default function PurchaseOrdersSection() {
 
       {/* Purchase Orders Table */}
       {!isLoading && !error && purchaseOrders.length > 0 && (
-        <div className="bg-white border rounded-lg overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm -mt-4">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
@@ -352,7 +353,12 @@ export default function PurchaseOrdersSection() {
                           {po.status === 'draft' && (
                             <>
                               <button
-                                onClick={() => setEditingPO(po)}
+                                onClick={() => {
+                                  const currentUrl = new URL(window.location.href)
+                                  currentUrl.searchParams.set('section', 'edit-purchase-order')
+                                  currentUrl.searchParams.set('poId', po.id.toString())
+                                  router.push(currentUrl.pathname + currentUrl.search)
+                                }}
                                 className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded"
                                 title="Edit"
                               >
@@ -414,24 +420,6 @@ export default function PurchaseOrdersSection() {
             </table>
           </div>
         </div>
-      )}
-
-      {/* View PO Details Modal */}
-      {/* Create Purchase Order Modal */}
-      <CreatePurchaseOrderModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={() => setShowCreateModal(false)}
-      />
-
-      {/* Edit Purchase Order Modal */}
-      {editingPO && (
-        <EditPurchaseOrderModal
-          isOpen={true}
-          purchaseOrder={editingPO}
-          onClose={() => setEditingPO(null)}
-          onSuccess={() => setEditingPO(null)}
-        />
       )}
 
       {/* View Details Modal */}

@@ -62,13 +62,13 @@ export default function LocationsSection() {
   }, [updateMutation])
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <MapPin className="w-7 h-7 text-orange-600" />
+            <h1 className="text-2xl  font-bold text-gray-900 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-orange-600" />
               Locations
             </h1>
             <p className="text-gray-600 mt-1">Manage warehouse and store locations</p>
