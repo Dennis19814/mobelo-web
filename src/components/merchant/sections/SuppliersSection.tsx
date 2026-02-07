@@ -533,15 +533,15 @@ function SupplierStatsModal({ supplier, onClose }: SupplierStatsModalProps) {
           ) : stats ? (
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.totalPOs}</div>
+                <div className="text-2xl font-bold text-blue-600">{stats.totalPOs ?? 0}</div>
                 <div className="text-xs text-blue-700 mt-1">Total POs</div>
               </div>
               <div className="bg-orange-50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-orange-600">{stats.activePOs}</div>
+                <div className="text-2xl font-bold text-orange-600">{stats.activePOs ?? 0}</div>
                 <div className="text-xs text-orange-700 mt-1">Active POs</div>
               </div>
               <div className="bg-green-50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-green-600">${stats.totalSpent.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-600">${(stats.totalSpent ?? 0).toLocaleString()}</div>
                 <div className="text-xs text-green-700 mt-1">Total Spent</div>
               </div>
             </div>
