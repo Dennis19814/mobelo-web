@@ -113,6 +113,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     warranty: '',
     categoryIds: [],
     trackInventory: true,
+    inventoryQuantity: 0,
     minimumQuantity: 1,
     maximumQuantity: undefined,
     tags: [],
@@ -490,8 +491,21 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
           const headers: any = {}
           if (apiKey) headers['x-api-key'] = apiKey
           if (appSecretKey) headers['x-app-secret'] = appSecretKey
-          
+
           const response = await apiService.getProduct(productId)
+
+          // Log the RAW response from backend to diagnose inventoryQuantity issue
+          console.log('[EditProduct] Raw getProduct API response:', {
+            ok: response.ok,
+            status: response.status,
+            hasData: !!response.data,
+            dataKeys: response.data ? Object.keys(response.data) : [],
+            inventoryQuantity: response.data?.inventoryQuantity,
+            trackInventory: response.data?.trackInventory,
+            hasVariants: response.data?.variants?.length > 0,
+            variantCount: response.data?.variants?.length || 0
+          })
+
           if (response.ok && response.data) {
             productData = response.data
           } else {
@@ -570,6 +584,21 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             media: productData.media || [],
             metadata: productData.metadata || {}
           })
+
+          console.log('[EditProduct] Loaded product data:', {
+            productId: productData.id,
+            trackInventory: productData.trackInventory,
+            inventoryQuantity: productData.inventoryQuantity,
+            setInventoryQuantity: productData.inventoryQuantity || 0
+          })
+
+          if (productData.trackInventory && !productData.inventoryQuantity && productData.inventoryQuantity !== 0) {
+            console.warn('[EditProduct] WARNING: trackInventory is true but inventoryQuantity is undefined', {
+              trackInventory: productData.trackInventory,
+              inventoryQuantity: productData.inventoryQuantity,
+              productId: productData.id
+            })
+          }
           
           // Set base price input
           if (productData.basePrice === 0 || productData.basePrice === undefined) {
@@ -1018,7 +1047,23 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         updateDataKeys: Object.keys(updateData)
       })
 
+      console.log('[EditProduct] Updating product with inventory data:', {
+        productId,
+        trackInventory: updateData.trackInventory,
+        inventoryQuantity: updateData.inventoryQuantity,
+        hasVariants: cleanedVariants.length > 0
+      })
+
       const response = await apiService.updateProduct(productId, updateData)
+
+      if (response.ok && response.data) {
+        console.log('[EditProduct] Product updated successfully:', {
+          productId,
+          responseTrackInventory: response.data.trackInventory,
+          responseInventoryQuantity: response.data.inventoryQuantity,
+          sentInventoryQty: updateData.inventoryQuantity
+        })
+      }
 
       if (response.ok) {
         // Step 3: Process pending media operations (deletions and thumbnail settings)

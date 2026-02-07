@@ -635,14 +635,46 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
       const headers: any = {}
       if (apiKey) headers['x-api-key'] = apiKey
       if (appSecretKey) headers['x-app-secret'] = appSecretKey
-      
-      const response = await apiService.createProduct({
+
+      const productPayload = {
         ...formData,
         status,
         thumbnailUrl: productMedia.find(m => m.isPrimary)?.url || formData.thumbnailUrl
+      }
+
+      console.log('[AddProduct] Creating product with payload:', {
+        trackInventory: productPayload.trackInventory,
+        inventoryQuantity: productPayload.inventoryQuantity,
+        hasVariants: productPayload.variants && productPayload.variants.length > 0,
+        variantCount: productPayload.variants?.length || 0,
+        status: productPayload.status,
+        payloadKeys: Object.keys(productPayload)
+      })
+
+      const response = await apiService.createProduct(productPayload)
+
+      // Log the RAW response from backend to diagnose inventoryQuantity issue
+      console.log('[AddProduct] Raw createProduct API response:', {
+        ok: response.ok,
+        status: response.status,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        id: response.data?.id,
+        trackInventory: response.data?.trackInventory,
+        inventoryQuantity: response.data?.inventoryQuantity,
+        sentInventoryQty: productPayload.inventoryQuantity,
+        hasVariants: response.data?.variants?.length > 0,
+        variantCount: response.data?.variants?.length || 0
       })
 
       if (response.ok && response.data) {
+        console.log('[AddProduct] Product created successfully:', {
+          id: response.data.id,
+          trackInventory: response.data.trackInventory,
+          inventoryQuantity: response.data.inventoryQuantity,
+          sentInventoryQty: productPayload.inventoryQuantity,
+          inventoryMismatch: response.data.inventoryQuantity !== productPayload.inventoryQuantity
+        })
         const newProductId = response.data.id
         setCreatedProductId(newProductId)
 

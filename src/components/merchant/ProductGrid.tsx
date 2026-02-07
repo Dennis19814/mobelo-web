@@ -157,13 +157,27 @@ export default function ProductGrid({
   };
 
   const getStockStatusColor = (quantity?: number) => {
-    if (!quantity || quantity === 0) return "text-red-600 bg-red-50";
+    // Handle undefined/null gracefully - don't treat as "Out of Stock"
+    if (quantity === undefined || quantity === null) return "text-gray-400 bg-gray-50";
+    if (quantity === 0) return "text-red-600 bg-red-50";
     if (quantity < 10) return "text-yellow-600 bg-yellow-50";
     return "text-green-600 bg-green-50";
   };
 
-  const getStockStatusText = (quantity?: number) => {
-    if (!quantity || quantity === 0) return "Out of Stock";
+  const getStockStatusText = (quantity?: number, productId?: number) => {
+    // Log when inventory quantity is undefined to help diagnose backend issues
+    if (quantity === undefined || quantity === null) {
+      console.warn('[ProductGrid] inventoryQuantity is undefined/null:', {
+        productId,
+        quantity,
+        typeOf: typeof quantity,
+        message: 'Backend may not be returning inventoryQuantity in product list'
+      });
+      return "Stock N/A";
+    }
+
+    // Only show "Out of Stock" when explicitly 0
+    if (quantity === 0) return "Out of Stock";
     if (quantity < 10) return `Low Stock (${quantity})`;
     return `In Stock (${quantity})`;
   };
@@ -341,7 +355,7 @@ export default function ProductGrid({
                         product.inventoryQuantity
                       )}`}
                     >
-                      {getStockStatusText(product.inventoryQuantity)}
+                      {getStockStatusText(product.inventoryQuantity, product.id)}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-gray-400 bg-gray-50">
@@ -630,7 +644,7 @@ export default function ProductGrid({
                     {product.inventoryQuantity === 0 && (
                       <AlertCircle className="h-3 w-3 mr-1" />
                     )}
-                    {getStockStatusText(product.inventoryQuantity)}
+                    {getStockStatusText(product.inventoryQuantity, product.id)}
                   </>
                 ) : (
                   "Stock N/A"
