@@ -1047,11 +1047,16 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         updateDataKeys: Object.keys(updateData)
       })
 
-      console.log('[EditProduct] Updating product with inventory data:', {
+      console.log('[EditProduct] Updating product with inventory and tags data:', {
         productId,
         trackInventory: updateData.trackInventory,
         inventoryQuantity: updateData.inventoryQuantity,
-        hasVariants: cleanedVariants.length > 0
+        hasVariants: cleanedVariants.length > 0,
+        // Tags debugging
+        tags: updateData.tags,
+        hasTags: !!updateData.tags,
+        tagsLength: updateData.tags?.length || 0,
+        tagsValue: JSON.stringify(updateData.tags)
       })
 
       const response = await apiService.updateProduct(productId, updateData)
@@ -1061,7 +1066,11 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
           productId,
           responseTrackInventory: response.data.trackInventory,
           responseInventoryQuantity: response.data.inventoryQuantity,
-          sentInventoryQty: updateData.inventoryQuantity
+          sentInventoryQty: updateData.inventoryQuantity,
+          // Tags debugging
+          responseTags: response.data.tags,
+          responseTagsValue: JSON.stringify(response.data.tags),
+          sentTags: updateData.tags
         })
       }
 

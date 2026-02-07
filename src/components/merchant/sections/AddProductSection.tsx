@@ -648,12 +648,17 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
         hasVariants: productPayload.variants && productPayload.variants.length > 0,
         variantCount: productPayload.variants?.length || 0,
         status: productPayload.status,
-        payloadKeys: Object.keys(productPayload)
+        payloadKeys: Object.keys(productPayload),
+        // Tags debugging
+        tags: productPayload.tags,
+        hasTags: !!productPayload.tags,
+        tagsLength: productPayload.tags?.length || 0,
+        tagsValue: JSON.stringify(productPayload.tags)
       })
 
       const response = await apiService.createProduct(productPayload)
 
-      // Log the RAW response from backend to diagnose inventoryQuantity issue
+      // Log the RAW response from backend to diagnose inventoryQuantity and tags issues
       console.log('[AddProduct] Raw createProduct API response:', {
         ok: response.ok,
         status: response.status,
@@ -664,7 +669,11 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
         inventoryQuantity: response.data?.inventoryQuantity,
         sentInventoryQty: productPayload.inventoryQuantity,
         hasVariants: response.data?.variants?.length > 0,
-        variantCount: response.data?.variants?.length || 0
+        variantCount: response.data?.variants?.length || 0,
+        // Tags debugging
+        tags: response.data?.tags,
+        tagsValue: JSON.stringify(response.data?.tags),
+        sentTags: productPayload.tags
       })
 
       if (response.ok && response.data) {
