@@ -59,14 +59,14 @@ export default function MerchantHeader({
 
     try {
       // Fetch products for low stock alerts
-      const productsResponse = await apiService.getProducts({ limit: 100 })
+      const productsResponse = await apiService.getProducts({ limit: 100 }, 'header-notifications-products')
       const products: Product[] = productsResponse.ok && productsResponse.data
         ? (productsResponse.data.data || productsResponse.data)
         : []
       const productsArray = Array.isArray(products) ? products : []
 
       // Fetch recent orders
-      const ordersResponse = await apiService.getOrders({ limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' })
+      const ordersResponse = await apiService.getOrders({ limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' }, 'header-notifications-orders')
       const orders: Order[] = ordersResponse.ok && ordersResponse.data
         ? (ordersResponse.data.data || ordersResponse.data)
         : []

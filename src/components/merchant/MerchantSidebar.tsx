@@ -9,7 +9,7 @@ import {
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchase-orders' | 'create-purchase-order' | 'locations' | 'suppliers' | 'purchasing'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
 
 interface App {
   id: number

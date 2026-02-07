@@ -332,7 +332,7 @@ class ApiService {
   }
 
   // Products
-  async getProducts(query?: Record<string, any>): Promise<ApiResponse> {
+  async getProducts(query?: Record<string, any>, cancelKey?: string): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (query) {
       Object.entries(query).forEach(([key, value]) => {
@@ -345,7 +345,7 @@ class ApiService {
     const queryString = params.toString();
     const url = queryString ? `/v1/merchant/products?${queryString}` : '/v1/merchant/products';
 
-    const response = await httpClient.get(url, { cancelKey: 'getProducts' });
+    const response = await httpClient.get(url, cancelKey ? { cancelKey } : {});
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
@@ -463,7 +463,7 @@ class ApiService {
   }
 
   // Orders
-  async getOrders(query?: Record<string, any>): Promise<ApiResponse> {
+  async getOrders(query?: Record<string, any>, cancelKey?: string): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (query) {
       Object.entries(query).forEach(([key, value]) => {
@@ -476,7 +476,7 @@ class ApiService {
     const queryString = params.toString();
     const url = queryString ? `/v1/merchant/orders?${queryString}` : '/v1/merchant/orders';
 
-    const response = await httpClient.get(url);
+    const response = await httpClient.get(url, cancelKey ? { cancelKey } : {});
     return { ok: response.ok, status: response.status, data: response.data };
   }
 

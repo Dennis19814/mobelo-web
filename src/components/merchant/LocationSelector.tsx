@@ -27,7 +27,7 @@ export default function LocationSelector({
   const { data: locationsData, isLoading } = useActiveLocations()
 
   const locations = locationsData?.data || []
-  const selectedLocation = locations.find((l) => l.id === value)
+  const selectedLocation = locations.find((l: Location) => l.id === value)
 
   // Handle outside clicks
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function LocationSelector({
                 </div>
               ) : (
                 <div className="py-1">
-                  {locations.map((location, index) => (
+                  {locations.map((location: Location, index: number) => (
                     <div
                       key={location.id}
                       ref={(el) => {

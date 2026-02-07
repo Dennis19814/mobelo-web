@@ -76,7 +76,7 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
         if (response.ok && response.data) {
           const productData = response.data
           setProduct(productData)
-          
+
           // If product has variants, select first one by default
           if (productData.variants && productData.variants.length > 0) {
             setSelectedVariant(productData.variants[0])
@@ -88,11 +88,22 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
             setOriginalQuantity(productData.inventoryQuantity || 0)
           }
         } else {
-          setError('Failed to load product')
+          const errorMsg = response.data?.message || response.data?.error || 'Failed to load product'
+          logger.error('Failed to load product:', {
+            productId,
+            status: response.status,
+            error: errorMsg,
+            response: response.data
+          })
+          setError(`Unable to load product #${productId}. ${errorMsg}. This product may not exist or may have invalid data.`)
         }
       } catch (err) {
-        logger.error('Failed to load product:', { error: err instanceof Error ? err.message : String(err) })
-        setError('Failed to load product')
+        logger.error('Failed to load product:', {
+          productId,
+          error: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined
+        })
+        setError(`Unable to load product #${productId}. This product may not exist or may have invalid data.`)
       } finally {
         setLoading(false)
       }
@@ -274,14 +285,18 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
   if (error && !product) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
-          <p className="text-gray-600">{error}</p>
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Product Not Found</h3>
+          <p className="text-gray-600 mb-4 text-sm">{error}</p>
+          <p className="text-gray-500 text-xs mb-6">
+            Please check the URL or select a different product from the inventory list.
+          </p>
           <button
             onClick={handleBack}
-            className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
           >
-            Go Back
+            Back to Inventory
           </button>
         </div>
       </div>

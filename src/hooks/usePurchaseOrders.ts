@@ -194,17 +194,17 @@ export function useAddPurchaseOrderItem() {
         taxPercent?: number
       }
     }) => {
-      const response = await apiService.addPurchaseOrderItem(poId, data)
+      const response = await apiService.addPurchaseOrderItem(poId, data) as any
       // Handle nested response structure: {status: 200, data: {...}}
-      const responseData = (response as any)?.data || response
+      const responseData = response?.data || response
       // Check if response is successful (either response.ok or status 200)
       const isSuccess = response.ok || response.status === 200 || responseData?.status === 200
       if (!isSuccess) {
-        const errorMsg = responseData?.data?.message || responseData?.message || response.data?.message || 'Failed to add item'
+        const errorMsg = responseData?.data?.message || responseData?.message || response?.data?.message || 'Failed to add item'
         throw new Error(errorMsg)
       }
       // Return the purchase order data
-      return (responseData?.data || responseData || response.data) as PurchaseOrder
+      return (responseData?.data || responseData || response?.data) as PurchaseOrder
     },
     onSuccess: (data, variables) => {
       // Invalidate lists and specific PO detail
@@ -256,17 +256,17 @@ export function useRemovePurchaseOrderItem() {
 
   return useMutation({
     mutationFn: async ({ poId, itemId }: { poId: number; itemId: number }) => {
-      const response = await apiService.removePurchaseOrderItem(poId, itemId)
+      const response = await apiService.removePurchaseOrderItem(poId, itemId) as any
       // Handle nested response structure: {status: 200, data: {...}}
-      const responseData = (response as any)?.data || response
+      const responseData = response?.data || response
       // Check if response is successful (either response.ok or status 200)
       const isSuccess = response.ok || response.status === 200 || responseData?.status === 200
       if (!isSuccess) {
-        const errorMsg = responseData?.data?.message || responseData?.message || response.data?.message || 'Failed to remove item'
+        const errorMsg = responseData?.data?.message || responseData?.message || response?.data?.message || 'Failed to remove item'
         throw new Error(errorMsg)
       }
       // Return the purchase order data
-      return (responseData?.data || responseData || response.data) as PurchaseOrder
+      return (responseData?.data || responseData || response?.data) as PurchaseOrder
     },
     onSuccess: (data, variables) => {
       // Invalidate lists and specific PO detail

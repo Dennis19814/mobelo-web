@@ -258,10 +258,10 @@ export default function SupplierSelector({
   const createMutation = useCreateSupplier()
 
   const suppliers = suppliersData?.data || []
-  const selectedSupplier = suppliers.find((s) => s.id === value)
+  const selectedSupplier = suppliers.find((s: Supplier) => s.id === value)
 
   // Filter suppliers based on search query
-  const filteredSuppliers = suppliers.filter((supplier) =>
+  const filteredSuppliers = suppliers.filter((supplier: Supplier) =>
     supplier.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.city.toLowerCase().includes(searchQuery.toLowerCase())
@@ -436,7 +436,7 @@ export default function SupplierSelector({
                   </div>
                 ) : (
                   <div className="py-1">
-                    {filteredSuppliers.map((supplier, index) => (
+                    {filteredSuppliers.map((supplier: Supplier, index: number) => (
                       <div
                         key={supplier.id}
                         ref={(el) => {
