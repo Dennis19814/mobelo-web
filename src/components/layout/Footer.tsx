@@ -144,7 +144,7 @@ export default function Footer() {
           {/* Copyright */}
           <div className="text-center pt-3 border-t border-orange-200 w-full">
             <p className="text-slate-500 text-sm font-medium">
-              © 2025 mobelo. All rights reserved.
+              © 2026 mobelo. All rights reserved.
             </p>
           </div>
         </div>
