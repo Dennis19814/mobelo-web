@@ -697,8 +697,8 @@ export default function ProductGrid({
               {/* Icon and Title */}
               <div className="flex items-start space-x-4 mb-4">
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Copy className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Copy className="w-6 h-6 text-orange-600" />
                   </div>
                 </div>
                 <div className="flex-1">
@@ -739,7 +739,7 @@ export default function ProductGrid({
                     setDuplicateConfirmId(null);
                     setDuplicatingProduct(null);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
                 >
                   <Copy className="w-4 h-4" />
                   <span>Duplicate Product</span>

@@ -780,7 +780,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
             <button
               onClick={() => setShowBulkDuplicateModal(true)}
               disabled={crudLoading}
-              className="px-3 py-1.5 text-sm bg-white border border-orange-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >Duplicate</button>
             <button
               onClick={() => setSelectedProducts([])}
@@ -967,8 +967,8 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
               {/* Icon and Title */}
               <div className="flex items-start space-x-4 mb-4">
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Copy className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Copy className="w-6 h-6 text-orange-600" />
                   </div>
                 </div>
                 <div className="flex-1">
@@ -1008,7 +1008,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
                     setShowBulkDuplicateModal(false)
                     await handleBulkDuplicate()
                   }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
                 >
                   <Copy className="w-4 h-4" />
                   <span>Duplicate {selectedProducts.length === 1 ? 'Product' : 'Products'}</span>
