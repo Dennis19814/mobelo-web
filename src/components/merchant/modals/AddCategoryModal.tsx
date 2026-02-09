@@ -381,7 +381,7 @@ export function AddCategoryModal({
                     >
                       <Upload className="w-5 h-5 text-orange-500" />
                       <span className="text-sm font-medium text-gray-700">Click to upload</span>
-                      <span className="text-xs text-gray-500">• Max 5MB</span>
+                      <span className="text-xs text-gray-500">• Max 5MB • No emoji or special characters in filename</span>
                     </button>
                   </div>
                 ) : (

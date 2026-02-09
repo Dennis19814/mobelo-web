@@ -30,6 +30,54 @@ export interface UseLocalCategoryFormOptions {
   onCancel?: () => void;
 }
 
+/** Convert generic API errors (e.g. "Internal server error") into merchant-friendly messages with context */
+function toMerchantFriendlyError(
+  rawMessage: string,
+  errorData?: Record<string, unknown> | null,
+  context: 'image' | 'category' = 'category'
+): string {
+  const normalized = rawMessage?.trim().toLowerCase() || '';
+  const isGeneric =
+    normalized.includes('internal server error') ||
+    normalized.includes('internal server') ||
+    normalized.startsWith('500') ||
+    normalized === 'error' ||
+    normalized === 'server error';
+
+  // Extract any extra details from API response
+  const extra =
+    errorData && typeof errorData === 'object'
+      ? [
+          (errorData as { message?: string }).message,
+          (errorData as { error?: string }).error,
+          (errorData as { reason?: string }).reason,
+          (errorData as { details?: string }).details,
+          Array.isArray((errorData as { validationErrors?: string[] }).validationErrors)
+            ? (errorData as { validationErrors?: string[] }).validationErrors?.join(', ')
+            : null,
+        ]
+          .filter(Boolean)
+          .map(String)
+          .filter((s) => s && !s.toLowerCase().includes('internal server error'))
+          .slice(0, 2)
+          .join('. ')
+      : '';
+
+  if (!isGeneric && rawMessage?.trim()) {
+    return extra ? `${rawMessage.trim()} ${extra}`.trim() : rawMessage.trim();
+  }
+
+  if (context === 'image') {
+    const base =
+      'Image upload failed. Common causes: file too large (max 5MB), unsupported format (use JPEG, PNG, or WebP), filename with emoji or special characters, file may be corrupted, or a temporary server issue.';
+    return extra ? `${base} Server said: ${extra}` : base;
+  }
+
+  const base =
+    'Something went wrong while saving. Please try again. If you uploaded an image, check it is under 5MB, in JPEG/PNG/WebP format, and the filename has no emoji or special characters.';
+  return extra ? `${base} Details: ${extra}` : base;
+}
+
 export interface UseLocalCategoryFormReturn {
   formData: LocalCategoryFormData;
   errors: Record<string, string>;
@@ -553,19 +601,39 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
         // When image is uploaded, don't include icon/emoji fields at all
       }
 
-      console.log('[UPLOAD-DEBUG-2] Calling onSubmit with data', {
-        submitData,
-        hasImageFile: !!imageFile
-      });
+      // For create: use apiService directly so we can show API errors (e.g. duplicate name) in the modal
+      const isCreate = !category;
+      let result: Category | null;
 
-      const result = await onSubmit(submitData);
-
-      console.log('[UPLOAD-DEBUG-3] onSubmit returned result', {
-        resultId: result?.id,
-        resultIconUrl: result?.iconUrl,
-        resultImageUrl: result?.imageUrl,
-        resultDisplayType: result?.displayType
-      });
+      if (isCreate) {
+        try {
+          const createResponse = await apiService.createCategory(submitData as CreateCategoryData);
+          if (!createResponse.ok || !createResponse.data) {
+            const rawMsg =
+              (createResponse.data && typeof createResponse.data === 'object' && ((createResponse.data as { message?: string }).message || (createResponse.data as { error?: string }).error)) ||
+              'Failed to create category. A category with this name may already exist.';
+            const errMsg = toMerchantFriendlyError(
+              String(rawMsg),
+              createResponse.data && typeof createResponse.data === 'object' ? (createResponse.data as Record<string, unknown>) : null,
+              'category'
+            );
+            setErrors(prev => ({ ...prev, _general: errMsg }));
+            return null;
+          }
+          result = createResponse.data;
+        } catch (createError) {
+          const err = createError as { message?: string; data?: Record<string, unknown> };
+          const rawMsg =
+            (err?.data && typeof err.data === 'object' && String((err.data.message || err.data.error || '') as string)) ||
+            (createError instanceof Error ? createError.message : String(createError)) ||
+            'Failed to create category. A category with this name may already exist.';
+          const errMsg = toMerchantFriendlyError(rawMsg, err?.data, 'category');
+          setErrors(prev => ({ ...prev, _general: errMsg }));
+          return null;
+        }
+      } else {
+        result = await onSubmit(submitData);
+      }
 
       if (result) {
         setIsDirty(false);
@@ -593,7 +661,10 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
               dataDisplayType: uploadResponse.data?.displayType
             });
 
-            if (uploadResponse.ok && uploadResponse.data) {
+            const hasImageInResponse =
+              !!(uploadResponse.data && typeof uploadResponse.data === 'object' && (uploadResponse.data as any).imageUrl);
+
+            if (uploadResponse.ok && uploadResponse.data && hasImageInResponse) {
               logger.info('Category image uploaded successfully', {
                 categoryId: result.id,
                 iconUrl: uploadResponse.data.iconUrl,
@@ -615,33 +686,73 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
             } else {
               console.log('[UPLOAD-DEBUG-7] Image upload FAILED', {
                 status: uploadResponse.status,
-                data: uploadResponse.data
+                data: uploadResponse.data,
+                hasImageInResponse
               });
               logger.error('Image upload failed', { categoryId: result.id, status: uploadResponse.status });
-              // Return the original category - image upload failed but category was created/updated
-              setErrors(prev => ({
-                ...prev,
-                _general: 'Category saved but image upload failed. Please try uploading the image again.',
-              }));
-              // Return result even if image upload failed - category was still created/updated
-              return result;
+
+              const rawMsg =
+                (uploadResponse.data &&
+                  typeof uploadResponse.data === 'object' &&
+                  (((uploadResponse.data as any).message as string | undefined) ||
+                    ((uploadResponse.data as any).error as string | undefined))) ||
+                (typeof uploadResponse.data === 'string' ? uploadResponse.data : null) ||
+                (hasImageInResponse === false
+                  ? 'Image upload failed. The image was not saved.'
+                  : null) ||
+                `Image upload failed (${uploadResponse.status}).`;
+              const errorMsg = toMerchantFriendlyError(
+                String(rawMsg || 'Image upload failed'),
+                uploadResponse.data && typeof uploadResponse.data === 'object' ? (uploadResponse.data as Record<string, unknown>) : null,
+                'image'
+              );
+              setErrors(prev => ({ ...prev, _general: errorMsg }));
+
+              // Roll back create so category isn't kept without image
+              if (isCreate) {
+                try {
+                  await apiService.deleteCategory(result.id, appId);
+                } catch (rollbackError) {
+                  logger.error('Failed to rollback category after image upload failure', {
+                    categoryId: result.id,
+                    error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+                  });
+                }
+              }
+
+              return null;
             }
           } catch (uploadError) {
             console.log('[UPLOAD-DEBUG-8] Image upload EXCEPTION', {
               error: uploadError instanceof Error ? uploadError.message : uploadError,
-              errorStack: uploadError instanceof Error ? uploadError.stack : undefined
+              errorStack: uploadError instanceof Error ? uploadError.stack : undefined,
+              errorData: (uploadError as any)?.data,
             });
             logger.error('Error uploading category image', {
               error: uploadError instanceof Error ? uploadError.message : uploadError,
               categoryId: result.id
             });
-            // Category was created/updated successfully, but image upload failed
-            setErrors(prev => ({
-              ...prev,
-              _general: 'Category saved but image upload failed. Please try uploading the image again.',
-            }));
-            // Return result even if image upload failed - category was still created/updated
-            return result;
+
+            const err = uploadError as { message?: string; data?: Record<string, unknown> };
+            const rawMsg =
+              (err?.data && typeof err.data === 'object' && String((err.data.message || err.data.error || '') as string)) ||
+              (uploadError instanceof Error ? uploadError.message : String(uploadError)) ||
+              'Image upload failed.';
+            const errorMsg = toMerchantFriendlyError(rawMsg, err?.data, 'image');
+            setErrors(prev => ({ ...prev, _general: errorMsg }));
+
+            if (isCreate) {
+              try {
+                await apiService.deleteCategory(result.id, appId);
+              } catch (rollbackError) {
+                logger.error('Failed to rollback category after image upload failure', {
+                  categoryId: result.id,
+                  error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+                });
+              }
+            }
+
+            return null;
           }
         }
 
@@ -655,11 +766,14 @@ export function useLocalCategoryForm(options: UseLocalCategoryFormOptions): UseL
         error: error instanceof Error ? error.message : error
       });
 
-      // Set general error
-      setErrors(prev => ({
-        ...prev,
-        _general: error instanceof Error ? error.message : 'An error occurred while saving',
-      }));
+      const err = error as { message?: string; data?: Record<string, unknown> };
+      const rawMsg = err instanceof Error ? err.message : String(error);
+      const errorMsg = toMerchantFriendlyError(
+        rawMsg || 'An error occurred while saving',
+        err?.data,
+        'category'
+      );
+      setErrors(prev => ({ ...prev, _general: errorMsg }));
 
       return null;
     } finally {
