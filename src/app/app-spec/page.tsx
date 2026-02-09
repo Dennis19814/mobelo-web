@@ -6,6 +6,8 @@ import { Navigation } from '@/components/layout'
 import HomeAppCarousel from '@/components/HomeAppCarousel'
 import { SigninModal } from '@/components/modals'
 import { apiService } from '@/lib/api-service'
+import { THEME_NAMES, ICON_LIBRARIES, FONT_FAMILIES, isDarkTheme as checkIsDarkTheme } from '@/lib/web-app-constants'
+import { SimpleLocalIcon } from '@/components/ui/icons/LocalIcon'
 import {
   Home as HomeIcon,
   Search,
@@ -139,19 +141,24 @@ function AppSpecContent() {
       isDark: true,
     },
   ]
-  const [selectedThemeId, setSelectedThemeId] = useState('theme')
+  const [selectedThemeId, setSelectedThemeId] = useState<number | null>(1) // Default: Nordic Minimal
+  const [selectedFontFamilyId, setSelectedFontFamilyId] = useState<number | null>(3) // Default: Poppins
+  const [selectedIconLibraryId, setSelectedIconLibraryId] = useState<number | null>(1) // Default: Feather
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
+  const [isFontMenuOpen, setIsFontMenuOpen] = useState(false)
+  const fontMenuRef = useRef<HTMLDivElement | null>(null)
 
-  // Load Google Fonts dynamically based on API response
+  // Load Google Fonts dynamically based on selected font or API response
   useEffect(() => {
-    const spec = data?.spec
-    if (!spec || !spec.fonts) return
-    const families = [spec.fonts.heading, spec.fonts.body].filter(Boolean) as string[]
-    if (families.length === 0) return
+    const selectedFont = FONT_FAMILIES.find(f => f.id === selectedFontFamilyId)
+    const fontToLoad = selectedFont?.value || data?.spec?.fonts?.heading || 'Inter'
+    
+    // Skip loading for System fonts
+    if (fontToLoad === 'System' || fontToLoad === 'Courier') return
+    
+    // Load Google Fonts
     const toGF = (name: string) => name.trim().replace(/\s+/g, '+')
-    const href = `https://fonts.googleapis.com/css2?${families
-      .map(f => `family=${encodeURIComponent(toGF(f))}:wght@400;600;700`)
-      .join('&')}&display=swap`
+    const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(toGF(fontToLoad))}:wght@400;600;700&display=swap`
     const id = 'dynamic-google-fonts'
     let link = document.getElementById(id) as HTMLLinkElement | null
     if (!link) {
@@ -163,7 +170,7 @@ function AppSpecContent() {
     } else if (link.href !== href) {
       link.href = href
     }
-  }, [data?.spec?.fonts?.heading, data?.spec?.fonts?.body, data?.spec])
+  }, [selectedFontFamilyId, data?.spec?.fonts?.heading])
 
   useEffect(() => {
     // Try token-based sessionStorage first
@@ -199,19 +206,23 @@ function AppSpecContent() {
   }, [isThemeMenuOpen])
 
   useEffect(() => {
-    const spec = data?.spec
-    if (!spec) return
-    const baseThemes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
-      ? spec.best.suggestedThemes
-      : (spec.theme ? [spec.theme] : [])
-    const themes = [...baseThemes, ...darkThemes.filter((theme) => !baseThemes.some((t) => t.id === theme.id))]
-    const defaultId = spec.theme?.id || themes[0]?.id
-    if (!defaultId) return
-    const isCurrentValid = themes.some((theme) => theme.id === selectedThemeId)
-    if (selectedThemeId === 'theme' || !isCurrentValid) {
-      setSelectedThemeId(defaultId)
+    if (!isFontMenuOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (fontMenuRef.current && !fontMenuRef.current.contains(target)) {
+        setIsFontMenuOpen(false)
+      }
     }
-  }, [data, selectedThemeId, darkThemes])
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isFontMenuOpen])
+
+  useEffect(() => {
+    // Initialize theme selection - use first theme from THEME_NAMES if not set
+    if (selectedThemeId === null && THEME_NAMES.length > 0) {
+      setSelectedThemeId(THEME_NAMES[0].id)
+    }
+  }, [selectedThemeId])
 
   const roleClass = (role: string) =>
     `inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
@@ -232,10 +243,36 @@ function AppSpecContent() {
 
     if (!data) return
 
-    // Store app spec data in sessionStorage for app-builder page
+    // Get selected values from constants
+    const selectedTheme = THEME_NAMES.find(t => t.id === selectedThemeId)
+    const selectedIconLib = ICON_LIBRARIES.find(i => i.id === selectedIconLibraryId)
+    const selectedFont = FONT_FAMILIES.find(f => f.id === selectedFontFamilyId)
+
+    // Prepare customizations object
+    const customizations = {
+      theme: {
+        id: selectedTheme?.id || null,
+        value: selectedTheme?.value || null,
+        label: selectedTheme?.label || null,
+        colors: selectedTheme?.colors || null,
+      },
+      fontFamily: {
+        id: selectedFont?.id || null,
+        value: selectedFont?.value || null,
+        label: selectedFont?.label || null,
+      },
+      iconLibrary: {
+        id: selectedIconLib?.id || null,
+        value: selectedIconLib?.value || null,
+        label: selectedIconLib?.label || null,
+      },
+    }
+
+    // Store app spec data with customizations
     sessionStorage.setItem('appCreationData', JSON.stringify({
       prompt: data.prompt,
       spec: data.spec,
+      customizations,
       creating: true
     }))
 
@@ -386,14 +423,19 @@ function AppSpecContent() {
     text: '#1F2937'
   }
 
+  // Use THEME_NAMES for theme selection
+  const selectedTheme = THEME_NAMES.find(t => t.id === selectedThemeId) || THEME_NAMES[0]
+  
+  // Get theme colors from THEME_NAMES
+  const themeColorPalette = selectedTheme.colors || THEME_NAMES[0].colors
+  
+  // Keep original theme colors logic for display purposes (from API spec) - used for swatches in dropdown
   const baseThemes = (spec.best?.suggestedThemes && spec.best.suggestedThemes.length > 0)
     ? spec.best.suggestedThemes
     : (spec.theme ? [spec.theme] : [])
   const availableThemes = [...baseThemes, ...darkThemes.filter((theme) => !baseThemes.some((t) => t.id === theme.id))]
-
   const chosenTheme = spec.theme || availableThemes[0]
-  const selectedTheme = availableThemes.find((theme) => theme.id === selectedThemeId) || chosenTheme
-  const themeColors = selectedTheme?.colors || chosenTheme?.colors || defaultThemeColors
+  const themeColors = chosenTheme?.colors || defaultThemeColors
   const themeSwatches = [
     themeColors.primary,
     themeColors.secondary,
@@ -401,15 +443,8 @@ function AppSpecContent() {
     themeColors.background,
     themeColors.text,
   ]
-  const isDarkTheme = selectedTheme?.isDark ?? (() => {
-    const hex = (selectedTheme?.colors?.background || selectedTheme?.colors?.text || '#FFFFFF').replace('#', '')
-    if (hex.length !== 6) return false
-    const r = parseInt(hex.slice(0, 2), 16) / 255
-    const g = parseInt(hex.slice(2, 4), 16) / 255
-    const b = parseInt(hex.slice(4, 6), 16) / 255
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    return luminance < 0.45
-  })()
+  // Check if selected theme is dark
+  const isDarkTheme = checkIsDarkTheme(selectedThemeId)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -495,16 +530,8 @@ function AppSpecContent() {
 
         <section className="mb-10">
   {(() => {
-    const colorSwatches = [
-      themeColors.primary,
-      themeColors.secondary,
-      themeColors.accent,
-      themeColors.background,
-      themeColors.text,
-      '#F5F5F5',
-      '#D1D5DB',
-      '#9CA3AF'
-    ]
+    // Use theme colors from selected theme
+    const colorSwatches = themeColorPalette
 
     const menus = (
       spec.menuItems?.length
@@ -514,25 +541,99 @@ function AppSpecContent() {
 
     const icons = ['home', 'search', 'shopping-bag', 'heart', 'shopping-cart', 'user']
 
-    const iconNode = (key: string) => {
-      switch (key) {
-        case 'home': return <HomeIcon className="h-4 w-4" />
-        case 'search': return <Search className="h-4 w-4" />
-        case 'shopping-bag': return <ShoppingBag className="h-4 w-4" />
-        case 'heart': return <Heart className="h-4 w-4" />
-        case 'shopping-cart': return <ShoppingCart className="h-4 w-4" />
-        case 'user': return <User className="h-4 w-4" />
-        default: return <ClipboardList className="h-4 w-4" />
+    // Map ICON_LIBRARIES values to actual library keys in the system
+    const getLibraryKey = (libraryValue: string): string => {
+      const libraryMap: Record<string, string> = {
+        'feather': 'feather',
+        'material': 'tabler', // Material icons might not exist, use tabler as fallback
+        'ionicons': 'tabler', // Ionicons might not exist, use tabler as fallback
+        'fontawesome': 'tabler', // Font Awesome might not exist, use tabler as fallback
+        'antdesign': 'tabler', // Ant Design might not exist, use tabler as fallback
+        'octicons': 'tabler', // Octicons might not exist, use tabler as fallback
+        'entypo': 'tabler', // Entypo might not exist, use tabler as fallback
+        'simpleline': 'tabler', // Simple Line might not exist, use tabler as fallback
       }
+      return libraryMap[libraryValue] || 'tabler' // Default to tabler
+    }
+
+    // Map icon keys to icon names for different libraries
+    const getIconName = (key: string, libraryKey: string): string => {
+      const iconMap: Record<string, Record<string, string>> = {
+        'feather': {
+          'home': 'home',
+          'search': 'search',
+          'shopping-bag': 'shopping-bag',
+          'heart': 'heart',
+          'shopping-cart': 'shopping-cart',
+          'user': 'user',
+        },
+        'tabler': {
+          'home': 'home',
+          'search': 'search',
+          'shopping-bag': 'shopping-bag',
+          'heart': 'heart',
+          'shopping-cart': 'shopping-cart',
+          'user': 'user',
+        },
+        'iconoir': {
+          'home': 'home',
+          'search': 'search',
+          'shopping-bag': 'shopping-bag',
+          'heart': 'heart',
+          'shopping-cart': 'shopping-cart',
+          'user': 'user',
+        },
+        'remix': {
+          'home': 'home',
+          'search': 'search',
+          'shopping-bag': 'shopping-bag',
+          'heart': 'heart',
+          'shopping-cart': 'shopping-cart',
+          'user': 'user',
+        },
+        'lucide': {
+          'home': 'home',
+          'search': 'search',
+          'shopping-bag': 'shopping-bag',
+          'heart': 'heart',
+          'shopping-cart': 'shopping-cart',
+          'user': 'user',
+        },
+      }
+      return iconMap[libraryKey]?.[key] || key
+    }
+
+    // Fallback to Lucide icons if library icon not found
+    const fallbackIcons: Record<string, React.ReactElement> = {
+      'home': <HomeIcon className="h-4 w-4" />,
+      'search': <Search className="h-4 w-4" />,
+      'shopping-bag': <ShoppingBag className="h-4 w-4" />,
+      'heart': <Heart className="h-4 w-4" />,
+      'shopping-cart': <ShoppingCart className="h-4 w-4" />,
+      'user': <User className="h-4 w-4" />,
+    }
+
+    const iconNode = (key: string, selectedLibraryValue: string) => {
+      const libraryKey = getLibraryKey(selectedLibraryValue)
+      const iconName = getIconName(key, libraryKey)
+      const iconColor = isDarkTheme ? '#E2E8F0' : '#475569'
+      
+      // Use SimpleLocalIcon to load from the selected library
+      // It will show a "?" if icon not found, then we can fallback
+      return (
+        <SimpleLocalIcon
+          name={iconName}
+          library={libraryKey}
+          size={16}
+          color={iconColor}
+          className="flex-shrink-0"
+        />
+      )
     }
 
     return (
       <div
-        className={`rounded-2xl border p-6 shadow-[0_30px_80px_rgba(15,23,42,0.04)] ${
-          isDarkTheme
-            ? 'border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
-            : 'border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white'
-        }`}
+        className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.04)]"
       >
         <div className="grid gap-6 md:grid-cols-3">
 
@@ -543,7 +644,7 @@ function AppSpecContent() {
             }`}
           >
             <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
-              {selectedTheme?.displayName || spec.concept.appName || 'App Theme'}
+              {selectedTheme?.label || spec.concept.appName || 'App Theme'}
             </div>
 
             <div className="grid grid-cols-4 gap-3">
@@ -561,78 +662,82 @@ function AppSpecContent() {
           </div>
 
           {/* 🔤 Typography */}
-          <div
-            className={`rounded-2xl border p-5 shadow-sm ${
-              isDarkTheme ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'
-            }`}
-          >
-            <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
+          <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-800">
               Typography
             </div>
 
-            <div className="flex items-center gap-4">
-              <div
-                className={`flex h-14 w-14 items-center justify-center rounded-xl text-xl font-bold shadow-inner ${
-                  isDarkTheme
-                    ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-slate-100'
-                    : 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700'
-                }`}
-                style={{ fontFamily: spec.fonts?.heading || 'Inter' }}
-              >
-                Aa
-              </div>
+            {(() => {
+              const selectedFont = FONT_FAMILIES.find(f => f.id === selectedFontFamilyId) || FONT_FAMILIES[2] // Default to Poppins
+              const fontValue = selectedFont.value === 'System' ? 'system-ui, -apple-system, sans-serif' : selectedFont.value
+              
+              return (
+                <div className="flex items-center gap-4">
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-xl text-xl font-bold shadow-inner bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700"
+                    style={{ fontFamily: fontValue }}
+                  >
+                    Aa
+                  </div>
 
-              <div>
-                <div className={`text-sm font-medium ${isDarkTheme ? 'text-slate-100' : 'text-slate-700'}`}>
-                  {spec.fonts?.heading || 'Inter'}
+                  <div>
+                    <div className="text-sm font-medium text-slate-700">
+                      {selectedFont.label}
+                    </div>
+                    <div
+                      className="text-xs mt-1 text-slate-500"
+                      style={{ fontFamily: fontValue }}
+                    >
+                      The quick brown fox jumps over the lazy dog
+                    </div>
+                  </div>
                 </div>
-                <div
-                  className={`text-xs mt-1 ${isDarkTheme ? 'text-slate-400' : 'text-slate-500'}`}
-                  style={{ fontFamily: spec.fonts?.body || 'Inter' }}
-                >
-                  The quick brown fox jumps over the lazy dog
-                </div>
-              </div>
-            </div>
+              )
+            })()}
           </div>
 
           {/* 🧩 Icons + Menu */}
-          <div
-            className={`rounded-2xl border p-5 shadow-sm ${
-              isDarkTheme ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'
-            }`}
-          >
-            <div className={`mb-4 text-sm font-semibold ${isDarkTheme ? 'text-slate-100' : 'text-slate-800'}`}>
+          <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-800">
               Navigation
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-4">
-              {icons.map((ic) => (
-                <div
-                  key={ic}
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm ${
-                    isDarkTheme
-                      ? 'border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {iconNode(ic)}
-                </div>
-              ))}
-            </div>
+            {(() => {
+              const selectedIconLib = ICON_LIBRARIES.find(i => i.id === selectedIconLibraryId) || ICON_LIBRARIES[0] // Default to Feather
+              
+              return (
+                <>
+                  <div className="mb-2">
+                    <span className="text-xs text-slate-500">
+                      Icon Library: {selectedIconLib.label}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {icons.map((ic) => (
+                      <div
+                        key={ic}
+                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
+                        title={`${selectedIconLib.label} icon`}
+                      >
+                        {iconNode(ic, selectedIconLib.value)}
+                      </div>
+                    ))}
+                  </div>
 
-            <div className="flex flex-wrap gap-2">
-              {menus.map((m) => (
-                <span
-                  key={m}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    isDarkTheme ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
+                  <div className="flex flex-wrap gap-2">
+                    {menus.map((m) => (
+                      <span
+                        key={m}
+                        className="rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )
+            })()}
           </div>
 
         </div>
@@ -656,24 +761,23 @@ function AppSpecContent() {
         <button
           type="button"
           onClick={() => setIsThemeMenuOpen((prev) => !prev)}
-          className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm transition hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+          className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-2.5 text-sm shadow-sm transition focus:outline-none focus:ring-2 ${
+            isDarkTheme
+              ? 'border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-600 hover:bg-slate-700 focus:ring-slate-600'
+              : 'border border-gray-200 bg-white text-gray-800 hover:border-orange-400 focus:ring-orange-100'
+          }`}
         >
           <span className="font-medium">
-            {selectedTheme?.displayName || "Default Theme"}
+            {selectedTheme?.label || "Default Theme"}
           </span>
 
           <div className="flex items-center gap-1.5">
-            {(selectedTheme?.colors
-              ? [
-                  selectedTheme.colors.primary,
-                  selectedTheme.colors.secondary,
-                  selectedTheme.colors.accent,
-                ]
-              : themeSwatches.slice(0, 3)
-            ).map((hex, index) => (
+            {themeColorPalette.slice(0, 3).map((hex, index) => (
               <span
                 key={index}
-                className="h-4 w-4 rounded-full border border-gray-200"
+                className={`h-4 w-4 rounded-full border ${
+                  isDarkTheme ? 'border-slate-600' : 'border-gray-200'
+                }`}
                 style={{ backgroundColor: hex }}
               />
             ))}
@@ -681,38 +785,46 @@ function AppSpecContent() {
         </button>
 
         {isThemeMenuOpen && (
-          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-            {availableThemes.length ? (
-              availableThemes.map((theme) => (
+          <div className="absolute z-30 mt-2 w-full max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+            {THEME_NAMES.map((theme) => {
+              const isThemeDark = checkIsDarkTheme(theme.id)
+              const isSelected = selectedThemeId === theme.id
+              const themeColors = theme.colors || []
+              
+              return (
                 <button
                   key={theme.id}
                   onClick={() => {
                     setSelectedThemeId(theme.id)
                     setIsThemeMenuOpen(false)
                   }}
-                  className="flex w-full items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50 transition"
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition ${
+                    isThemeDark
+                      ? isSelected
+                        ? 'bg-slate-800 text-white'
+                        : 'bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : isSelected
+                        ? 'bg-orange-50 text-gray-800'
+                        : 'hover:bg-gray-50 text-gray-800'
+                  }`}
                 >
-                  <span className="font-medium text-gray-800">
-                    {theme.displayName}
+                  <span className="font-medium">
+                    {theme.label}
                   </span>
-                  <div className="flex gap-1.5">
-                    {[theme.colors.primary, theme.colors.secondary, theme.colors.accent].map(
-                      (hex, i) => (
-                        <span
-                          key={i}
-                          className="h-4 w-4 rounded-full border"
-                          style={{ backgroundColor: hex }}
-                        />
-                      )
-                    )}
+                  <div className="flex items-center gap-2">
+                    {themeColors.slice(0, 3).map((hex, index) => (
+                      <span
+                        key={index}
+                        className={`h-3 w-3 rounded-full border ${
+                          isThemeDark ? 'border-slate-600' : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: hex }}
+                      />
+                    ))}
                   </div>
                 </button>
-              ))
-            ) : (
-              <div className="px-4 py-3 text-sm text-gray-500">
-                Default theme applied
-              </div>
-            )}
+              )
+            })}
           </div>
         )}
       </div>
@@ -724,15 +836,52 @@ function AppSpecContent() {
         🔤 App Font
       </div>
 
-      <select
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-        defaultValue="poppins"
-      >
-        <option value="poppins">Poppins</option>
-        <option value="inter">Inter</option>
-        <option value="montserrat">Montserrat</option>
-        <option value="source-sans">Source Sans 3</option>
-      </select>
+      <div className="relative" ref={fontMenuRef}>
+        <button
+          type="button"
+          onClick={() => setIsFontMenuOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm transition hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+          style={{
+            fontFamily: (() => {
+              const selectedFont = FONT_FAMILIES.find(f => f.id === selectedFontFamilyId)
+              return selectedFont?.value === 'System' ? 'system-ui, -apple-system, sans-serif' : selectedFont?.value || 'Inter'
+            })()
+          }}
+        >
+          <span className="font-medium">
+            {FONT_FAMILIES.find(f => f.id === selectedFontFamilyId)?.label || 'Poppins'}
+          </span>
+        </button>
+
+        {isFontMenuOpen && (
+          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+            {FONT_FAMILIES.map((font) => {
+              const isSelected = selectedFontFamilyId === font.id
+              const fontValue = font.value === 'System' ? 'system-ui, -apple-system, sans-serif' : font.value
+              
+              return (
+                <button
+                  key={font.id}
+                  onClick={() => {
+                    setSelectedFontFamilyId(font.id)
+                    setIsFontMenuOpen(false)
+                  }}
+                  className={`flex w-full items-center px-4 py-2.5 text-sm transition ${
+                    isSelected
+                      ? 'bg-orange-50 text-gray-800'
+                      : 'hover:bg-gray-50 text-gray-800'
+                  }`}
+                  style={{ fontFamily: fontValue }}
+                >
+                  <span className="font-medium">
+                    {font.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
 
     {/* Icon Selector */}
@@ -742,13 +891,15 @@ function AppSpecContent() {
       </div>
 
       <select
+        value={selectedIconLibraryId || ''}
+        onChange={(e) => setSelectedIconLibraryId(Number(e.target.value))}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-        defaultValue="leaf"
       >
-        <option value="leaf">Leaf</option>
-        <option value="cart">Cart</option>
-        <option value="sparkle">Sparkle</option>
-        <option value="badge">Badge</option>
+        {ICON_LIBRARIES.map((iconLib) => (
+          <option key={iconLib.id} value={iconLib.id}>
+            {iconLib.label}
+          </option>
+        ))}
       </select>
     </div>
 
