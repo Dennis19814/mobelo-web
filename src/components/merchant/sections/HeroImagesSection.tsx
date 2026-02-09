@@ -280,7 +280,7 @@ export const HeroImagesSection = ({ appId }: HeroImagesSectionProps) => {
           <p className="text-sm text-gray-400 mt-1">Upload images to get started</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {heroImages.map((image, index) => (
             <div
               key={image.id}
