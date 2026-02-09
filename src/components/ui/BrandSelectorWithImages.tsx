@@ -174,21 +174,30 @@ export default function BrandSelectorWithImages({
     }
   }, [inputValue, isOpen, fetchBrands, searchTerm])
 
-  // Initialize input value only on component mount or when brands are loaded
+  // Sync input value from prop when value changes (e.g. loading product, selecting from dropdown)
+  // Use ref to avoid syncing when user clears the field - we only sync when value prop actually changes
+  const prevValueRef = useRef<typeof value | symbol>(Symbol('initial'))
+  const prevBrandsLengthRef = useRef(0)
   useEffect(() => {
-    // Only set initial value once when brands are loaded
-    if (brands.length > 0 && inputValue === '') {
+    const valueChanged = prevValueRef.current !== value
+    const brandsWereEmpty = prevBrandsLengthRef.current === 0
+    const brandsJustLoaded = brandsWereEmpty && brands.length > 0
+    prevValueRef.current = value
+    prevBrandsLengthRef.current = brands.length
+
+    // Sync when: value prop changed, OR brands just loaded (needed to resolve brandId to name)
+    const shouldSync = (valueChanged || brandsJustLoaded) && brands.length > 0
+    if (shouldSync) {
       if (typeof value === 'string' && value) {
         setInputValue(value)
       } else if (typeof value === 'number') {
-        // Find brand by ID and set the name
         const brand = brands.find(b => b.id === value)
-        if (brand) {
-          setInputValue(brand.name)
-        }
+        setInputValue(brand ? brand.name : '')
+      } else {
+        setInputValue('')
       }
     }
-  }, [brands, inputValue, value])
+  }, [brands, value])
 
   // Validation logic
   const isBrandValid = useCallback((brandName: string) => {
@@ -214,6 +223,11 @@ export default function BrandSelectorWithImages({
     const newValue = e.target.value
     setInputValue(newValue)
     setHighlightedIndex(-1)
+
+    // When user clears the field, update parent immediately so the sync effect doesn't reset to the previous value
+    if (newValue === '') {
+      onChange(null, '')
+    }
 
     if (!isOpen) {
       setIsOpen(true)
