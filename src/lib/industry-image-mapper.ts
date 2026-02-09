@@ -6,7 +6,7 @@
  *
  * To add new industry templates:
  * 1. Create folder: /public/images/templates/Verticals - [New Industry]/
- * 2. Add 10 subfolders (01-10), each with matching .png (01/01.png, 02/02.png, etc.)
+ * 2. Add 10 template images directly in folder (01.png, 02.png, ..., 10.png)
  * 3. Add one line to VERTICAL_TO_FOLDER_MAP below
  */
 
@@ -33,7 +33,7 @@ const VERTICAL_TO_FOLDER_MAP: Record<string, string> = {
 const DEFAULT_FOLDER = 'Verticals - General Retail'
 
 /**
- * Number of template images per industry (01-10 subfolders)
+ * Number of template images per industry
  */
 const IMAGE_COUNT = 10
 
@@ -46,9 +46,9 @@ const IMAGE_COUNT = 10
  * @example
  * const images = getIndustryImages('fashion')
  * // Returns: [
- * //   { src: '/images/templates/Verticals - Fashion & Apparel/01/01.png' },
- * //   { src: '/images/templates/Verticals - Fashion & Apparel/02/02.png' },
- * //   { src: '/images/templates/Verticals - Fashion & Apparel/03/03.png' },
+ * //   { src: '/images/templates/Verticals - Fashion & Apparel/01.png' },
+ * //   { src: '/images/templates/Verticals - Fashion & Apparel/02.png' },
+ * //   { src: '/images/templates/Verticals - Fashion & Apparel/03.png' },
  * //   ...
  * // ]
  */
@@ -59,13 +59,12 @@ export function getIndustryImages(verticalName: string): Array<{ src: string }> 
   // Look up folder mapping, use default if not found
   const folderName = VERTICAL_TO_FOLDER_MAP[normalizedVertical] || DEFAULT_FOLDER
 
-  // Generate image paths for all 10 subfolders
+  // Generate image paths for all 10 template images
   const images: Array<{ src: string }> = []
 
   for (let i = 1; i <= IMAGE_COUNT; i++) {
-    const folderNumber = i.toString().padStart(2, '0') // "01", "02", etc.
-    // Image filename matches folder number (01/01.png, 02/02.png, etc.)
-    const imagePath = `/images/templates/${folderName}/${folderNumber}/${folderNumber}.png`
+    const imageNumber = i.toString().padStart(2, '0') // "01", "02", etc.
+    const imagePath = `/images/templates/${folderName}/${imageNumber}.png`
     images.push({ src: imagePath })
   }
 
