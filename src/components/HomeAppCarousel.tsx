@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-const carouselImages = [
+const defaultCarouselImages = [
   { src: '/images/mockups/pink.png' },
   { src: '/images/mockups/green.png' },
   { src: '/images/mockups/purple.png' },
@@ -13,8 +13,21 @@ const carouselImages = [
 
 const glowGradient = ''
 
-export default function HomeAppCarousel() {
+interface HomeAppCarouselProps {
+  images?: Array<{ src: string }>
+  onActiveIndexChange?: (index: number) => void
+}
+
+export default function HomeAppCarousel({ images, onActiveIndexChange }: HomeAppCarouselProps = {}) {
+  const carouselImages = images && images.length > 0 ? images : defaultCarouselImages
   const [activeIndex, setActiveIndex] = useState(0)
+
+  // Notify parent when activeIndex changes
+  useEffect(() => {
+    if (onActiveIndexChange) {
+      onActiveIndexChange(activeIndex)
+    }
+  }, [activeIndex, onActiveIndexChange])
 
   const visibleSlides = useMemo(() => {
     const total = carouselImages.length

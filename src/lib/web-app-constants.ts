@@ -195,9 +195,9 @@ export type FontFamily = typeof FONT_FAMILIES[number];
  * Get theme colors by theme ID
  */
 export const getThemeColors = (themeId: number | null): string[] => {
-  if (!themeId) return THEME_NAMES[0].colors;
+  if (!themeId) return [...THEME_NAMES[0].colors];
   const theme = getThemeById(themeId);
-  return theme?.colors || THEME_NAMES[0].colors;
+  return theme?.colors ? [...theme.colors] : [...THEME_NAMES[0].colors];
 };
 
 /**

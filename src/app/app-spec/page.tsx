@@ -8,6 +8,8 @@ import { SigninModal } from '@/components/modals'
 import { apiService } from '@/lib/api-service'
 import { THEME_NAMES, ICON_LIBRARIES, FONT_FAMILIES, isDarkTheme as checkIsDarkTheme } from '@/lib/web-app-constants'
 import { SimpleLocalIcon } from '@/components/ui/icons/LocalIcon'
+import { getIndustryImages, getIndustryFolderName } from '@/lib/industry-image-mapper'
+import { TEMPLATE_METADATA, getTemplateMetadata } from '@/lib/template-metadata'
 import {
   Home as HomeIcon,
   Search,
@@ -144,6 +146,8 @@ function AppSpecContent() {
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(1) // Default: Nordic Minimal
   const [selectedFontFamilyId, setSelectedFontFamilyId] = useState<number | null>(3) // Default: Poppins
   const [selectedIconLibraryId, setSelectedIconLibraryId] = useState<number | null>(1) // Default: Feather
+  const [currentTemplateVertical, setCurrentTemplateVertical] = useState<string | null>(null)
+  const [currentTemplateBorderRadius, setCurrentTemplateBorderRadius] = useState<string | null>(null)
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false)
   const fontMenuRef = useRef<HTMLDivElement | null>(null)
@@ -265,6 +269,10 @@ function AppSpecContent() {
         id: selectedIconLib?.id || null,
         value: selectedIconLib?.value || null,
         label: selectedIconLib?.label || null,
+      },
+      template: {
+        vertical: currentTemplateVertical,
+        borderRadius: currentTemplateBorderRadius,
       },
     }
 
@@ -525,7 +533,25 @@ function AppSpecContent() {
             </div>
           </div>
         <div className="mb-8">
-          <HomeAppCarousel />
+          {(() => {
+            const verticalName = spec.best?.verticalName || 'base'
+            const verticalFolder = getIndustryFolderName(verticalName)
+            const images = getIndustryImages(verticalName)
+
+            // Handler for carousel index changes
+            const handleCarouselIndexChange = (index: number) => {
+              const metadata = getTemplateMetadata(verticalFolder, index)
+              if (metadata) {
+                console.log('🎨 Carousel Index Changed:', { index, metadata })
+                setSelectedThemeId(metadata.themeId)
+                setSelectedIconLibraryId(metadata.iconLibraryId)
+                setCurrentTemplateVertical(metadata.vertical)
+                setCurrentTemplateBorderRadius(metadata.borderRadius)
+              }
+            }
+
+            return <HomeAppCarousel images={images} onActiveIndexChange={handleCarouselIndexChange} />
+          })()}
         </div>
 
         <section className="mb-10">

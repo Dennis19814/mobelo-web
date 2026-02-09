@@ -4,7 +4,8 @@
       "Read(//Users/ideabits/Documents/SourceCode/**)",
       "Bash(npm run type-check:*)",
       "Bash(cat:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
