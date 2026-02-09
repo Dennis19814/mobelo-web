@@ -112,8 +112,8 @@ class ApiService {
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
-  async createAppWithSpec(appIdea: string, specData: any): Promise<ApiResponse<{ appId: number; jobId: number; appName: string; status: string }>> {
-    const response = await httpClient.post('/v1/platform/apps/with-spec', { appIdea, specData });
+  async createAppWithSpec(appIdea: string, specData: any, customizations?: any): Promise<ApiResponse<{ appId: number; jobId: number; appName: string; status: string }>> {
+    const response = await httpClient.post('/v1/platform/apps/with-spec', { appIdea, specData, customizations });
     return { ok: response.ok, status: response.status, data: response.data };
   }
 

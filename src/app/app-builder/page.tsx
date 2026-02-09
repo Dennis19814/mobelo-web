@@ -728,8 +728,19 @@ function AppBuilderContent() {
       try {
         const appCreationData = JSON.parse(appCreationDataStr)
 
+        // Log customizations data for debugging
+        logger.debug('[AppBuilder] Creating app with customizations:', {
+          prompt: appCreationData.prompt,
+          appName: appCreationData.spec?.concept?.appName,
+          customizations: appCreationData.customizations
+        })
+
         // Call API to create app
-        apiService.createAppWithSpec(appCreationData.prompt, appCreationData.spec)
+        apiService.createAppWithSpec(
+          appCreationData.prompt,
+          appCreationData.spec,
+          appCreationData.customizations
+        )
           .then((response) => {
             if (response.ok && response.data?.appId) {
               logger.debug('[AppBuilder] App created successfully:', { appId: response.data.appId })

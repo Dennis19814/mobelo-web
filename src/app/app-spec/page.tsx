@@ -304,6 +304,18 @@ function AppSpecContent() {
       creating: true
     }))
 
+    // Debug logging to verify customizations are stored
+    console.log('📦 Stored app creation data:', {
+      prompt: data.prompt,
+      appName: data.spec.concept?.appName,
+      customizations: {
+        theme: customizations.theme,
+        fontFamily: customizations.fontFamily,
+        iconLibrary: customizations.iconLibrary,
+        template: customizations.template
+      }
+    })
+
     // Navigate immediately to app-builder page
     router.push('/app-builder?creating=true')
   }
