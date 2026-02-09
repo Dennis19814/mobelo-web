@@ -165,60 +165,94 @@ export function useOrders(options: UseOrdersOptions = {}): UseOrdersReturn {
         setError(null);
         setCurrentFilters(filters);
 
-        // Fetch filtered orders
+        // Fetch filtered orders from API
         const response = await apiService.getOrders(filters);
 
-        if (response.ok && response.data) {
-          let ordersList: Order[] = [];
+        if (!response.ok || !response.data) {
+          throw new Error(response.data?.message || 'Failed to fetch orders');
+        }
 
-          // Handle paginated response
-          if (response.data.data) {
-            ordersList = response.data.data;
-            setTotalOrders(response.data.meta?.total || 0);
-            setCurrentPage(response.data.meta?.page || 1);
-            setTotalPages(response.data.meta?.totalPages || 1);
-          } else if (Array.isArray(response.data)) {
-            // Handle array response
-            ordersList = response.data;
-            setTotalOrders(response.data.length);
-            setCurrentPage(1);
-            setTotalPages(1);
-          }
+        let ordersList: Order[] = [];
 
-          setOrders(ordersList);
+        // Handle paginated response
+        if (response.data.data) {
+          ordersList = response.data.data;
+          setTotalOrders(response.data.meta?.total || 0);
+          setCurrentPage(response.data.meta?.page || 1);
+          setTotalPages(response.data.meta?.totalPages || 1);
+        } else if (Array.isArray(response.data)) {
+          // Handle array response
+          ordersList = response.data;
+          setTotalOrders(response.data.length);
+          setCurrentPage(1);
+          setTotalPages(1);
+        }
 
-          // Fetch all orders with ONLY date filters for accurate stats
-          const statsFilters: OrderFilters = {
-            dateFrom: filters.dateFrom,
-            dateTo: filters.dateTo,
-            limit: 10000, // High limit to get all orders for stats
-          };
+        const hasStatusFilters =
+          !!filters.status || !!filters.paymentStatus || !!filters.fulfillmentStatus;
 
-          const statsResponse = await apiService.getOrders(statsFilters);
+        // If API returns no orders for a specific status/payment/fulfillment filter,
+        // fall back to client-side filtering on top of a broader fetch.
+        if (hasStatusFilters && ordersList.length === 0) {
+          // Fallback: fetch ALL orders (no status/date filters) and filter client-side
+          const fallbackResponse = await apiService.getOrders({ limit: 10000 });
 
-          if (statsResponse.ok && statsResponse.data) {
+          if (fallbackResponse.ok && fallbackResponse.data) {
             let allOrders: Order[] = [];
 
-            if (statsResponse.data.data) {
-              allOrders = statsResponse.data.data;
-            } else if (Array.isArray(statsResponse.data)) {
-              allOrders = statsResponse.data;
+            if (fallbackResponse.data.data) {
+              allOrders = fallbackResponse.data.data;
+            } else if (Array.isArray(fallbackResponse.data)) {
+              allOrders = fallbackResponse.data;
             }
 
-            // Calculate stats from ALL orders in the date range
+            // Apply the original status/payment/fulfillment filters client-side
+            const filteredOrders = allOrders.filter((order) => {
+              if (filters.status && order.status !== filters.status) return false;
+              if (filters.paymentStatus && order.paymentStatus !== filters.paymentStatus) return false;
+              if (filters.fulfillmentStatus && order.fulfillmentStatus !== filters.fulfillmentStatus) {
+                return false;
+              }
+              return true;
+            });
+
+            setOrders(filteredOrders);
+            setTotalOrders(filteredOrders.length);
+            setCurrentPage(1);
+            setTotalPages(1);
+
+            // Stats should be based on ALL orders in date range, not filtered subset
             setStats(calculateStats(allOrders));
-          } else {
-            // Fallback to filtered orders if stats fetch fails
-            setStats(calculateStats(ordersList));
+            return;
           }
+        }
+
+        // Normal path: use API-filtered orders as-is
+        setOrders(ordersList);
+
+        // Fetch ALL orders (no filters) for accurate, stable stats/breadcrumb counts
+        const statsResponse = await apiService.getOrders({ limit: 10000 });
+
+        if (statsResponse.ok && statsResponse.data) {
+          let allOrders: Order[] = [];
+
+          if (statsResponse.data.data) {
+            allOrders = statsResponse.data.data;
+          } else if (Array.isArray(statsResponse.data)) {
+            allOrders = statsResponse.data;
+          }
+
+          // Calculate stats from ALL orders in the date range
+          setStats(calculateStats(allOrders));
         } else {
-          throw new Error(response.data?.message || 'Failed to fetch orders');
+          // Fallback to filtered orders if stats fetch fails
+          setStats(calculateStats(ordersList));
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setError(errorMessage);
         setOrders([]);
-        setStats(null);
+        // IMPORTANT: don't wipe existing stats on error so breadcrumb counts remain visible
       } finally {
         setIsLoading(false);
       }
