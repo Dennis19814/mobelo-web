@@ -148,6 +148,10 @@ function AppSpecContent() {
   const [selectedIconLibraryId, setSelectedIconLibraryId] = useState<number | null>(1) // Default: Feather
   const [currentTemplateVertical, setCurrentTemplateVertical] = useState<string | null>(null)
   const [currentTemplateBorderRadius, setCurrentTemplateBorderRadius] = useState<string | null>(null)
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState<number>(0)
+  const [hasManualThemeOverride, setHasManualThemeOverride] = useState(false)
+  const [hasManualIconOverride, setHasManualIconOverride] = useState(false)
+  const [hasManualFontOverride, setHasManualFontOverride] = useState(false)
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false)
   const fontMenuRef = useRef<HTMLDivElement | null>(null)
@@ -236,6 +240,22 @@ function AppSpecContent() {
       role === 'retain' ? 'border-purple-200 text-purple-700 bg-purple-50' :
       'border-gray-200 text-gray-700 bg-gray-50'
     }`
+
+  const handleResetToTemplate = () => {
+    if (!data) return
+    const verticalName = data.spec.best?.verticalName || 'base'
+    const verticalFolder = getIndustryFolderName(verticalName)
+    const metadata = getTemplateMetadata(verticalFolder, currentCarouselIndex)
+
+    if (metadata) {
+      console.log('🔄 Resetting to template defaults:', metadata)
+      setSelectedThemeId(metadata.themeId)
+      setSelectedIconLibraryId(metadata.iconLibraryId)
+      setHasManualThemeOverride(false)
+      setHasManualIconOverride(false)
+      setHasManualFontOverride(false)
+    }
+  }
 
   const handleBuildMobileApp = async () => {
     const accessToken = localStorage.getItem('access_token')
@@ -542,9 +562,21 @@ function AppSpecContent() {
             const handleCarouselIndexChange = (index: number) => {
               const metadata = getTemplateMetadata(verticalFolder, index)
               if (metadata) {
-                console.log('🎨 Carousel Index Changed:', { index, metadata })
-                setSelectedThemeId(metadata.themeId)
-                setSelectedIconLibraryId(metadata.iconLibraryId)
+                console.log('🎨 Carousel Index Changed:', { index, metadata, overrides: { theme: hasManualThemeOverride, icon: hasManualIconOverride } })
+
+                // Track current carousel index
+                setCurrentCarouselIndex(index)
+
+                // Only update dropdowns that user hasn't manually overridden
+                if (!hasManualThemeOverride) {
+                  setSelectedThemeId(metadata.themeId)
+                }
+                if (!hasManualIconOverride) {
+                  setSelectedIconLibraryId(metadata.iconLibraryId)
+                }
+                // Font is not in template metadata, so we don't update it from carousel
+
+                // Always update template metadata (needed for app generation)
                 setCurrentTemplateVertical(metadata.vertical)
                 setCurrentTemplateBorderRadius(metadata.borderRadius)
               }
@@ -822,6 +854,7 @@ function AppSpecContent() {
                   key={theme.id}
                   onClick={() => {
                     setSelectedThemeId(theme.id)
+                    setHasManualThemeOverride(true)
                     setIsThemeMenuOpen(false)
                   }}
                   className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition ${
@@ -890,6 +923,7 @@ function AppSpecContent() {
                   key={font.id}
                   onClick={() => {
                     setSelectedFontFamilyId(font.id)
+                    setHasManualFontOverride(true)
                     setIsFontMenuOpen(false)
                   }}
                   className={`flex w-full items-center px-4 py-2.5 text-sm transition ${
@@ -918,7 +952,10 @@ function AppSpecContent() {
 
       <select
         value={selectedIconLibraryId || ''}
-        onChange={(e) => setSelectedIconLibraryId(Number(e.target.value))}
+        onChange={(e) => {
+          setSelectedIconLibraryId(Number(e.target.value))
+          setHasManualIconOverride(true)
+        }}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
       >
         {ICON_LIBRARIES.map((iconLib) => (
@@ -928,6 +965,21 @@ function AppSpecContent() {
         ))}
       </select>
     </div>
+
+    {/* Reset to Template Button */}
+    {(hasManualThemeOverride || hasManualIconOverride || hasManualFontOverride) && (
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={handleResetToTemplate}
+          className="inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 shadow-sm hover:bg-orange-100 hover:border-orange-300 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Reset to Template Defaults
+        </button>
+      </div>
+    )}
 
   </div>
 </section>
