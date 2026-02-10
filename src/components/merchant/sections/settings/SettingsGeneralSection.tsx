@@ -1,6 +1,6 @@
 'use client';
 import { logger } from '@/lib/logger'
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useCrudOperations } from '@/hooks';
 import {
   Save, Trash2, Upload, FileText, Edit2
@@ -72,6 +72,22 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
   const [showDeleteSplashModal, setShowDeleteSplashModal] = useState(false);
   const [showLegalDocumentModal, setShowLegalDocumentModal] = useState(false);
   const [selectedLegalDocumentType, setSelectedLegalDocumentType] = useState<'terms_and_conditions' | 'privacy_policy' | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
+  // When a CRUD error occurs (e.g. invalid splash image), scroll to where the error is rendered
+  useEffect(() => {
+    if (crudError) {
+      try {
+        if (headerRef.current) {
+          headerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        }
+      } catch {
+        // ignore in non-browser environments
+      }
+    }
+  }, [crudError]);
 
   // Sync state with app prop changes
   useEffect(() => {
@@ -86,13 +102,13 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
 
   const handleAppNameSave = async () => {
     if (!appName.trim()) {
-      setCrudError('App name cannot be empty.');
+      setCrudError('App name cannot be empty.', 0);
       return;
     }
 
     try {
       setSavingAppName(true);
-      setCrudError(null);
+      setCrudError(null, 0);
 
       const response = await apiService.updateApp(app.id, {
         app_name: appName,
@@ -104,11 +120,11 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
         setTimeout(() => setSuccessMessage(null), 3000);
         onAppUpdated?.({ app_name: appName, app_idea: appDescription });
       } else {
-        setCrudError(response.data?.message || 'Failed to update app information');
+        setCrudError(response.data?.message || 'Failed to update app information', 0);
       }
     } catch (error) {
       logger.error('App info update error:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
-      setCrudError('Failed to update app information. Please try again.');
+      setCrudError('Failed to update app information. Please try again.', 0);
     } finally {
       setSavingAppName(false);
     }
@@ -127,26 +143,26 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
         onAppUpdated?.({ showAppNameWithLogo: newValue });
       } else {
         setShowAppNameWithLogo(!newValue);
-        setCrudError('Failed to update setting');
+        setCrudError('Failed to update setting', 0);
       }
     } catch (error) {
       setShowAppNameWithLogo(!newValue);
       logger.error('Toggle update error:', { error: error instanceof Error ? error.message : String(error) });
-      setCrudError('Failed to update setting');
+      setCrudError('Failed to update setting', 0);
     }
   };
 
   const handleLogoDelete = async () => {
     try {
       setDeletingLogo(true);
-      setCrudError(null);
+      setCrudError(null, 0);
 
       const response = await apiService.deleteAppLogo(app.id);
 
       if (response.ok) {
         const removed = response.data && response.data.logoUrl == null;
         if (!removed) {
-          setCrudError('Logo removal was not confirmed. Please retry.');
+          setCrudError('Logo removal was not confirmed. Please retry.', 0);
           setDeletingLogo(false);
           return;
         }
@@ -167,11 +183,11 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
         setSuccessMessage('Logo removed successfully!');
         setShowDeleteLogoModal(false);
       } else {
-        setCrudError(response.data?.message || 'Failed to remove logo');
+        setCrudError(response.data?.message || 'Failed to remove logo', 0);
       }
     } catch (error) {
       logger.error('Logo delete error:', { error: error instanceof Error ? error.message : String(error) });
-      setCrudError('Failed to remove logo. Please try again.');
+      setCrudError('Failed to remove logo. Please try again.', 0);
     } finally {
       setDeletingLogo(false);
     }
@@ -183,18 +199,18 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
 
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
-      setCrudError('Invalid file type. Please upload JPEG, PNG, WebP, or SVG.');
+      setCrudError('Invalid file type. Please upload JPEG, PNG, WebP, or SVG.', 0);
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setCrudError('File size must be less than 5MB.');
+      setCrudError('File size must be less than 5MB.', 0);
       return;
     }
 
     try {
       setUploadingLogo(true);
-      setCrudError(null);
+      setCrudError(null, 0);
 
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -221,12 +237,12 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
           }
         } catch { /* noop */ }
       } else {
-        setCrudError(response.data?.message || 'Failed to upload logo');
+        setCrudError(response.data?.message || 'Failed to upload logo', 0);
         setLogoPreview(null);
       }
     } catch (error) {
       logger.error('Logo upload error:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
-      setCrudError('Failed to upload logo. Please try again.');
+      setCrudError('Failed to upload logo. Please try again.', 0);
       setLogoPreview(null);
     } finally {
       setUploadingLogo(false);
@@ -239,15 +255,13 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
 
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      setCrudError('Invalid file type. Please upload JPEG, PNG, or WebP.');
-      setTimeout(() => setCrudError(null), 5000);
+      setCrudError('Invalid file type. Please upload JPEG, PNG, or WebP.', 0);
       event.target.value = '';
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setCrudError('File size must be less than 8MB.');
-      setTimeout(() => setCrudError(null), 5000);
+      setCrudError('File size must be less than 8MB.', 0);
       event.target.value = '';
       return;
     }
@@ -266,23 +280,21 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
       const recommendedAspectRatio = recommendedWidth / recommendedHeight;
 
       if (img.width < minWidth || img.height < minHeight) {
-        setCrudError(`Image is too small. Minimum size is ${minWidth}x${minHeight}px. Your image is ${img.width}x${img.height}px.`);
-        setTimeout(() => setCrudError(null), 8000);
+        setCrudError(`Image is too small. Minimum size is ${minWidth}x${minHeight}px. Your image is ${img.width}x${img.height}px.`, 0);
         event.target.value = '';
         return;
       }
 
       const aspectRatioDiff = Math.abs(aspectRatio - recommendedAspectRatio);
       if (aspectRatioDiff > 0.1) {
-        setCrudError(`Invalid aspect ratio. Expected portrait orientation (9:19.5 ratio). Recommended: ${recommendedWidth}x${recommendedHeight}px. Your image is ${img.width}x${img.height}px.`);
-        setTimeout(() => setCrudError(null), 8000);
+        setCrudError(`Invalid aspect ratio. Expected portrait orientation (9:19.5 ratio). Recommended: ${recommendedWidth}x${recommendedHeight}px. Your image is ${img.width}x${img.height}px.`, 0);
         event.target.value = '';
         return;
       }
 
       try {
         setUploadingSplash(true);
-        setCrudError(null);
+        setCrudError(null, 0);
 
         const reader = new FileReader();
         reader.onloadend = () => setSplashPreview(reader.result as string);
@@ -297,14 +309,12 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
             onAppUpdated?.({ splashUrl: response.data.splashUrl } as any);
           }
         } else {
-          setCrudError(response.data?.message || 'Failed to upload splash image');
-          setTimeout(() => setCrudError(null), 5000);
+          setCrudError(response.data?.message || 'Failed to upload splash image', 0);
           setSplashPreview(null);
         }
       } catch (error) {
         logger.error('Splash upload error:', { error: error instanceof Error ? error.message : String(error) });
-        setCrudError('Failed to upload splash image. Please try again.');
-        setTimeout(() => setCrudError(null), 5000);
+        setCrudError('Failed to upload splash image. Please try again.', 0);
         setSplashPreview(null);
       } finally {
         setUploadingSplash(false);
@@ -314,8 +324,7 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      setCrudError('Failed to load image. Please try a different file.');
-      setTimeout(() => setCrudError(null), 5000);
+      setCrudError('Failed to load image. Please try a different file.', 0);
       event.target.value = '';
     };
 
@@ -325,7 +334,7 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
   const handleSplashTextSave = async () => {
     try {
       setSavingSplashText(true);
-      setCrudError(null);
+      setCrudError(null, 0);
 
       const response = await apiService.updateApp(app.id, {
         splashTagline,
@@ -337,11 +346,11 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
         setTimeout(() => setSuccessMessage(null), 3000);
         onAppUpdated?.({ splashTagline, splashDescription } as any);
       } else {
-        setCrudError(response.data?.message || 'Failed to update splash text');
+        setCrudError(response.data?.message || 'Failed to update splash text', 0);
       }
     } catch (error) {
       logger.error('Splash text update error:', { error: error instanceof Error ? error.message : String(error) });
-      setCrudError('Failed to update splash text. Please try again.');
+      setCrudError('Failed to update splash text. Please try again.', 0);
     } finally {
       setSavingSplashText(false);
     }
@@ -350,24 +359,21 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
   const handleSplashDelete = async () => {
     try {
       setDeletingSplash(true);
-      setCrudError(null);
+      setCrudError(null, 0);
       const response = await apiService.deleteAppSplash(app.id);
       if (response.ok) {
         setSplashPreview(null);
         setSplashTagline('');
         setSplashDescription('');
         setSuccessMessage('Splash removed successfully!');
-        setTimeout(() => setSuccessMessage(null), 5000);
         setShowDeleteSplashModal(false);
         onAppUpdated?.({ splashUrl: null, splashTagline: '', splashDescription: '' } as any);
       } else {
-        setCrudError(response.data?.message || 'Failed to remove splash image');
-        setTimeout(() => setCrudError(null), 5000);
+        setCrudError(response.data?.message || 'Failed to remove splash image', 0);
       }
     } catch (error) {
       logger.error('Splash delete error:', { error: error instanceof Error ? error.message : String(error) });
-      setCrudError('Failed to remove splash image. Please try again.');
-      setTimeout(() => setCrudError(null), 5000);
+      setCrudError('Failed to remove splash image. Please try again.', 0);
     } finally {
       setDeletingSplash(false);
     }
@@ -376,7 +382,7 @@ export default function SettingsGeneralSection({ app, onAppUpdated }: SettingsGe
   return (
     <div className="w-full max-w-full min-w-0">
       {/* Header */}
-      <div className="mb-6">
+      <div ref={headerRef} className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">General</h1>
         <p className="text-sm md:text-base text-gray-600 break-words">Manage your app information, logo, splash screen, and legal documents</p>
       </div>

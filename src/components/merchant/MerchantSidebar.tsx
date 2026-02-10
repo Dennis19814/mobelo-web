@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Palette, Bell, Plus, MapPin
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Bell, Plus, MapPin
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
@@ -99,7 +99,6 @@ const menuItems: MenuItem[] = [
       { id: 'settings-sms' as SectionType, label: 'SMS', icon: MessageSquare },
       { id: 'settings-email' as SectionType, label: 'Email', icon: Mail },
       { id: 'settings-templates' as SectionType, label: 'Templates', icon: FileText },
-      { id: 'settings-appearance' as SectionType, label: 'Appearance', icon: Palette },
       { id: 'settings-notifications' as SectionType, label: 'Notifications', icon: Bell },
     ]
   },

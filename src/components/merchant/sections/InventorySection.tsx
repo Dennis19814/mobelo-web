@@ -142,7 +142,30 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
       }
 
       if (accumulated.length > 0) {
-        const inventoryProducts = accumulated.filter((p: Product) => p.trackInventory)
+        let inventoryProducts = accumulated.filter((p: Product) => p.trackInventory)
+        // Enrich products that track inventory but show 0/undefined - backend list may not include variant inventory
+        const needsEnrichment = inventoryProducts.filter(
+          (p: Product) =>
+            p.trackInventory &&
+            (p.inventoryQuantity === 0 || p.inventoryQuantity === undefined)
+        )
+        if (needsEnrichment.length > 0) {
+          const enriched = await Promise.all(
+            needsEnrichment.map(async (p: Product) => {
+              const resp = await apiService.getProduct(p.id)
+              if (resp.ok && resp.data) {
+                const full = resp.data as Product
+                const totalInventory = full.variants?.length
+                  ? full.variants.reduce((s: number, v: any) => s + (v.inventoryQuantity ?? 0), 0)
+                  : (full.inventoryQuantity ?? 0)
+                return { ...p, inventoryQuantity: totalInventory, variants: full.variants ?? p.variants }
+              }
+              return p
+            })
+          )
+          const enrichedMap = new Map(enriched.map((e: Product) => [e.id, e]))
+          inventoryProducts = inventoryProducts.map((p: Product) => enrichedMap.get(p.id) ?? p)
+        }
         setProducts(inventoryProducts)
         return
       }
@@ -191,7 +214,7 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
         }
 
         if (allMobile.length > 0) {
-          const mapped: Product[] = allMobile.map((mp: any) => ({
+          let mapped: Product[] = allMobile.map((mp: any) => ({
             id: mp.id,
             name: mp.name,
             sku: mp.sku,
@@ -208,6 +231,27 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
             inventoryQuantity: typeof mp.inventoryQuantity === 'number' ? mp.inventoryQuantity : 0,
             variants: mp.variants || [],
           }))
+          // Enrich products that show 0/undefined - mobile list may not include variant inventory
+          const needsEnrichment = mapped.filter(
+            (p: Product) => p.inventoryQuantity === 0 || p.inventoryQuantity === undefined
+          )
+          if (needsEnrichment.length > 0) {
+            const enriched = await Promise.all(
+              needsEnrichment.map(async (p: Product) => {
+                const resp = await apiService.getProduct(p.id)
+                if (resp.ok && resp.data) {
+                  const full = resp.data as Product
+                  const totalInventory = full.variants?.length
+                    ? full.variants.reduce((s: number, v: any) => s + (v.inventoryQuantity ?? 0), 0)
+                    : (full.inventoryQuantity ?? 0)
+                  return { ...p, inventoryQuantity: totalInventory, variants: full.variants ?? p.variants }
+                }
+                return p
+              })
+            )
+            const enrichedMap = new Map(enriched.map((e: Product) => [e.id, e]))
+            mapped = mapped.map((p: Product) => enrichedMap.get(p.id) ?? p)
+          }
           setProducts(mapped)
           return
         }
@@ -609,10 +653,10 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
                         `}
                       >
                         {!product.inventoryQuantity || product.inventoryQuantity === 0
-                          ? 'Out of Stock'
+                          ? `Out of Stock (${product.inventoryQuantity ?? 0})`
                           : product.inventoryQuantity < 10
-                          ? 'Low Stock'
-                          : 'In Stock'}
+                          ? `Low Stock (${product.inventoryQuantity})`
+                          : `In Stock (${product.inventoryQuantity})`}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

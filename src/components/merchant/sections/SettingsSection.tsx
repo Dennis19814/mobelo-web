@@ -10,7 +10,6 @@ const SettingsPaymentsSection = lazy(() => import('./settings/SettingsPaymentsSe
 const SettingsSmsSection = lazy(() => import('./settings/SettingsSmsSection'));
 const SettingsEmailSection = lazy(() => import('./settings/SettingsEmailSection'));
 const SettingsTemplatesSection = lazy(() => import('./settings/SettingsTemplatesSection'));
-const SettingsAppearanceSection = lazy(() => import('./settings/SettingsAppearanceSection'));
 const SettingsNotificationsSection = lazy(() => import('./settings/SettingsNotificationsSection'));
 
 interface App {
@@ -68,8 +67,6 @@ export default function SettingsSection({ app, apiKey, appSecretKey, activeSecti
         return <SettingsEmailSection appId={app.id} apiKey={apiKey} appSecretKey={appSecretKey} />;
       case 'settings-templates':
         return <SettingsTemplatesSection appId={app.id} apiKey={apiKey} appSecretKey={appSecretKey} />;
-      case 'settings-appearance':
-        return <SettingsAppearanceSection />;
       case 'settings-notifications':
         return <SettingsNotificationsSection />;
       default:
