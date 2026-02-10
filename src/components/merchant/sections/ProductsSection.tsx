@@ -104,8 +104,8 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
     try {
       setLoading(true)
 
-      // Attempt strict merchant products endpoint first
-      const response = await apiService.getProducts(filters)
+      // Attempt strict merchant products endpoint first (include variants for inventory calculation)
+      const response = await apiService.getProducts({ ...filters, include: 'variants' })
 
       if (response.ok && response.data) {
         let productsData: any[] = []
@@ -119,6 +119,30 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
           // Simple array response
           productsData = response.data
           setTotalProducts(response.data.length)
+        }
+
+        // Enrich products that track inventory but show 0/undefined - backend list may not include variant inventory
+        const needsEnrichment = productsData.filter(
+          (p: Product) =>
+            p.trackInventory &&
+            (p.inventoryQuantity === 0 || p.inventoryQuantity === undefined)
+        )
+        if (needsEnrichment.length > 0) {
+          const enriched = await Promise.all(
+            needsEnrichment.map(async (p: Product) => {
+              const resp = await apiService.getProduct(p.id)
+              if (resp.ok && resp.data) {
+                const full = resp.data as Product
+                const totalInventory = full.variants?.length
+                  ? full.variants.reduce((s: number, v: any) => s + (v.inventoryQuantity ?? 0), 0)
+                  : (full.inventoryQuantity ?? 0)
+                return { ...p, inventoryQuantity: totalInventory, variants: full.variants ?? p.variants }
+              }
+              return p
+            })
+          )
+          const enrichedMap = new Map(enriched.map((e: Product) => [e.id, e]))
+          productsData = productsData.map((p: Product) => enrichedMap.get(p.id) ?? p)
         }
 
         setProducts(productsData)

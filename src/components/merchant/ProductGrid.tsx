@@ -156,30 +156,40 @@ export default function ProductGrid({
     }
   };
 
+  const getEffectiveInventoryQuantity = (product: Product): number | undefined => {
+    // For products with variants, inventory is at variant level - always use sum of variant inventory
+    if (product.variants?.length) {
+      const variantTotal = product.variants.reduce((sum, v) => sum + (v.inventoryQuantity ?? 0), 0);
+      return variantTotal;
+    }
+    return product.inventoryQuantity !== undefined && product.inventoryQuantity !== null
+      ? product.inventoryQuantity
+      : undefined;
+  };
+
   const getStockStatusColor = (quantity?: number) => {
-    // Handle undefined/null gracefully - don't treat as "Out of Stock"
     if (quantity === undefined || quantity === null) return "text-gray-400 bg-gray-50";
     if (quantity === 0) return "text-red-600 bg-red-50";
     if (quantity < 10) return "text-yellow-600 bg-yellow-50";
     return "text-green-600 bg-green-50";
   };
 
-  const getStockStatusText = (quantity?: number, productId?: number) => {
-    // Log when inventory quantity is undefined to help diagnose backend issues
-    if (quantity === undefined || quantity === null) {
-      console.warn('[ProductGrid] inventoryQuantity is undefined/null:', {
-        productId,
-        quantity,
-        typeOf: typeof quantity,
-        message: 'Backend may not be returning inventoryQuantity in product list'
-      });
+  const getStockStatusText = (product: Product) => {
+    const effectiveQty = getEffectiveInventoryQuantity(product);
+
+    if (effectiveQty === undefined || effectiveQty === null) {
+      if (product.trackInventory) {
+        console.warn('[ProductGrid] inventoryQuantity is undefined/null:', {
+          productId: product.id,
+          message: 'Backend may not be returning inventoryQuantity in product list'
+        });
+      }
       return "Stock N/A";
     }
 
-    // Only show "Out of Stock" when explicitly 0
-    if (quantity === 0) return "Out of Stock";
-    if (quantity < 10) return `Low Stock (${quantity})`;
-    return `In Stock (${quantity})`;
+    if (effectiveQty === 0) return "Out of Stock (0)";
+    if (effectiveQty < 10) return `Low Stock (${effectiveQty})`;
+    return `In Stock (${effectiveQty})`;
   };
 
   const formatPrice = (price: number, currency: string | undefined = "USD") => {
@@ -352,10 +362,10 @@ export default function ProductGrid({
                   {product.trackInventory ? (
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStockStatusColor(
-                        product.inventoryQuantity
+                        getEffectiveInventoryQuantity(product)
                       )}`}
                     >
-                      {getStockStatusText(product.inventoryQuantity, product.id)}
+                      {getStockStatusText(product)}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-gray-400 bg-gray-50">
@@ -635,16 +645,16 @@ export default function ProductGrid({
               <span
                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   product.trackInventory 
-                    ? getStockStatusColor(product.inventoryQuantity)
+                    ? getStockStatusColor(getEffectiveInventoryQuantity(product))
                     : 'text-gray-400 bg-gray-50'
                 }`}
               >
                 {product.trackInventory ? (
                   <>
-                    {product.inventoryQuantity === 0 && (
+                    {getEffectiveInventoryQuantity(product) === 0 && (
                       <AlertCircle className="h-3 w-3 mr-1" />
                     )}
-                    {getStockStatusText(product.inventoryQuantity, product.id)}
+                    {getStockStatusText(product)}
                   </>
                 ) : (
                   "Stock N/A"

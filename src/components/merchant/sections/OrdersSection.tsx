@@ -143,19 +143,18 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
 
   // Handle clear all filters
   const handleClearAllFilters = useCallback(() => {
-    const today = new Date();
-    const last7Days = new Date(today);
-    last7Days.setDate(today.getDate() - 7);
+    // Clear ALL filters, including date, so user sees all orders
     setFilters({
       page: 1,
       limit: 20,
       sortBy: 'createdAt',
       sortOrder: 'DESC',
-      dateFrom: last7Days.toISOString().split('T')[0],
-      dateTo: today.toISOString().split('T')[0],
       status: undefined,
       paymentStatus: undefined,
       fulfillmentStatus: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      search: undefined,
     });
     setSearchQuery('');
     setShowFilters(false);
