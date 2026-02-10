@@ -7,7 +7,6 @@ import HomeAppCarousel from '@/components/HomeAppCarousel'
 import { SigninModal } from '@/components/modals'
 import { apiService } from '@/lib/api-service'
 import { THEME_NAMES, ICON_LIBRARIES, FONT_FAMILIES, isDarkTheme as checkIsDarkTheme } from '@/lib/web-app-constants'
-import { SimpleLocalIcon } from '@/components/ui/icons/LocalIcon'
 import { getIndustryImages, getIndustryFolderName } from '@/lib/industry-image-mapper'
 import { TEMPLATE_METADATA, getTemplateMetadata } from '@/lib/template-metadata'
 import {
@@ -144,7 +143,7 @@ function AppSpecContent() {
     },
   ]
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(1) // Default: Nordic Minimal
-  const [selectedFontFamilyId, setSelectedFontFamilyId] = useState<number | null>(3) // Default: Poppins
+  const [selectedFontFamilyId, setSelectedFontFamilyId] = useState<number | null>(1) // Always use System Default
   const [selectedIconLibraryId, setSelectedIconLibraryId] = useState<number | null>(1) // Default: Feather
   const [currentTemplateVertical, setCurrentTemplateVertical] = useState<string | null>(null)
   const [currentTemplateBorderRadius, setCurrentTemplateBorderRadius] = useState<string | null>(null)
@@ -611,66 +610,98 @@ function AppSpecContent() {
 
     const icons = ['home', 'search', 'shopping-bag', 'heart', 'shopping-cart', 'user']
 
-    // Map ICON_LIBRARIES values to actual library keys in the system
-    const getLibraryKey = (libraryValue: string): string => {
-      const libraryMap: Record<string, string> = {
-        'feather': 'feather',
-        'material': 'tabler', // Material icons might not exist, use tabler as fallback
-        'ionicons': 'tabler', // Ionicons might not exist, use tabler as fallback
-        'fontawesome': 'tabler', // Font Awesome might not exist, use tabler as fallback
-        'antdesign': 'tabler', // Ant Design might not exist, use tabler as fallback
-        'octicons': 'tabler', // Octicons might not exist, use tabler as fallback
-        'entypo': 'tabler', // Entypo might not exist, use tabler as fallback
-        'simpleline': 'tabler', // Simple Line might not exist, use tabler as fallback
+    // Map ICON_LIBRARIES values to asset folder paths
+    const getLibraryFolderPath = (libraryValue: string): string => {
+      const folderMap: Record<string, string> = {
+        'feather': 'icons/feather',
+        'material': 'material',
+        'ionicons': 'ionicons',
+        'fontawesome': 'fontAwesome',
+        'antdesign': 'antDesign',
+        'octicons': 'octicons',
+        'entypo': 'entypo',
+        'simpleline': 'simpleLine',
       }
-      return libraryMap[libraryValue] || 'tabler' // Default to tabler
+      return folderMap[libraryValue] || 'icons/feather' // Default to feather
     }
 
-    // Map icon keys to icon names for different libraries
-    const getIconName = (key: string, libraryKey: string): string => {
+    // Map icon keys to actual file names for different libraries
+    const getIconFileName = (key: string, libraryValue: string): string => {
       const iconMap: Record<string, Record<string, string>> = {
         'feather': {
           'home': 'home',
-          'search': 'search',
-          'shopping-bag': 'shopping-bag',
-          'heart': 'heart',
-          'shopping-cart': 'shopping-cart',
-          'user': 'user',
+          'search': 'browse',
+          'shopping-bag': 'products',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
         },
-        'tabler': {
+        'material': {
+          'home': 'home',
+          'search': 'browse',
+          'shopping-bag': 'product',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'ionicons': {
+          'home': 'home',
+          'search': 'browse',
+          'shopping-bag': 'product',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'fontawesome': {
+          'home': 'home',
+          'search': 'browse',
+          'shopping-bag': 'product',
+          'heart': 'Wishlist', // Capitalized PNG
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'antdesign': {
+          'home': 'home',
+          'search': 'search-outlined',
+          'shopping-bag': 'product',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'octicons': {
+          'home': 'home',
+          'search': 'browse',
+          'shopping-bag': 'product',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'entypo': {
+          'home': 'home',
+          'search': 'browse',
+          'shopping-bag': 'product',
+          'heart': 'wishlist',
+          'shopping-cart': 'cart',
+          'user': 'profile',
+        },
+        'simpleline': {
           'home': 'home',
           'search': 'search',
           'shopping-bag': 'shopping-bag',
           'heart': 'heart',
           'shopping-cart': 'shopping-cart',
-          'user': 'user',
-        },
-        'iconoir': {
-          'home': 'home',
-          'search': 'search',
-          'shopping-bag': 'shopping-bag',
-          'heart': 'heart',
-          'shopping-cart': 'shopping-cart',
-          'user': 'user',
-        },
-        'remix': {
-          'home': 'home',
-          'search': 'search',
-          'shopping-bag': 'shopping-bag',
-          'heart': 'heart',
-          'shopping-cart': 'shopping-cart',
-          'user': 'user',
-        },
-        'lucide': {
-          'home': 'home',
-          'search': 'search',
-          'shopping-bag': 'shopping-bag',
-          'heart': 'heart',
-          'shopping-cart': 'shopping-cart',
-          'user': 'user',
+          'user': 'profile',
         },
       }
-      return iconMap[libraryKey]?.[key] || key
+      return iconMap[libraryValue]?.[key] || key
+    }
+
+    // Get icon file extension (svg or png) based on library
+    const getIconExtension = (libraryValue: string, fileName: string): string => {
+      // Material uses PNG, fontAwesome Wishlist is PNG, others are SVG
+      if (libraryValue === 'material') return 'png'
+      if (libraryValue === 'fontawesome' && fileName === 'Wishlist') return 'png'
+      return 'svg'
     }
 
     // Fallback to Lucide icons if library icon not found
@@ -683,22 +714,34 @@ function AppSpecContent() {
       'user': <User className="h-4 w-4" />,
     }
 
-    const iconNode = (key: string, selectedLibraryValue: string) => {
-      const libraryKey = getLibraryKey(selectedLibraryValue)
-      const iconName = getIconName(key, libraryKey)
-      const iconColor = isDarkTheme ? '#E2E8F0' : '#475569'
+    // Icon component with proper error handling
+    const IconWithFallback = ({ iconKey, selectedLibraryValue }: { iconKey: string; selectedLibraryValue: string }) => {
+      const [hasError, setHasError] = useState(false)
+      const folderPath = getLibraryFolderPath(selectedLibraryValue)
+      const fileName = getIconFileName(iconKey, selectedLibraryValue)
+      const extension = getIconExtension(selectedLibraryValue, fileName)
+      const iconPath = `/assets/${folderPath}/${fileName}.${extension}`
       
-      // Use SimpleLocalIcon to load from the selected library
-      // It will show a "?" if icon not found, then we can fallback
+      if (hasError) {
+        // Fallback to Lucide icon if image fails to load
+        return <div className="flex-shrink-0">{fallbackIcons[iconKey] || <HomeIcon className="h-4 w-4" />}</div>
+      }
+      
       return (
-        <SimpleLocalIcon
-          name={iconName}
-          library={libraryKey}
-          size={16}
-          color={iconColor}
-          className="flex-shrink-0"
+        <img
+          src={iconPath}
+          alt={iconKey}
+          className="h-4 w-4 flex-shrink-0"
+          style={{
+            filter: isDarkTheme ? 'brightness(0) saturate(100%) invert(89%) sepia(8%) saturate(428%) hue-rotate(180deg) brightness(95%) contrast(90%)' : 'none',
+          }}
+          onError={() => setHasError(true)}
         />
       )
+    }
+
+    const iconNode = (key: string, selectedLibraryValue: string) => {
+      return <IconWithFallback key={`${key}-${selectedLibraryValue}`} iconKey={key} selectedLibraryValue={selectedLibraryValue} />
     }
 
     return (
@@ -934,11 +977,14 @@ function AppSpecContent() {
                 <button
                   key={font.id}
                   onClick={() => {
-                    setSelectedFontFamilyId(font.id)
-                    setHasManualFontOverride(true)
+                    // Lock selection to System Default for now
+                    if (font.value === 'System') {
+                      setSelectedFontFamilyId(font.id)
+                      setHasManualFontOverride(false)
+                    }
                     setIsFontMenuOpen(false)
                   }}
-                  className={`flex w-full items-center px-4 py-2.5 text-sm transition ${
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition ${
                     isSelected
                       ? 'bg-orange-50 text-gray-800'
                       : 'hover:bg-gray-50 text-gray-800'
@@ -948,6 +994,11 @@ function AppSpecContent() {
                   <span className="font-medium">
                     {font.label}
                   </span>
+                  {font.value !== 'System' && (
+                    <span className="ml-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                      Coming soon
+                    </span>
+                  )}
                 </button>
               )
             })}
