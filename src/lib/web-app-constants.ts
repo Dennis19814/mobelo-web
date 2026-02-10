@@ -174,6 +174,10 @@ export const ICON_LIBRARIES = [
 /**
  * Font Families with IDs
  * Available font families for mobile app customization
+ *
+ * NOTE: Custom fonts (Poppins, Inter, etc.) are not yet loaded in the template.
+ * Font customization is temporarily disabled in the worker.
+ * All apps will use 'System' font until custom fonts are loaded.
  */
 export const FONT_FAMILIES = [
   { id: 1, value: 'System', label: 'System Default' },
