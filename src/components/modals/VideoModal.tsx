@@ -12,7 +12,7 @@ interface VideoModalProps {
 export default function VideoModal({
   isOpen,
   onClose,
-  videoUrl = 'https://player.vimeo.com/video/76979871?autoplay=1'
+  videoUrl = 'https://play.gumlet.io/embed/698bf85dfc23d3d76fdffca5?autoplay=1'
 }: VideoModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -69,12 +69,14 @@ export default function VideoModal({
         {/* Video Container - Responsive 16:9 aspect ratio */}
         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
           <iframe
+            loading="lazy"
             src={videoUrl}
             className="absolute top-0 left-0 w-full h-full"
-            frameBorder="0"
-            allow="autoplay; fullscreen; picture-in-picture"
+            style={{ border: 'none' }}
+            referrerPolicy="origin"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen
-            title="Demo Video"
+            title="Gumlet video player"
           />
         </div>
       </div>
