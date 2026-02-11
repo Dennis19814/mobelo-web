@@ -1,8 +1,9 @@
 'use client';
 import { logger } from '@/lib/logger'
 
-import { useState, useCallback, useMemo, memo, lazy, Suspense } from 'react';
+import { useState, useCallback, useMemo, useEffect, memo, lazy, Suspense } from 'react';
 import { useBrands, type Brand } from '@/hooks';
+import { apiService } from '@/lib/api-service';
 import {
   DndContext,
   closestCenter,
@@ -59,6 +60,10 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [reorderLoading, setReorderLoading] = useState(false);
+
+  // Track product counts per brand (computed from products list)
+  const [productCounts, setProductCounts] = useState<Record<number, number>>({});
+  const [isLoadingProductCounts, setIsLoadingProductCounts] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -124,6 +129,104 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
     // Send the reorder request to the API
     await saveReorder(updates);
   }, [brands, saveReorder]);
+
+  // Fetch products and compute product counts per brand
+  useEffect(() => {
+    const fetchProductCounts = async () => {
+      if (!brands || brands.length === 0) return;
+
+      setIsLoadingProductCounts(true);
+      try {
+        const counts: Record<number, number> = {};
+        brands.forEach(brand => {
+          counts[brand.id] = 0;
+        });
+
+        const response = await apiService.getProducts({ limit: 10000 });
+
+        if (response.ok && response.data) {
+          let products: any[] = [];
+
+          if (Array.isArray(response.data)) {
+            products = response.data;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            products = response.data.data;
+          } else if (response.data.products && Array.isArray(response.data.products)) {
+            products = response.data.products;
+          }
+
+          products.forEach((product: any) => {
+            const candidateBrandIds: number[] = [];
+
+            if (typeof product.brandId === 'number') {
+              candidateBrandIds.push(product.brandId);
+            }
+
+            if (product.brandEntity && typeof product.brandEntity === 'object') {
+              const entity = product.brandEntity;
+              const entityId =
+                (typeof entity.id === 'number' && entity.id) ||
+                (typeof entity.brandId === 'number' && entity.brandId);
+              if (entityId) {
+                candidateBrandIds.push(entityId);
+              }
+            }
+
+            if (candidateBrandIds.length === 0 && product.brand) {
+              const brandName = String(product.brand).toLowerCase();
+              const matchedBrand = brands.find(
+                b => b.name.toLowerCase() === brandName
+              );
+              if (matchedBrand) {
+                candidateBrandIds.push(matchedBrand.id);
+              }
+            }
+
+            Array.from(new Set(candidateBrandIds)).forEach(brandId => {
+              if (Object.prototype.hasOwnProperty.call(counts, brandId)) {
+                counts[brandId] += 1;
+              }
+            });
+          });
+
+          setProductCounts(counts);
+        } else {
+          const fallbackCounts: Record<number, number> = {};
+          brands.forEach(brand => {
+            fallbackCounts[brand.id] = brand.productCount ?? 0;
+          });
+          setProductCounts(fallbackCounts);
+        }
+      } catch (err) {
+        logger.error('BrandsSection.fetchProductCounts - Error:', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+
+        const fallbackCounts: Record<number, number> = {};
+        brands.forEach(brand => {
+          fallbackCounts[brand.id] = brand.productCount ?? 0;
+        });
+        setProductCounts(fallbackCounts);
+      } finally {
+        setIsLoadingProductCounts(false);
+      }
+    };
+
+    fetchProductCounts();
+  }, [brands]);
+
+  // Merge computed product counts into brand objects
+  const enhancedBrands: Brand[] = useMemo(
+    () =>
+      brands.map(brand => ({
+        ...brand,
+        productCount:
+          productCounts[brand.id] !== undefined
+            ? productCounts[brand.id]
+            : brand.productCount ?? 0,
+      })),
+    [brands, productCounts]
+  );
 
   const handleCreate = useCallback(() => {
     setSelectedBrand(null);
@@ -238,7 +341,7 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
           )}
         </div>
 
-        {loading ? (
+        {loading || isLoadingProductCounts ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
@@ -295,10 +398,10 @@ const BrandsSectionComponent = ({ appId, apiKey, appSecretKey }: BrandsSectionPr
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   <SortableContext
-                    items={brands.map(b => b.id)}
+                    items={enhancedBrands.map(b => b.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {brands.map((brand, index) => (
+                    {enhancedBrands.map((brand, index) => (
                       <DraggableBrandRow
                         key={brand.id}
                         brand={brand}
