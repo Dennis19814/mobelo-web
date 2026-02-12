@@ -4,6 +4,7 @@ export interface TaxCategory {
   name: string;
   description: string;
   isDefault: boolean;
+  applyToAllProducts?: boolean;
   displayOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +34,8 @@ export interface TaxCategoryFormData {
   description: string;
   isDefault?: boolean;
   displayOrder?: number;
+  productIds?: number[];
+  applyToAllProducts?: boolean;
 }
 
 export interface TaxRuleFormData {
@@ -96,4 +99,24 @@ export interface TaxCalculationResult {
     taxableAmount: number;
     totalTax: number;
   };
+}
+
+export interface ProductForTaxCategory {
+  id: number;
+  name: string;
+  sku?: string;
+  thumbnailUrl?: string;
+  taxCategoryId?: number;
+  isAssignedToCategory: boolean;
+  taxCategoryName?: string | null;
+  variants?: Array<{
+    id: number;
+    sku?: string;
+    option1Name?: string;
+    option1Value?: string;
+    option2Name?: string;
+    option2Value?: string;
+    option3Name?: string;
+    option3Value?: string;
+  }>;
 }

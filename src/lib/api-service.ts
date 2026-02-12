@@ -682,6 +682,14 @@ class ApiService {
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
+  async getProductsForTaxCategory(categoryId?: number): Promise<ApiResponse> {
+    const url = categoryId
+      ? `/v1/merchant/tax-categories/${categoryId}/products`
+      : '/v1/merchant/tax-categories/available-products';
+    const response = await httpClient.get(url);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
   // Tax Rules
   async getTaxRules(params?: Record<string, any>): Promise<ApiResponse> {
     const queryParams = new URLSearchParams();
