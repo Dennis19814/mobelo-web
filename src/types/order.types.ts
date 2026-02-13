@@ -237,3 +237,54 @@ export interface OrderStats {
 
   total: number;
 }
+
+// ==================== Shipping Calculation (Mobile App) ====================
+
+// Cart item for shipping calculation
+export interface ShippingCalculationItem {
+  productId: number;
+  quantity: number;
+  variantId?: number;
+}
+
+// Shipping address for calculation
+export interface ShippingCalculationAddress {
+  country: string;
+  state?: string;
+  city?: string;
+  postalCode?: string;
+}
+
+// Request to calculate shipping options
+export interface ShippingCalculationRequest {
+  items: ShippingCalculationItem[];
+  shippingAddress: ShippingCalculationAddress;
+}
+
+// Individual shipping option returned by calculation
+export interface ShippingOption {
+  id: number;
+  name: string;
+  method: 'flat_rate' | 'weight_based' | 'price_based' | 'free' | 'pickup';
+  cost: number;
+  deliveryMinDays?: number;
+  deliveryMaxDays?: number;
+  description?: string;
+  isTaxable?: boolean;
+}
+
+// Order summary information for shipping calculation
+export interface ShippingOrderSummary {
+  subtotal: number;
+  totalWeight: number;
+  weightUnit: 'kg' | 'lb' | 'oz' | 'g';
+  itemCount: number;
+}
+
+// Response from shipping calculation
+export interface ShippingCalculationResponse {
+  shippingOptions: ShippingOption[];
+  orderSummary: ShippingOrderSummary;
+  canShip: boolean;
+  message?: string;
+}

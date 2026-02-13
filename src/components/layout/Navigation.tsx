@@ -242,23 +242,23 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                          <button
                     onClick={() => scrollToSection('faq')}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
-                      isInTechSection 
-                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                      isInTechSection
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
                         : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
                     }`}
                   >
                     FAQ
                   </button>
-                  <Link
-                    href="/pricing"
+                  <button
+                    onClick={() => scrollToSection('pricing')}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
-                      isInTechSection 
-                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                      isInTechSection
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
                         : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
                     }`}
                   >
                     Pricing
-                  </Link>
+                  </button>
            
                 </>
               )}
@@ -405,13 +405,12 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                     >
                       How it works
                     </button>
-                    <Link
-                      href="/pricing"
+                    <button
+                      onClick={() => scrollToSection('pricing')}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
-                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Pricing
-                    </Link>
+                    </button>
                     <button
                       onClick={() => scrollToSection('faq')}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"

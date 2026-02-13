@@ -6,6 +6,7 @@
 import { httpClient } from '@/lib/http-client';
 import { Category, CreateCategoryData, UpdateCategoryData, CategoryReorderData } from '@/types/category';
 import { PlanKey, BillingCycle } from '@/lib/plans';
+import { ShippingCalculationRequest, ShippingCalculationResponse } from '@/types/order.types';
 
 export interface ApiResponse<T = any> {
   ok: boolean;
@@ -1711,6 +1712,16 @@ class ApiService {
    */
   async reorderShippingRates(zoneId: number, rateIds: number[]): Promise<ApiResponse> {
     const response = await httpClient.post('/v1/merchant/shipping/rates/reorder', { zoneId, rateIds });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Calculate shipping costs for mobile app checkout
+   * @param data Cart items and shipping address
+   * @returns Available shipping options with costs and delivery estimates
+   */
+  async calculateShipping(data: ShippingCalculationRequest): Promise<ApiResponse<ShippingCalculationResponse>> {
+    const response = await httpClient.post('/v1/mobile/shipping/calculate', data);
     return { ok: response.ok, status: response.status, data: response.data };
   }
 }

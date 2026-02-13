@@ -27,7 +27,7 @@ export default function PricingSection() {
   }
 
   return (
-    <section className="bg-white py-16" aria-labelledby="pricing-heading">
+    <section id="pricing" className="bg-white py-16 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="pricing-heading">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
         <div className="text-center space-y-3 mb-10">
           <h2 id="pricing-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Simple, Transparent Pricing</h2>
