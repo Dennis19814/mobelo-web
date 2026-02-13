@@ -131,11 +131,11 @@ export default function RootLayout({
           <meta
             httpEquiv="Content-Security-Policy"
             content="default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://localhost:* http://localhost:* https://cdnjs.cloudflare.com;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://localhost:* http://localhost:* https://cdnjs.cloudflare.com https://connect.facebook.net;
               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-              img-src 'self' data: blob: https: http:;
+              img-src 'self' data: blob: https: http: https://www.facebook.com;
               font-src 'self' data: https://fonts.gstatic.com;
-              connect-src 'self' https://api.mobelo.dev wss://api.mobelo.dev https://worker.mobelo.dev wss://worker.mobelo.dev https://publish.mobelo.dev wss://publish.mobelo.dev https://localhost:* http://localhost:* ws://localhost:* wss://localhost:* http://13.51.2.100:* ws://13.51.2.100:*;
+              connect-src 'self' https://api.mobelo.dev wss://api.mobelo.dev https://worker.mobelo.dev wss://worker.mobelo.dev https://publish.mobelo.dev wss://publish.mobelo.dev https://localhost:* http://localhost:* ws://localhost:* wss://localhost:* http://13.51.2.100:* ws://13.51.2.100:* https://www.facebook.com https://connect.facebook.net;
               frame-src 'self' https://e1.mobelo.xyz https://*.mobelo.dev http://*.mobelo.dev https://app-*.mobelo.dev http://app-*.mobelo.dev https://localhost:* http://localhost:*;"
           />
         )}
@@ -409,6 +409,30 @@ export default function RootLayout({
             })
           }}
         />
+
+        {/* Meta Pixel Code */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '1642961110194498');
+              fbq('track', 'PageView');
+            `
+          }}
+        />
+        <noscript>
+          <img height="1" width="1" style={{ display: 'none' }}
+            src="https://www.facebook.com/tr?id=1642961110194498&ev=PageView&noscript=1"
+          />
+        </noscript>
+        {/* End Meta Pixel Code */}
       </head>
       <body className={cn(manrope.variable, inter.variable, 'font-sans antialiased overflow-x-hidden')} style={{ fontFamily: 'var(--font-manrope), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
         {/* Global error handler for browser extension errors */}

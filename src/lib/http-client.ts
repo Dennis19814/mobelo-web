@@ -153,11 +153,11 @@ class HttpClient {
       if (processedConfig.signal) {
         // If external signal is already aborted, abort our controller immediately
         if (processedConfig.signal.aborted) {
-          controller.abort();
+          controller.abort(processedConfig.signal.reason || 'External signal aborted');
         } else {
           // Listen to external signal and forward abort to our controller
           processedConfig.signal.addEventListener('abort', () => {
-            controller.abort();
+            controller.abort(processedConfig.signal!.reason || 'External signal aborted');
           });
         }
       }
@@ -166,7 +166,7 @@ class HttpClient {
       if (processedConfig.cancelKey) {
         const prev = this.inflight.get(processedConfig.cancelKey);
         if (prev) {
-          try { prev.abort(); } catch { /* noop */ }
+          try { prev.abort('Duplicate request cancelled'); } catch { /* noop */ }
         }
         this.inflight.set(processedConfig.cancelKey, controller);
       }
@@ -198,10 +198,15 @@ class HttpClient {
       // Check if already aborted before making request
       if (controller.signal.aborted) {
         if (DEBUG_HTTP) console.log(`[HTTP-${requestId}] Request already aborted, skipping fetch`);
-        const cancelledError: any = new Error('Request was cancelled');
-        cancelledError.code = 'REQUEST_CANCELLED';
-        cancelledError.name = 'AbortError';
-        throw cancelledError;
+        // Return cancelled response instead of throwing to prevent uncaught promise rejection
+        return {
+          ok: false,
+          status: 0,
+          statusText: 'Request Cancelled',
+          data: null as any,
+          headers: new Headers(),
+          cancelled: true,
+        } as any;
       }
 
       if (DEBUG_HTTP) console.log(`[HTTP-${requestId}] Sending fetch request...`);
@@ -227,11 +232,16 @@ class HttpClient {
             timeoutError.code = 'REQUEST_TIMEOUT';
             throw await this.applyErrorInterceptors(timeoutError);
           } else {
+            // Intentional cancellation - return cancelled response instead of throwing
             if (DEBUG_HTTP) console.log(`[HTTP-${requestId}] Request cancelled (normal in dev mode)`);
-            const cancelledError: any = new Error('Request was cancelled');
-            cancelledError.code = 'REQUEST_CANCELLED';
-            cancelledError.name = 'AbortError';
-            throw cancelledError;
+            return {
+              ok: false,
+              status: 0,
+              statusText: 'Request Cancelled',
+              data: null as any,
+              headers: new Headers(),
+              cancelled: true,
+            } as any;
           }
         }
         // Re-throw non-AbortError exceptions
@@ -322,13 +332,20 @@ class HttpClient {
           timeoutError.code = 'REQUEST_TIMEOUT';
           throw await this.applyErrorInterceptors(timeoutError);
         } else {
-          // Intentional cancellation - don't log to console (normal during React Strict Mode)
+          // Intentional cancellation - don't throw error (normal during React Strict Mode)
+          // Just return a cancelled response that components can ignore
           if (DEBUG_HTTP) {
             console.log(`[HTTP-${requestId}] Request cancelled (normal in dev mode)`);
           }
-          const cancelledError: any = new Error('Request was cancelled');
-          cancelledError.code = 'REQUEST_CANCELLED';
-          throw await this.applyErrorInterceptors(cancelledError);
+          // Return a special response indicating cancellation instead of throwing
+          return {
+            ok: false,
+            status: 0,
+            statusText: 'Request Cancelled',
+            data: null as any,
+            headers: new Headers(),
+            cancelled: true,
+          } as any;
         }
       }
 
@@ -552,7 +569,7 @@ export const unauthorizedInterceptor: HttpInterceptor = {
       logger.info('Attempting to refresh access token...');
 
       // Call refresh endpoint directly (bypass interceptors to avoid infinite loop)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/platform/auth/refresh`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/platform/auth/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

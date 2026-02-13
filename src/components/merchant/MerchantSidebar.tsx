@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, FolderTree,
-  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Bell, Plus, MapPin
+  ShoppingCart, Activity, Settings, Menu, X, ChevronDown, Smartphone, MessageSquare, Boxes, Building2, Users, Receipt, Ticket, Shield, HelpCircle, Key, CreditCard, Mail, FileText, Bell, Plus, MapPin, Truck
 } from 'lucide-react'
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'shipping' | 'shipping-zones' | 'shipping-rates' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
 
 interface App {
   id: number
@@ -67,6 +67,15 @@ const menuItems: MenuItem[] = [
   { id: 'categories' as SectionType, label: 'Categories', icon: FolderTree },
   { id: 'orders' as SectionType, label: 'Orders', icon: ShoppingCart },
   { id: 'coupons' as SectionType, label: 'Coupons', icon: Ticket },
+  {
+    id: 'shipping' as SectionType,
+    label: 'Shipping',
+    icon: Truck,
+    children: [
+      { id: 'shipping-zones' as SectionType, label: 'Shipping Zones', icon: MapPin },
+      { id: 'shipping-rates' as SectionType, label: 'Shipping Rates', icon: Truck },
+    ]
+  },
   {
     id: 'taxes' as SectionType,
     label: 'Taxes',

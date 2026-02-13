@@ -1525,6 +1525,194 @@ class ApiService {
     const response = await httpClient.get(`/v1/merchant/purchase-orders/products/${productId}/incoming-stock`);
     return { ok: response.ok, status: response.status, data: response.data };
   }
+
+  // ==================== Shipping Zones API ====================
+  /**
+   * Get all shipping zones for the current app
+   */
+  async getShippingZones(): Promise<ApiResponse> {
+    const response = await httpClient.get('/v1/merchant/shipping/zones', { cancelKey: 'getShippingZones' });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get a specific shipping zone by ID
+   */
+  async getShippingZone(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/shipping/zones/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create a new shipping zone
+   */
+  async createShippingZone(data: {
+    name: string;
+    description?: string;
+    countries?: string[];
+    states?: string[];
+    isActive?: boolean;
+    displayOrder?: number;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/zones', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update an existing shipping zone
+   */
+  async updateShippingZone(id: number, data: {
+    name?: string;
+    description?: string;
+    countries?: string[];
+    states?: string[];
+    isActive?: boolean;
+    displayOrder?: number;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/shipping/zones/${id}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Delete a shipping zone
+   */
+  async deleteShippingZone(id: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/merchant/shipping/zones/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Reorder shipping zones (priority matching)
+   */
+  async reorderShippingZones(zoneIds: number[]): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/zones/reorder', { zoneIds });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create default shipping zones (Domestic + International)
+   */
+  async createDefaultShippingZones(country: string = 'US'): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/zones/default', { country });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Check if address can be shipped to
+   */
+  async canShipToAddress(address: { country: string; state?: string }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/zones/can-ship', address);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get zone with all active rates
+   */
+  async getShippingZoneWithRates(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/shipping/zones/${id}/rates`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  // ==================== Shipping Rates API ====================
+  /**
+   * Get all shipping rates (optionally filter by zoneId)
+   */
+  async getShippingRates(zoneId?: number): Promise<ApiResponse> {
+    const url = zoneId
+      ? `/v1/merchant/shipping/rates?zoneId=${zoneId}`
+      : '/v1/merchant/shipping/rates';
+    const response = await httpClient.get(url, { cancelKey: 'getShippingRates' });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get rates for specific zone
+   */
+  async getShippingRatesByZone(zoneId: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/shipping/rates/zone/${zoneId}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get a specific shipping rate by ID
+   */
+  async getShippingRate(id: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/merchant/shipping/rates/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Create a new shipping rate
+   */
+  async createShippingRate(data: {
+    zoneId: number;
+    name: string;
+    description?: string;
+    method: 'flat_rate' | 'weight_based' | 'price_based' | 'free' | 'pickup';
+    baseRate?: number;
+    pricePerKg?: number;
+    percentageOfTotal?: number;
+    minOrderAmount?: number;
+    maxOrderAmount?: number;
+    freeShippingThreshold?: number;
+    minWeight?: number;
+    maxWeight?: number;
+    deliveryMinDays?: number;
+    deliveryMaxDays?: number;
+    isActive?: boolean;
+    isTaxable?: boolean;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/rates', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update an existing shipping rate
+   */
+  async updateShippingRate(id: number, data: {
+    name?: string;
+    description?: string;
+    method?: 'flat_rate' | 'weight_based' | 'price_based' | 'free' | 'pickup';
+    baseRate?: number;
+    pricePerKg?: number;
+    percentageOfTotal?: number;
+    minOrderAmount?: number;
+    maxOrderAmount?: number;
+    freeShippingThreshold?: number;
+    minWeight?: number;
+    maxWeight?: number;
+    deliveryMinDays?: number;
+    deliveryMaxDays?: number;
+    isActive?: boolean;
+    isTaxable?: boolean;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.patch(`/v1/merchant/shipping/rates/${id}`, data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Delete a shipping rate
+   */
+  async deleteShippingRate(id: number): Promise<ApiResponse> {
+    const response = await httpClient.delete(`/v1/merchant/shipping/rates/${id}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Duplicate/clone a shipping rate
+   */
+  async duplicateShippingRate(id: number): Promise<ApiResponse> {
+    const response = await httpClient.post(`/v1/merchant/shipping/rates/${id}/duplicate`, {});
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Reorder shipping rates within a zone
+   */
+  async reorderShippingRates(zoneId: number, rateIds: number[]): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/shipping/rates/reorder', { zoneId, rateIds });
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
 }
 
 // Export singleton instance

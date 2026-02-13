@@ -43,6 +43,8 @@ const SuppliersSection = lazy(() => import('@/components/merchant/sections/Suppl
 const PurchaseOrdersSection = lazy(() => import('@/components/merchant/sections/PurchaseOrdersSection'))
 const CreatePurchaseOrderPage = lazy(() => import('@/components/merchant/sections/CreatePurchaseOrderPage'))
 const EditPurchaseOrderPage = lazy(() => import('@/components/merchant/sections/EditPurchaseOrderPage'))
+const ShippingZonesSection = lazy(() => import('@/components/merchant/sections/ShippingZonesSection'))
+const ShippingRatesSection = lazy(() => import('@/components/merchant/sections/ShippingRatesSection'))
 
 interface App {
   id: number
@@ -72,9 +74,9 @@ interface ApiKeysData {
   }>
 }
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'shipping' | 'shipping-zones' | 'shipping-rates' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
 
-const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials', 'purchasing', 'locations', 'suppliers', 'purchase-orders', 'create-purchase-order', 'edit-purchase-order']
+const validSections: SectionType[] = ['dashboard', 'products', 'product-reviews', 'add-product', 'edit-product', 'brands', 'inventory', 'inventory-management', 'categories', 'orders', 'app-users', 'activity', 'settings', 'settings-general', 'settings-api', 'settings-social-auth', 'settings-payments', 'settings-sms', 'settings-email', 'settings-templates', 'settings-appearance', 'settings-notifications', 'taxes', 'tax-categories', 'tax-rules', 'coupons', 'shipping', 'shipping-zones', 'shipping-rates', 'team', 'team-members', 'team-roles', 'help-center', 'help-faq', 'help-tutorials', 'purchasing', 'locations', 'suppliers', 'purchase-orders', 'create-purchase-order', 'edit-purchase-order']
 
 export default function MerchantPanel() {
   const params = useParams()
@@ -684,6 +686,24 @@ export default function MerchantPanel() {
         return <CreatePurchaseOrderPage />
       case 'edit-purchase-order':
         return <EditPurchaseOrderPage />
+      case 'shipping-zones':
+        const shippingZonesAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const shippingZonesFinalAppSecretKey = shippingZonesAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <ShippingZonesSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || ''}
+          appSecretKey={shippingZonesFinalAppSecretKey || ''}
+        />
+      case 'shipping-rates':
+        const shippingRatesAppFromApiKeys = apiKeys?.apps?.find(app => Number(app.id) === Number(currentApp.id))
+        const shippingRatesFinalAppSecretKey = shippingRatesAppFromApiKeys?.appSecretKey || currentApp.appSecretKey
+
+        return <ShippingRatesSection
+          appId={currentApp.id}
+          apiKey={apiKeys?.userApiKey || ''}
+          appSecretKey={shippingRatesFinalAppSecretKey || ''}
+        />
       default:
         return <DashboardSection app={currentApp} onSectionChange={(section) => handleSectionChange(section as SectionType)} />
     }
