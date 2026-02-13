@@ -17,14 +17,13 @@ export interface TaxRule {
   description: string;
   taxCategoryId: number | null;
   taxCategory?: TaxCategory;
-  productId: number | null;
-  country: string | null;
-  state: string | null;
-  taxType: "percentage" | "fixed";
-  taxRate: number;
-  isCompound: boolean;
+  countries?: string[];
+  states?: string[];
+  taxType: "percentage" | "fixed" | "compound";
+  rate: number;
   priority: number;
-  isActive: boolean;
+  addressType: "shipping" | "billing" | "either";
+  isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,16 +39,15 @@ export interface TaxCategoryFormData {
 
 export interface TaxRuleFormData {
   name: string;
-  description: string;
+  description?: string;
   taxCategoryId?: number | null;
-  productId?: number | null;
-  country?: string | null;
-  state?: string | null;
-  taxType: "percentage" | "fixed";
-  taxRate: number;
-  isCompound?: boolean;
+  countries?: string[];
+  states?: string[];
+  taxType?: "percentage" | "fixed" | "compound";
+  rate: number;
   priority?: number;
-  isActive?: boolean;
+  addressType?: "shipping" | "billing" | "either";
+  isEnabled?: boolean;
 }
 
 export interface CountryOption {
@@ -90,9 +88,8 @@ export interface TaxCalculationResult {
     ruleId: number;
     ruleName: string;
     taxAmount: number;
-    taxRate: number;
-    taxType: string;
-    isCompound: boolean;
+    rate: number;
+    taxType: "percentage" | "fixed" | "compound";
   }>;
   breakdown: {
     subtotal: number;

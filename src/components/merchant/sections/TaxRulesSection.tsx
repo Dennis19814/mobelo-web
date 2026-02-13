@@ -19,14 +19,13 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
       name: '',
       description: '',
       taxCategoryId: null,
-      productId: null,
-      country: null,
-      state: null,
+      countries: [],
+      states: [],
       taxType: 'percentage',
-      taxRate: 0,
-      isCompound: false,
-      priority: 0,
-      isActive: true,
+      rate: 0,
+      priority: 1,
+      addressType: 'shipping',
+      isEnabled: true,
     }
   );
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +62,7 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
 
   if (!isOpen) return null;
 
-  const selectedCountry = formData.country || '';
+  const selectedCountry = formData.countries?.[0] || '';
   const statesForCountry = options?.states?.[selectedCountry] || [];
 
   return (
@@ -137,8 +136,8 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
               <select
-                value={formData.country || ''}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value || null, state: null })}
+                value={formData.countries?.[0] || ''}
+                onChange={(e) => setFormData({ ...formData, countries: e.target.value ? [e.target.value] : [], states: [] })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value="">All Countries</option>
@@ -152,8 +151,8 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
                 <select
-                  value={formData.state || ''}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value || null })}
+                  value={formData.states?.[0] || ''}
+                  onChange={(e) => setFormData({ ...formData, states: e.target.value ? [e.target.value] : [] })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="">All States</option>
@@ -168,23 +167,24 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tax Type</label>
               <select
                 value={formData.taxType}
-                onChange={(e) => setFormData({ ...formData, taxType: e.target.value as 'percentage' | 'fixed' })}
+                onChange={(e) => setFormData({ ...formData, taxType: e.target.value as 'percentage' | 'fixed' | 'compound' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value="percentage">Percentage</option>
                 <option value="fixed">Fixed Amount</option>
+                <option value="compound">Compound (tax on tax)</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tax Rate {formData.taxType === 'percentage' ? '(%)' : '($)'}
+                Tax Rate {formData.taxType === 'percentage' || formData.taxType === 'compound' ? '(%)' : '($)'}
               </label>
               <input
                 type="number"
                 step="0.01"
-                value={formData.taxRate}
-                onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })}
+                value={formData.rate}
+                onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 required
               />
@@ -195,32 +195,35 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
               <input
                 type="number"
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 1 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 mt-1">Lower numbers = applied first (important for compound taxes)</p>
             </div>
 
-            <div className="col-span-2 space-y-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isCompound"
-                  checked={formData.isCompound || false}
-                  onChange={(e) => setFormData({ ...formData, isCompound: e.target.checked })}
-                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                />
-                <label htmlFor="isCompound" className="ml-2 text-sm text-gray-700">Compound tax (applies to subtotal + other taxes)</label>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
+              <select
+                value={formData.addressType}
+                onChange={(e) => setFormData({ ...formData, addressType: e.target.value as 'shipping' | 'billing' | 'either' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="shipping">Shipping Address</option>
+                <option value="billing">Billing Address</option>
+                <option value="either">Either (prefer shipping)</option>
+              </select>
+            </div>
 
+            <div className="col-span-2">
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive !== false}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  id="isEnabled"
+                  checked={formData.isEnabled !== false}
+                  onChange={(e) => setFormData({ ...formData, isEnabled: e.target.checked })}
                   className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                 />
-                <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">Active</label>
+                <label htmlFor="isEnabled" className="ml-2 text-sm text-gray-700">Rule is active</label>
               </div>
             </div>
           </div>
@@ -371,17 +374,17 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
                     {rule.description && <div className="text-sm text-gray-500">{rule.description}</div>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {rule.country ? `${rule.country}${rule.state ? ` - ${rule.state}` : ''}` : 'All'}
+                    {rule.countries?.[0] ? `${rule.countries[0]}${rule.states?.[0] ? ` - ${rule.states[0]}` : ''}` : 'All'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rule.taxRate}{rule.taxType === 'percentage' ? '%' : ' $'}
+                    {rule.rate}{rule.taxType === 'percentage' || rule.taxType === 'compound' ? '%' : ' $'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {rule.isCompound && <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">Compound</span>}
+                    {rule.taxType === 'compound' && <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">Compound</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${rule.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {rule.isActive ? 'Active' : 'Inactive'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${rule.isEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {rule.isEnabled ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
