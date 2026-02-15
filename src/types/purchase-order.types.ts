@@ -12,6 +12,7 @@ export interface Location {
   address: string
   apartment?: string
   city: string
+  state?: string
   country: string
   postalCode: string
   isDefault: boolean
@@ -25,6 +26,7 @@ export interface CreateLocationDto {
   address: string
   apartment?: string
   city: string
+  state?: string
   country: string
   postalCode: string
   isDefault?: boolean

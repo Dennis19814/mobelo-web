@@ -858,11 +858,10 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
               setShowHistoryModal(false)
               setHistoryProduct(null)
             }}
-            product={historyProduct}
-            variant={selectedVariant}
-            apiKey={apiKey}
-            appSecretKey={appSecretKey}
-            appId={appId}
+            productId={historyProduct.id}
+            variantId={selectedVariant?.id}
+            productName={historyProduct.name}
+            variantName={selectedVariant ? [selectedVariant.option1Value, selectedVariant.option2Value, selectedVariant.option3Value, selectedVariant.option4Value, selectedVariant.option5Value].filter(Boolean).join(' / ') : undefined}
           />
         )}
       </Suspense>

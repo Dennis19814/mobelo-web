@@ -11,6 +11,7 @@ const SettingsSmsSection = lazy(() => import('./settings/SettingsSmsSection'));
 const SettingsEmailSection = lazy(() => import('./settings/SettingsEmailSection'));
 const SettingsTemplatesSection = lazy(() => import('./settings/SettingsTemplatesSection'));
 const SettingsNotificationsSection = lazy(() => import('./settings/SettingsNotificationsSection'));
+const SettingsStoreOriginSection = lazy(() => import('./settings/SettingsStoreOriginSection'));
 
 interface App {
   id: number;
@@ -69,6 +70,8 @@ export default function SettingsSection({ app, apiKey, appSecretKey, activeSecti
         return <SettingsTemplatesSection appId={app.id} apiKey={apiKey} appSecretKey={appSecretKey} />;
       case 'settings-notifications':
         return <SettingsNotificationsSection />;
+      case 'settings-store-origin':
+        return <SettingsStoreOriginSection appId={app.id} />;
       default:
         return <SettingsGeneralSection app={app} onAppUpdated={onAppUpdated} />;
     }

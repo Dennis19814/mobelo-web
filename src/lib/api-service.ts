@@ -161,6 +161,22 @@ class ApiService {
     return { ok: response.ok, status: response.status, data: response.data };
   }
 
+  async getAppOrigin(appId: number): Promise<ApiResponse> {
+    const response = await httpClient.get(`/v1/platform/apps/${appId}/origin`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  async updateAppOrigin(appId: number, originData: {
+    originCountry?: string;
+    originState?: string;
+    originCity?: string;
+    originPostalCode?: string;
+    originAddress?: string;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.put(`/v1/platform/apps/${appId}/origin`, originData);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
   async savePlayStoreSettings(appId: number, payload: any): Promise<ApiResponse> {
     const response = await httpClient.post(`/v1/platform/apps/${appId}/play-settings`, payload);
     return { ok: response.ok, status: response.status, data: response.data };
@@ -1533,7 +1549,11 @@ class ApiService {
    */
   async getShippingZones(): Promise<ApiResponse> {
     const response = await httpClient.get('/v1/merchant/shipping/zones', { cancelKey: 'getShippingZones' });
-    return { ok: response.ok, status: response.status, data: response.data };
+    return {
+      ok: response.ok,
+      status: response.status,
+      data: response.data
+    };
   }
 
   /**
@@ -1722,6 +1742,75 @@ class ApiService {
    */
   async calculateShipping(data: ShippingCalculationRequest): Promise<ApiResponse<ShippingCalculationResponse>> {
     const response = await httpClient.post('/v1/mobile/shipping/calculate', data);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  // ========================================
+  // Inventory Movements
+  // ========================================
+
+  /**
+   * Get inventory movement history for a product/variant
+   * @param productId - Product ID
+   * @param variantId - Optional variant ID
+   * @param limit - Number of records to fetch (default 50)
+   * @param offset - Number of records to skip (default 0)
+   * @returns Array of inventory movements with location, type, quantities, reason, etc.
+   */
+  async getInventoryMovements(params: {
+    productId: number;
+    variantId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('productId', params.productId.toString());
+    if (params.variantId) queryParams.append('variantId', params.variantId.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.offset) queryParams.append('offset', params.offset.toString());
+
+    const response = await httpClient.get(`/v1/merchant/inventory/movements?${queryParams.toString()}`);
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Get product inventory breakdown by locations
+   * Returns inventory quantities for each location where the product/variant is stocked
+   *
+   * @param productId - Product ID
+   * @param variantId - Optional variant ID
+   * @returns Array of location inventories with location details and quantities
+   */
+  async getProductInventoryByLocations(params: {
+    productId: number;
+    variantId?: number;
+  }): Promise<ApiResponse> {
+    const queryParams = new URLSearchParams();
+    if (params.variantId) queryParams.append('variantId', params.variantId.toString());
+
+    const response = await httpClient.get(
+      `/v1/merchant/inventory/product/${params.productId}/locations${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+    );
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
+  /**
+   * Update location-specific inventory quantity
+   * Updates the available quantity for a product/variant at a specific location
+   *
+   * @param productId - Product ID
+   * @param locationId - Location/warehouse ID
+   * @param quantityAvailable - New available quantity
+   * @param variantId - Optional variant ID
+   * @returns Updated location inventory record
+   */
+  async updateLocationInventory(params: {
+    productId: number;
+    locationId: number;
+    quantityAvailable: number;
+    variantId?: number;
+  }): Promise<ApiResponse> {
+    const response = await httpClient.post('/v1/merchant/inventory/location/update', params);
     return { ok: response.ok, status: response.status, data: response.data };
   }
 }

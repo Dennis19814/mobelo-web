@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { Product, ProductVariant } from '@/types/product.types'
+import InventoryHistoryModal from '@/components/merchant/modals/InventoryHistoryModal'
 
 interface InventoryManagementSectionProps {
   appId: number
@@ -18,7 +19,8 @@ interface InventoryManagementSectionProps {
 }
 
 interface InventoryLocation {
-  id: number
+  id: number | null  // ProductLocationInventory record ID (null if no record exists)
+  locationId: number  // Actual Location ID
   name: string
   address?: string
   unavailable?: number
@@ -48,17 +50,17 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
   const [inventoryQuantity, setInventoryQuantity] = useState<number>(0)
   const [isEditing, setIsEditing] = useState(false)
   const [originalQuantity, setOriginalQuantity] = useState<number>(0)
-  
-  // Mock location data (replace with actual API call)
-  const [location] = useState<InventoryLocation>({
-    id: 1,
-    name: 'Main Warehouse',
-    address: '188, 248 Hill Street',
-    unavailable: 0,
-    committed: 0,
-    available: 0,
-    onHand: 0
-  })
+
+  // Modal state for inventory history
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+
+  // Location inventory data
+  const [locations, setLocations] = useState<InventoryLocation[]>([])
+  const [loadingLocations, setLoadingLocations] = useState(false)
+
+  // Location quantities for editing
+  const [locationQuantities, setLocationQuantities] = useState<Record<number, number>>({})
+  const [originalLocationQuantities, setOriginalLocationQuantities] = useState<Record<number, number>>({})
 
   // Fetch product data
   useEffect(() => {
@@ -75,15 +77,43 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
         const response = await apiService.getProduct(productId)
         if (response.ok && response.data) {
           const productData = response.data
+          console.log('[InventoryManagementSection] Loaded product data:', {
+            productId: productData.id,
+            variantsCount: productData.variants?.length || 0,
+            variants: productData.variants?.map((v: ProductVariant) => ({ id: v.id }))
+          })
           setProduct(productData)
 
           // If product has variants, select first one by default
           if (productData.variants && productData.variants.length > 0) {
-            setSelectedVariant(productData.variants[0])
-            setInventoryQuantity(productData.variants[0].inventoryQuantity || 0)
-            setOriginalQuantity(productData.variants[0].inventoryQuantity || 0)
+            // Check if currently selected variant is still valid (exists in loaded variants)
+            let variantToSelect = productData.variants[0]
+            if (selectedVariant) {
+              const isValidVariant = productData.variants.some((v: ProductVariant) => v.id === selectedVariant.id)
+              if (isValidVariant) {
+                // Keep the currently selected variant if it's still valid
+                const validVariant = productData.variants.find((v: ProductVariant) => v.id === selectedVariant.id)
+                if (validVariant) {
+                  variantToSelect = validVariant
+                  console.log('[InventoryManagementSection] Keeping current variant (still valid):', {
+                    id: validVariant.id
+                  })
+                }
+              } else {
+                console.warn('[InventoryManagementSection] ⚠️ Selected variant ID', selectedVariant.id, 'is no longer valid. Resetting to first variant.')
+              }
+            }
+
+            // Log the variant being selected
+            console.log('[InventoryManagementSection] Selecting variant:', {
+              id: variantToSelect.id
+            })
+            setSelectedVariant(variantToSelect)
+            setInventoryQuantity(variantToSelect.inventoryQuantity || 0)
+            setOriginalQuantity(variantToSelect.inventoryQuantity || 0)
           } else {
             // No variants - use product inventory quantity
+            setSelectedVariant(null)
             setInventoryQuantity(productData.inventoryQuantity || 0)
             setOriginalQuantity(productData.inventoryQuantity || 0)
           }
@@ -124,6 +154,88 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
       setIsEditing(false)
     }
   }, [selectedVariant, product])
+
+  // Fetch location-based inventory when product or variant changes
+  useEffect(() => {
+    const loadLocationInventory = async () => {
+      if (!product) {
+        console.log('[InventoryManagementSection] loadLocationInventory - No product, skipping')
+        return
+      }
+
+      console.log('[InventoryManagementSection] loadLocationInventory - Starting', {
+        productId: product.id,
+        variantId: selectedVariant?.id
+      })
+
+      setLoadingLocations(true)
+      try {
+        const response = await apiService.getProductInventoryByLocations({
+          productId: product.id,
+          variantId: selectedVariant?.id
+        })
+
+        console.log('[InventoryManagementSection] API Response:', {
+          ok: response.ok,
+          status: response.status,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          data: response.data
+        })
+
+        if (response.ok && response.data) {
+          const locationsData = Array.isArray(response.data)
+            ? response.data
+            : response.data.data || []
+
+          console.log('[InventoryManagementSection] Extracted locationsData:', {
+            length: locationsData.length,
+            data: locationsData
+          })
+
+          // Map API response to InventoryLocation interface
+          const mappedLocations: InventoryLocation[] = locationsData.map((inv: any) => ({
+            id: inv.id,  // ProductLocationInventory record ID
+            locationId: inv.locationId,  // Actual location ID
+            name: inv.location.name,
+            address: [
+              inv.location.address,
+              inv.location.apartment,
+              inv.location.city,
+              inv.location.state,
+              inv.location.country
+            ].filter(Boolean).join(', '),
+            unavailable: inv.quantityUnavailable || 0,
+            committed: inv.quantityCommitted || 0,
+            available: inv.quantityAvailable || 0,
+            onHand: inv.quantityOnHand || 0
+          }))
+
+          console.log('[InventoryManagementSection] Mapped locations:', mappedLocations)
+          setLocations(mappedLocations)
+
+          // Initialize location quantities for editing using locationId as key
+          const quantities: Record<number, number> = {}
+          mappedLocations.forEach(loc => {
+            quantities[loc.locationId] = loc.available || 0
+            console.log(`[InventoryManagementSection] Init location ${loc.locationId} (${loc.name}): available=${loc.available}`)
+          })
+          console.log('[InventoryManagementSection] Initialized locationQuantities:', quantities)
+          setLocationQuantities(quantities)
+          setOriginalLocationQuantities(quantities)
+        } else {
+          console.log('[InventoryManagementSection] Response not OK or no data')
+        }
+      } catch (err) {
+        console.error('[InventoryManagementSection] Error loading location inventory:', err)
+        logger.error('Failed to load location inventory:', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
+      } finally {
+        setLoadingLocations(false)
+      }
+    }
+
+    loadLocationInventory()
+  }, [product, selectedVariant])
 
   // Get option names dynamically from variants
   const optionNames = useMemo(() => {
@@ -193,22 +305,102 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
   }, [product?.variants, searchTerm, optionFilters, optionNames])
 
   const handleSave = async () => {
+    console.log('🔧 [handleSave] UPDATED CODE VERSION - with validation')
     if (!product) return
+
+    console.log('[handleSave] Starting save...')
+    console.log('[handleSave] Product:', {
+      id: product.id,
+      hasVariants: !!(product.variants && product.variants.length > 0),
+      variantsCount: product.variants?.length || 0,
+      variantIds: product.variants?.map((v: ProductVariant) => v.id) || []
+    })
+    console.log('[handleSave] Selected Variant:', selectedVariant ? {
+      id: selectedVariant.id
+    } : 'null')
+    console.log('[handleSave] locationQuantities:', locationQuantities)
+    console.log('[handleSave] originalLocationQuantities:', originalLocationQuantities)
+    console.log('[handleSave] locations:', locations)
+
+    // Validate selectedVariant if product has variants
+    if (product.variants && product.variants.length > 0 && selectedVariant) {
+      const isValidVariant = product.variants.some((v: ProductVariant) => v.id === selectedVariant.id)
+      if (!isValidVariant) {
+        const errorMsg = `❌ Cannot save: Selected variant ID ${selectedVariant.id} does not exist in product variants [${product.variants.map(v => v.id).join(', ')}]. Please refresh the page.`
+        console.error('[handleSave]', errorMsg)
+        setError(errorMsg)
+        return
+      }
+      console.log('✅ [handleSave] Variant validation passed')
+    }
 
     setSaving(true)
     setError(null)
 
     try {
+      // Update location inventories first
+      console.log('[handleSave] Product details:', { productId: product.id, variantId: selectedVariant?.id })
+      console.log('[handleSave] All locations:', locations)
+
+      const locationUpdatePromises = Object.entries(locationQuantities).map(async ([locationIdStr, quantity]) => {
+        const locationId = parseInt(locationIdStr)
+        const originalQty = originalLocationQuantities[locationId]
+        console.log(`[handleSave] Processing location ${locationId}: quantity=${quantity}, originalQty=${originalQty}`)
+
+        // Only update if changed
+        if (quantity !== originalQty) {
+          console.log(`[handleSave] Updating location ${locationId} to ${quantity}`)
+          console.log(`[handleSave] API call params:`, {
+            productId: product.id,
+            locationId: locationId,
+            quantityAvailable: quantity,
+            variantId: selectedVariant?.id
+          })
+
+          try {
+            const result = await apiService.updateLocationInventory({
+              productId: product.id,
+              locationId: locationId,
+              quantityAvailable: quantity,
+              variantId: selectedVariant?.id
+            })
+            console.log(`[handleSave] ✅ Update SUCCESS for location ${locationId}:`, result)
+            return result
+          } catch (error) {
+            console.error(`[handleSave] ❌ Update FAILED for location ${locationId}:`, error)
+            throw error
+          }
+        } else {
+          console.log(`[handleSave] ⏭️  Skipping location ${locationId} (no change)`)
+        }
+        return Promise.resolve({ ok: true })
+      })
+
+      const results = await Promise.all(locationUpdatePromises)
+      console.log('[handleSave] All location updates completed:', results)
+
+      // Update locations state using locationId
+      const updatedLocations = locations.map(loc => ({
+        ...loc,
+        available: locationQuantities[loc.locationId] ?? loc.available
+      }))
+      console.log('[handleSave] Updated locations:', updatedLocations)
+
+      setLocations(updatedLocations)
+      setOriginalLocationQuantities(locationQuantities)
+
+      // Update product/variant inventory if needed
       if (selectedVariant) {
         // Update variant inventory
-        const updatedVariants = product.variants?.map(v => 
-          v.id === selectedVariant.id 
+        const updatedVariants = product.variants?.map(v =>
+          v.id === selectedVariant.id
             ? { ...v, inventoryQuantity }
             : v
         ) || []
 
         const response = await apiService.updateProduct(product.id, {
           variants: updatedVariants.map(v => ({
+            id: v.id, // CRITICAL: Include ID to prevent variant deletion/recreation
             option1Name: v.option1Name,
             option1Value: v.option1Value,
             option2Name: v.option2Name,
@@ -257,6 +449,7 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
 
   const handleCancel = () => {
     setInventoryQuantity(originalQuantity)
+    setLocationQuantities(originalLocationQuantities)
     setIsEditing(false)
   }
 
@@ -592,7 +785,11 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
                     </div>
                   ) : (
                     <button
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => {
+                        console.log('[Edit button clicked - Variant] Current locationQuantities:', locationQuantities)
+                        console.log('[Edit button clicked - Variant] Current locations:', locations)
+                        setIsEditing(true)
+                      }}
                       className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 flex items-center gap-1.5"
                     >
                       <Edit className="w-3.5 h-3.5" />
@@ -662,47 +859,66 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      <tr>
-                        <td className="px-4 py-3 text-sm text-gray-900">{location.address || location.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{location.unavailable || 0}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{location.committed || 0}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={inventoryQuantity}
-                              onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                              min="0"
-                              autoFocus
-                            />
-                          ) : (
-                            <span>{location.available || inventoryQuantity}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={inventoryQuantity}
-                              onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                              min="0"
-                            />
-                          ) : (
-                            <span>{location.onHand || inventoryQuantity}</span>
-                          )}
-                        </td>
-                      </tr>
+                      {loadingLocations ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                            Loading locations...
+                          </td>
+                        </tr>
+                      ) : locations.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                            No locations found. Please add a location first.
+                          </td>
+                        </tr>
+                      ) : (
+                        locations.map((location) => (
+                          <tr key={location.id}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="font-medium">{location.name}</div>
+                              {location.address && (
+                                <div className="text-xs text-gray-500">{location.address}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">{location.unavailable || 0}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900">{location.committed || 0}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={locationQuantities[location.locationId] ?? location.available}
+                                  onChange={(e) => {
+                                    const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                                    const validValue = isNaN(newValue) ? 0 : Math.max(0, newValue)
+                                    console.log(`[Input onChange] Location ${location.locationId}: "${e.target.value}" -> ${validValue}`)
+                                    setLocationQuantities(prev => {
+                                      const updated = {
+                                        ...prev,
+                                        [location.locationId]: validValue
+                                      }
+                                      console.log(`[Input onChange] Updated locationQuantities:`, updated)
+                                      return updated
+                                    })
+                                  }}
+                                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              ) : (
+                                <span>{location.available || 0}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">{location.onHand || 0}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
 
                 {/* View adjustment history link */}
                 <button
-                  onClick={() => {
-                    // TODO: Open history modal
-                  }}
+                  onClick={() => setShowHistoryModal(true)}
                   className="mt-3 text-sm text-orange-600 hover:text-orange-700"
                 >
                   View adjustment history
@@ -777,7 +993,11 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
                     </div>
                   ) : (
                     <button
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => {
+                        console.log('[Edit button clicked - No Variant] Current locationQuantities:', locationQuantities)
+                        console.log('[Edit button clicked - No Variant] Current locations:', locations)
+                        setIsEditing(true)
+                      }}
                       className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 flex items-center gap-1.5"
                     >
                       <Edit className="w-3.5 h-3.5" />
@@ -810,47 +1030,66 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td className="px-4 py-3 text-sm text-gray-900">{location.address || location.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{location.unavailable || 0}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{location.committed || 0}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            value={inventoryQuantity}
-                            onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                            min="0"
-                            autoFocus
-                          />
-                        ) : (
-                          <span>{location.available || inventoryQuantity}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            value={inventoryQuantity}
-                            onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                            min="0"
-                          />
-                        ) : (
-                          <span>{location.onHand || inventoryQuantity}</span>
-                        )}
-                      </td>
-                    </tr>
+                    {loadingLocations ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                          Loading locations...
+                        </td>
+                      </tr>
+                    ) : locations.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                          No locations found. Please add a location first.
+                        </td>
+                      </tr>
+                    ) : (
+                      locations.map((location) => (
+                        <tr key={location.id}>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            <div className="font-medium">{location.name}</div>
+                            {location.address && (
+                              <div className="text-xs text-gray-500">{location.address}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{location.unavailable || 0}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{location.committed || 0}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min="0"
+                                value={locationQuantities[location.locationId] ?? location.available}
+                                onChange={(e) => {
+                                  const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                                  const validValue = isNaN(newValue) ? 0 : Math.max(0, newValue)
+                                  console.log(`[Input onChange - No Variant] Location ${location.locationId}: "${e.target.value}" -> ${validValue}`)
+                                  setLocationQuantities(prev => {
+                                    const updated = {
+                                      ...prev,
+                                      [location.locationId]: validValue
+                                    }
+                                    console.log(`[Input onChange - No Variant] Updated locationQuantities:`, updated)
+                                    return updated
+                                  })
+                                }}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            ) : (
+                              <span>{location.available || 0}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{location.onHand || 0}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
 
               {/* View adjustment history link */}
               <button
-                onClick={() => {
-                  // TODO: Open history modal
-                }}
+                onClick={() => setShowHistoryModal(true)}
                 className="mt-3 text-sm text-orange-600 hover:text-orange-700"
               >
                 View adjustment history
@@ -892,6 +1131,22 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
           )}
         </div>
       </div>
+
+      {/* Inventory History Modal */}
+      {product && (
+        <InventoryHistoryModal
+          isOpen={showHistoryModal}
+          onClose={() => setShowHistoryModal(false)}
+          productId={product.id}
+          variantId={selectedVariant?.id}
+          productName={product.name}
+          variantName={selectedVariant ? [
+            selectedVariant.option1Value,
+            selectedVariant.option2Value,
+            selectedVariant.option3Value
+          ].filter(Boolean).join(' / ') : undefined}
+        />
+      )}
     </div>
   )
 }

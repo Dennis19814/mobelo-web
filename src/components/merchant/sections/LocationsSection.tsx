@@ -5,6 +5,8 @@ import { MapPin, Search, Plus, Loader2, Check, X, Edit2, Trash2 } from 'lucide-r
 import { useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, useActivateLocation } from '@/hooks/useLocations'
 import type { Location, CreateLocationDto, UpdateLocationDto } from '@/types/purchase-order.types'
 import toast from 'react-hot-toast'
+import { COUNTRIES, getCountryName } from '@/constants/countries'
+import { getStatesForCountry, hasStates, getStateName } from '@/constants/states'
 
 export default function LocationsSection() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -210,8 +212,12 @@ export default function LocationsSection() {
               <div className="text-sm text-gray-600 space-y-1">
                 <p>{location.address}</p>
                 {location.apartment && <p>{location.apartment}</p>}
-                <p>{location.city}, {location.postalCode}</p>
-                <p>{location.country}</p>
+                <p>
+                  {location.city}
+                  {location.state && `, ${location.state}`}
+                  {' '}{location.postalCode}
+                </p>
+                <p>{getCountryName(location.country)}</p>
               </div>
 
               {/* Set as Default Button */}
@@ -277,14 +283,25 @@ function LocationModal({ location, onClose, onSave, isSaving }: LocationModalPro
     address: location?.address || '',
     apartment: location?.apartment || '',
     city: location?.city || '',
-    country: location?.country || '',
+    state: location?.state || '',
+    country: location?.country || 'US', // Default to US
     postalCode: location?.postalCode || '',
     isDefault: location?.isDefault || false,
   })
 
+  // Get states for selected country
+  const states = formData.country ? getStatesForCountry(formData.country) : null
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+
+    // If country doesn't have states, remove state field
+    const dataToSave = { ...formData }
+    if (!states) {
+      dataToSave.state = ''
+    }
+
+    onSave(dataToSave)
   }
 
   return (
@@ -347,6 +364,25 @@ function LocationModal({ location, onClose, onSave, isSaving }: LocationModalPro
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Country *
+            </label>
+            <select
+              value={formData.country}
+              onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '' })}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+            >
+              <option value="">Select a country...</option>
+              {COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name} ({country.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -376,19 +412,27 @@ function LocationModal({ location, onClose, onSave, isSaving }: LocationModalPro
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Country *
-            </label>
-            <input
-              type="text"
-              value={formData.country}
-              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-              placeholder="United States"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            />
-          </div>
+          {/* State/Province field - only show for countries with states */}
+          {states && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                State/Province *
+              </label>
+              <select
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select a state/province...</option>
+                {states.map((state) => (
+                  <option key={state.code} value={state.code}>
+                    {state.name} ({state.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <label className="flex items-center gap-2">
             <input

@@ -14,6 +14,7 @@ interface ShippingZoneModalProps {
     description?: string;
     countries?: string[];
     states?: string[];
+    type?: 'domestic' | 'regional' | 'international' | 'custom';
     isActive: boolean;
     displayOrder: number;
   } | null;
@@ -25,6 +26,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
     description: '',
     countries: [] as string[],
     states: [] as string[],
+    type: 'custom' as 'domestic' | 'regional' | 'international' | 'custom',
     isActive: true,
     displayOrder: 0,
   });
@@ -40,6 +42,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
         description: zone.description || '',
         countries: zone.countries || [],
         states: zone.states || [],
+        type: zone.type || 'custom',
         isActive: zone.isActive ?? true,
         displayOrder: zone.displayOrder || 0,
       });
@@ -49,6 +52,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
         description: '',
         countries: [],
         states: [],
+        type: 'custom',
         isActive: true,
         displayOrder: 0,
       });
@@ -172,6 +176,29 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
               rows={3}
               placeholder="Optional description"
             />
+          </div>
+
+          {/* Zone Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Zone Type
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'domestic' | 'regional' | 'international' | 'custom' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            >
+              <option value="custom">Custom</option>
+              <option value="domestic">Domestic (Same country as store)</option>
+              <option value="regional">Regional (Nearby countries)</option>
+              <option value="international">International (Rest of world)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.type === 'domestic' && 'For shipping within your store\'s home country'}
+              {formData.type === 'regional' && 'For shipping to nearby/regional countries'}
+              {formData.type === 'international' && 'For shipping to international destinations'}
+              {formData.type === 'custom' && 'User-defined zone with specific criteria'}
+            </p>
           </div>
 
           {/* Countries */}

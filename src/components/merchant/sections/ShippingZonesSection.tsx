@@ -34,6 +34,7 @@ interface ShippingZone {
   description?: string;
   countries?: string[];
   states?: string[];
+  type?: 'domestic' | 'regional' | 'international' | 'custom';
   isActive: boolean;
   displayOrder: number;
   rateCount?: number;

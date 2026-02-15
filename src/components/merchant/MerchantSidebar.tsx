@@ -9,7 +9,7 @@ import {
 import { useStaffPermissions, useStaffUser } from '@/contexts/StaffUserContext'
 import { hashId } from '@/lib/url-hash'
 
-type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'shipping' | 'shipping-zones' | 'shipping-rates' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
+type SectionType = 'dashboard' | 'products' | 'product-reviews' | 'add-product' | 'edit-product' | 'brands' | 'inventory' | 'inventory-management' | 'categories' | 'orders' | 'app-users' | 'activity' | 'settings' | 'settings-general' | 'settings-api' | 'settings-social-auth' | 'settings-payments' | 'settings-sms' | 'settings-email' | 'settings-templates' | 'settings-appearance' | 'settings-notifications' | 'settings-store-origin' | 'taxes' | 'tax-categories' | 'tax-rules' | 'coupons' | 'shipping' | 'shipping-zones' | 'shipping-rates' | 'team' | 'team-members' | 'team-roles' | 'help-center' | 'help-faq' | 'help-tutorials' | 'purchasing' | 'locations' | 'suppliers' | 'purchase-orders' | 'create-purchase-order' | 'edit-purchase-order'
 
 interface App {
   id: number
@@ -109,6 +109,7 @@ const menuItems: MenuItem[] = [
       { id: 'settings-email' as SectionType, label: 'Email', icon: Mail },
       { id: 'settings-templates' as SectionType, label: 'Templates', icon: FileText },
       { id: 'settings-notifications' as SectionType, label: 'Notifications', icon: Bell },
+      { id: 'settings-store-origin' as SectionType, label: 'Store Origin', icon: MapPin },
     ]
   },
   { id: 'help-center' as SectionType, label: 'Help Center', icon: HelpCircle },
