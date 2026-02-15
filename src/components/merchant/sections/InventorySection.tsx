@@ -143,12 +143,8 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
 
       if (accumulated.length > 0) {
         let inventoryProducts = accumulated.filter((p: Product) => p.trackInventory)
-        // Enrich products that track inventory but show 0/undefined - backend list may not include variant inventory
-        const needsEnrichment = inventoryProducts.filter(
-          (p: Product) =>
-            p.trackInventory &&
-            (p.inventoryQuantity === 0 || p.inventoryQuantity === undefined)
-        )
+        // Always enrich inventory products to ensure accurate totals (backend list may not include variant inventory sums)
+        const needsEnrichment = inventoryProducts
         if (needsEnrichment.length > 0) {
           const enriched = await Promise.all(
             needsEnrichment.map(async (p: Product) => {
@@ -231,10 +227,8 @@ const InventorySectionComponent = ({ appId, apiKey, appSecretKey }: InventorySec
             inventoryQuantity: typeof mp.inventoryQuantity === 'number' ? mp.inventoryQuantity : 0,
             variants: mp.variants || [],
           }))
-          // Enrich products that show 0/undefined - mobile list may not include variant inventory
-          const needsEnrichment = mapped.filter(
-            (p: Product) => p.inventoryQuantity === 0 || p.inventoryQuantity === undefined
-          )
+          // Always enrich all products to ensure accurate totals (mobile list may not include variant inventory sums)
+          const needsEnrichment = mapped
           if (needsEnrichment.length > 0) {
             const enriched = await Promise.all(
               needsEnrichment.map(async (p: Product) => {

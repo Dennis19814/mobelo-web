@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import { useMerchantAuth, useTaxRules, useTaxOptions, useCrudOperations } from '@/hooks';
 import { Plus, AlertCircle, Search, Loader2, Receipt, X, Percent, Pencil, Trash2 } from 'lucide-react';
 import { TaxRule, TaxRuleFormData } from '@/types/tax.types';
@@ -31,6 +31,38 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { options } = useTaxOptions({ headers });
+
+  // Update form data when rule prop changes (for edit mode)
+  useEffect(() => {
+    if (rule) {
+      setFormData({
+        name: rule.name || '',
+        description: rule.description || '',
+        taxCategoryId: rule.taxCategoryId,
+        countries: rule.countries || [],
+        states: rule.states || [],
+        taxType: rule.taxType || 'percentage',
+        rate: rule.rate || 0,
+        priority: rule.priority || 1,
+        addressType: rule.addressType || 'shipping',
+        isEnabled: rule.isEnabled !== false,
+      });
+    } else {
+      // Reset to default values when opening "Add" modal
+      setFormData({
+        name: '',
+        description: '',
+        taxCategoryId: null,
+        countries: [],
+        states: [],
+        taxType: 'percentage',
+        rate: 0,
+        priority: 1,
+        addressType: 'shipping',
+        isEnabled: true,
+      });
+    }
+  }, [rule]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '@/lib/api-service';
+import { COUNTRIES, ALL_STATES, getCountryName, getStateName } from '@/lib/constants/geo-data';
 
 interface ShippingZoneModalProps {
   isOpen: boolean;
@@ -32,8 +33,8 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [countryInput, setCountryInput] = useState('');
-  const [stateInput, setStateInput] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedState, setSelectedState] = useState('');
 
   useEffect(() => {
     if (zone) {
@@ -60,10 +61,9 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
   }, [zone]);
 
   const handleAddCountry = () => {
-    const country = countryInput.trim().toUpperCase();
-    if (country && !formData.countries.includes(country)) {
-      setFormData({ ...formData, countries: [...formData.countries, country] });
-      setCountryInput('');
+    if (selectedCountry && !formData.countries.includes(selectedCountry)) {
+      setFormData({ ...formData, countries: [...formData.countries, selectedCountry] });
+      setSelectedCountry('');
     }
   };
 
@@ -75,10 +75,9 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
   };
 
   const handleAddState = () => {
-    const state = stateInput.trim().toUpperCase();
-    if (state && !formData.states.includes(state)) {
-      setFormData({ ...formData, states: [...formData.states, state] });
-      setStateInput('');
+    if (selectedState && !formData.states.includes(selectedState)) {
+      setFormData({ ...formData, states: [...formData.states, selectedState] });
+      setSelectedState('');
     }
   };
 
@@ -204,25 +203,29 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
           {/* Countries */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Countries (ISO codes)
+              Countries
             </label>
             <p className="text-xs text-gray-500 mb-2">
               Leave empty for "Rest of World" (catches all unmatched addresses)
             </p>
             <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={countryInput}
-                onChange={(e) => setCountryInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCountry())}
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="e.g., US, CA, MX"
-                maxLength={2}
-              />
+              >
+                <option value="">Select a country...</option>
+                {COUNTRIES.filter(c => !formData.countries.includes(c.code)).map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name} ({country.code})
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={handleAddCountry}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+                disabled={!selectedCountry}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add
@@ -235,7 +238,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
                     key={country}
                     className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
                   >
-                    {country}
+                    {getCountryName(country)} ({country})
                     <button
                       type="button"
                       onClick={() => handleRemoveCountry(country)}
@@ -255,22 +258,26 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
               States/Provinces (optional)
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Use for specific state-level shipping (e.g., CA, NY, TX)
+              Use for specific state-level shipping (e.g., California, New York, Texas)
             </p>
             <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={stateInput}
-                onChange={(e) => setStateInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddState())}
+              <select
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="e.g., CA, NY, TX"
-                maxLength={2}
-              />
+              >
+                <option value="">Select a state/province...</option>
+                {ALL_STATES.filter(s => !formData.states.includes(s.code)).map((state) => (
+                  <option key={`${state.country}-${state.code}`} value={state.code}>
+                    {state.name} ({state.code}) - {state.country}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={handleAddState}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+                disabled={!selectedState}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add
@@ -283,7 +290,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
                     key={state}
                     className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
                   >
-                    {state}
+                    {getStateName(state)} ({state})
                     <button
                       type="button"
                       onClick={() => handleRemoveState(state)}

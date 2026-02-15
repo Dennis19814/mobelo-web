@@ -389,56 +389,36 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
       setLocations(updatedLocations)
       setOriginalLocationQuantities(locationQuantities)
 
-      // Update product/variant inventory if needed
-      if (selectedVariant) {
-        // Update variant inventory
-        const updatedVariants = product.variants?.map(v =>
-          v.id === selectedVariant.id
-            ? { ...v, inventoryQuantity }
-            : v
-        ) || []
-
-        const response = await apiService.updateProduct(product.id, {
-          variants: updatedVariants.map(v => ({
-            id: v.id, // CRITICAL: Include ID to prevent variant deletion/recreation
-            option1Name: v.option1Name,
-            option1Value: v.option1Value,
-            option2Name: v.option2Name,
-            option2Value: v.option2Value,
-            option3Name: v.option3Name,
-            option3Value: v.option3Value,
-            price: v.price,
-            inventoryQuantity: v.inventoryQuantity,
-            sku: v.sku
-          }))
+      // Refetch product data to get updated inventoryQuantity totals
+      console.log('[handleSave] Refetching product data to get updated totals...')
+      const productResponse = await apiService.getProduct(product.id)
+      if (productResponse.ok && productResponse.data) {
+        const updatedProduct = productResponse.data
+        console.log('[handleSave] Product data refreshed:', {
+          variantsCount: updatedProduct.variants?.length || 0,
         })
+        setProduct(updatedProduct)
 
-        if (response.ok) {
-          // Update local state
-          setProduct(prev => prev ? {
-            ...prev,
-            variants: updatedVariants
-          } : null)
-          setSelectedVariant(updatedVariants.find(v => v.id === selectedVariant.id) || null)
-          setOriginalQuantity(inventoryQuantity)
-          setIsEditing(false)
-        } else {
-          setError('Failed to update inventory')
-        }
-      } else {
-        // Update product inventory (no variants)
-        const response = await apiService.updateProduct(product.id, {
-          inventoryQuantity
-        })
-
-        if (response.ok) {
-          setProduct(prev => prev ? { ...prev, inventoryQuantity } : null)
-          setOriginalQuantity(inventoryQuantity)
-          setIsEditing(false)
-        } else {
-          setError('Failed to update inventory')
+        // Update selected variant with refreshed data
+        if (selectedVariant && updatedProduct.variants) {
+          const refreshedVariant = updatedProduct.variants.find((v: ProductVariant) => v.id === selectedVariant.id)
+          if (refreshedVariant) {
+            console.log('[handleSave] Updated selected variant inventory:', {
+              variantId: refreshedVariant.id,
+              oldQuantity: selectedVariant.inventoryQuantity,
+              newQuantity: refreshedVariant.inventoryQuantity
+            })
+            setSelectedVariant(refreshedVariant)
+            setInventoryQuantity(refreshedVariant.inventoryQuantity || 0)
+            setOriginalQuantity(refreshedVariant.inventoryQuantity || 0)
+          }
         }
       }
+
+      // Location inventories have been updated and product data has been refetched
+      // The backend automatically calculates variant totals, so no need to update again
+      setOriginalQuantity(inventoryQuantity)
+      setIsEditing(false)
     } catch (err) {
       logger.error('Failed to save inventory:', { error: err instanceof Error ? err.message : String(err) })
       setError('Failed to save inventory')
