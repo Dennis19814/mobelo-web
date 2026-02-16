@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '@/lib/api-service';
-import { COUNTRIES, ALL_STATES, getCountryName, getStateName } from '@/lib/constants/geo-data';
+import { COUNTRIES, getCountryName } from '@/constants/countries';
+import { ALL_STATES, getStateName } from '@/lib/constants/geo-data';
 
 interface ShippingZoneModalProps {
   isOpen: boolean;

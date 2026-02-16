@@ -14,6 +14,8 @@ export interface StateOption {
   country: string;
 }
 
+// austraila,canada,us,uk
+
 // Top countries for e-commerce
 export const COUNTRIES: CountryOption[] = [
   { code: 'US', name: 'United States' },
