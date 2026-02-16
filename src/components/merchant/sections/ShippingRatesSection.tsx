@@ -68,6 +68,7 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
   const [zones, setZones] = useState<ShippingZone[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [rates, setRates] = useState<ShippingRate[]>([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null);
@@ -78,8 +79,12 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const MIN_LOADING_MS = 400;
+
   const fetchZones = useCallback(async () => {
+    const startedAt = Date.now();
     try {
+      setZonesLoading(true);
       const response = await apiService.getShippingZones();
 
       // Skip error handling for cancelled requests (React Strict Mode)
@@ -94,9 +99,11 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
       const zonesData = response.data || [];
       setZones(zonesData);
 
-      // Select first zone by default
+      // Select first zone by default; if no zones, no rates to load
       if (zonesData.length > 0 && !selectedZoneId) {
         setSelectedZoneId(zonesData[0].id);
+      } else if (zonesData.length === 0) {
+        setLoading(false);
       }
     } catch (err) {
       // Ignore AbortErrors from React Strict Mode
@@ -105,10 +112,16 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
       }
       console.error('Error fetching zones:', err);
       setError(err instanceof Error ? err.message : 'Failed to load zones');
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+      if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+      setZonesLoading(false);
     }
   }, [selectedZoneId]);
 
   const fetchRates = useCallback(async (zoneId: number) => {
+    const startedAt = Date.now();
     try {
       setLoading(true);
       setError(null);
@@ -132,6 +145,9 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
       console.error('Error fetching shipping rates:', err);
       setError(err instanceof Error ? err.message : 'Failed to load rates');
     } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+      if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
       setLoading(false);
     }
   }, []);
@@ -255,7 +271,7 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
             <Truck className="w-6 h-6 text-orange-600" />
             Shipping Rates
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1">
             Manage shipping rates for each zone
           </p>
         </div>
@@ -280,19 +296,24 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-600" />
-          <p className="text-sm text-green-800">{successMessage}</p>
+          <p className="text-green-800">{successMessage}</p>
         </div>
       )}
 
-      {/* Error Message */}
-      {error && (
+      {/* Error Message - only when not loading */}
+      {!zonesLoading && !loading && error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm text-red-800">{error}</p>
+          <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      {zones.length === 0 ? (
+      {/* When loading: show only spinner (same as Shipping Zones) */}
+      {zonesLoading || (zones.length > 0 && loading) ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        </div>
+      ) : zones.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <Truck className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -338,11 +359,7 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
           </div>
 
           {/* Rates List */}
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
-            </div>
-          ) : filteredRates.length === 0 ? (
+          {filteredRates.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <Truck className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -372,22 +389,22 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Rate Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Method
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Base Cost
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Delivery Time
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                         Actions
                       </th>
                     </tr>
