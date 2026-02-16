@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2, Truck, Info, DollarSign, Weight, Percent, Package } from 'lucide-react';
 import { apiService } from '@/lib/api-service';
 
@@ -142,7 +143,7 @@ export default function ShippingRateModal({ isOpen, onClose, onSuccess, zoneId, 
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -517,4 +518,8 @@ export default function ShippingRateModal({ isOpen, onClose, onSuccess, zoneId, 
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null;
 }

@@ -1,10 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '@/lib/api-service';
 import { COUNTRIES, getCountryName } from '@/constants/countries';
-import { ALL_STATES, getStateName } from '@/lib/constants/geo-data';
+import { ALL_STATES, getStateName, COUNTRIES_WITH_STATES } from '@/lib/constants/geo-data';
+
+/** Group state options by country for the dropdown */
+function groupStatesByCountry(states: { code: string; name: string; country: string }[]) {
+  const byCountry = new Map<string, { code: string; name: string }[]>();
+  for (const s of states) {
+    const list = byCountry.get(s.country) ?? [];
+    list.push({ code: s.code, name: s.name });
+    byCountry.set(s.country, list);
+  }
+  return byCountry;
+}
 
 interface ShippingZoneModalProps {
   isOpen: boolean;
@@ -61,6 +73,18 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
     }
   }, [zone]);
 
+  // Clear state selection when selected countries change and current selection is no longer valid
+  useEffect(() => {
+    if (selectedState && formData.countries.length > 0) {
+      const stillValid = ALL_STATES.some(
+        s => s.code === selectedState && formData.countries.includes(s.country)
+      );
+      if (!stillValid) setSelectedState('');
+    } else if (formData.countries.length === 0) {
+      setSelectedState('');
+    }
+  }, [formData.countries, selectedState]);
+
   const handleAddCountry = () => {
     if (selectedCountry && !formData.countries.includes(selectedCountry)) {
       setFormData({ ...formData, countries: [...formData.countries, selectedCountry] });
@@ -73,7 +97,25 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
       ...formData,
       countries: formData.countries.filter(c => c !== country)
     });
+    setSelectedState('');
   };
+
+  // Selected countries that have no state/province data → show "All" (whole country), cannot deselect
+  const selectedCountriesWithNoStates = formData.countries.filter(
+    c => !COUNTRIES_WITH_STATES.includes(c)
+  );
+  // Countries that have state data → show dropdown for specific states
+  const selectedCountriesWithStates = formData.countries.filter(c =>
+    COUNTRIES_WITH_STATES.includes(c)
+  );
+
+  // States/provinces for selected countries that have state data
+  const availableStates =
+    selectedCountriesWithStates.length > 0
+      ? ALL_STATES.filter(s => selectedCountriesWithStates.includes(s.country))
+      : [];
+  const stateOptions = availableStates.filter(s => !formData.states.includes(s.code));
+  const stateOptionsByCountry = groupStatesByCountry(stateOptions);
 
   const handleAddState = () => {
     if (selectedState && !formData.states.includes(selectedState)) {
@@ -119,7 +161,7 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -259,33 +301,67 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
               States/Provinces (optional)
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Use for specific state-level shipping (e.g., California, New York, Texas)
+              {formData.countries.length > 0
+                ? 'Use for specific state-level shipping within the selected countries'
+                : 'Select countries above first to see states/provinces'}
             </p>
             <div className="flex gap-2 mb-2">
               <select
                 value={selectedState}
                 onChange={(e) => setSelectedState(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                disabled={selectedCountriesWithStates.length === 0}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">Select a state/province...</option>
-                {ALL_STATES.filter(s => !formData.states.includes(s.code)).map((state) => (
-                  <option key={`${state.country}-${state.code}`} value={state.code}>
-                    {state.name} ({state.code}) - {state.country}
-                  </option>
-                ))}
+                <option value="">
+                  {formData.countries.length === 0
+                    ? 'Select countries above first...'
+                    : selectedCountriesWithStates.length === 0
+                      ? 'No state-level options for selected countries'
+                      : stateOptions.length === 0
+                        ? 'No more states/provinces to add'
+                        : 'Select a state/province...'}
+                </option>
+                {selectedCountriesWithStates.map((countryCode) => {
+                  const states = stateOptionsByCountry.get(countryCode);
+                  if (!states?.length) return null;
+                  return (
+                    <optgroup key={countryCode} label={getCountryName(countryCode)}>
+                      {states.map((state) => (
+                        <option key={`${countryCode}-${state.code}`} value={state.code}>
+                          {state.name} ({state.code})
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
               <button
                 type="button"
                 onClick={handleAddState}
-                disabled={!selectedState}
+                disabled={!selectedState || selectedCountriesWithStates.length === 0}
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add
               </button>
             </div>
-            {formData.states.length > 0 && (
+            {(selectedCountriesWithNoStates.length > 0 || formData.states.length > 0) && (
               <div className="flex flex-wrap gap-2">
+                {selectedCountriesWithNoStates.map((countryCode) => (
+                  <span
+                    key={`all-${countryCode}`}
+                    className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                  >
+                    All ({getCountryName(countryCode)})
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCountry(countryCode)}
+                      className="ml-2 hover:text-purple-900"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
                 {formData.states.map((state) => (
                   <span
                     key={state}
@@ -359,4 +435,8 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null;
 }

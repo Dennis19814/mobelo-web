@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { apiService } from '@/lib/api-service';
 import {
   MapPin,
@@ -54,6 +54,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
   const [createDefaultLoading, setCreateDefaultLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const hasLoadedSuccessfullyRef = useRef(false);
 
   const fetchZones = useCallback(async () => {
     try {
@@ -63,6 +64,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
 
       // Skip error handling for cancelled requests (React Strict Mode)
       if ((response as any).cancelled) {
+        setLoading(false);
         return;
       }
 
@@ -70,14 +72,20 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
         throw new Error('Failed to fetch shipping zones');
       }
 
+      hasLoadedSuccessfullyRef.current = true;
       setZones(response.data || []);
+      setError(null);
     } catch (err) {
       // Ignore AbortErrors from React Strict Mode
       if (err instanceof Error && err.name === 'AbortError') {
+        setLoading(false);
         return;
       }
       console.error('Error fetching shipping zones:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load zones');
+      // Only show error if we've never loaded zones (avoid overwriting after a later failed refetch)
+      if (!hasLoadedSuccessfullyRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load zones');
+      }
     } finally {
       setLoading(false);
     }
@@ -212,7 +220,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
       )}
 
       {/* Error Message */}
-      {error && (
+      {error && zones.length === 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-red-600" />
           <p className="text-sm text-red-800">{error}</p>
