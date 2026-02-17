@@ -91,6 +91,9 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
   // Debounce timer ref
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Snapshot of category counts when no category filter is applied; keeps counts stable when user selects a category
+  const [categoryCountsSnapshot, setCategoryCountsSnapshot] = useState<Record<number, number>>({})
+
   const fetchProducts = useCallback(async () => {
     // Allow owner (dual-key) or staff JWT
     const hasStaffToken = typeof window !== 'undefined' ? !!localStorage.getItem('staff_access_token') : false
@@ -105,7 +108,15 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
       setLoading(true)
 
       // Attempt strict merchant products endpoint first (include variants for inventory calculation)
-      const response = await apiService.getProducts({ ...filters, include: 'variants' })
+      // Convert brands array to 'brand' params (backend expects 'brand' not 'brands')
+      const apiFilters = { ...filters }
+      if (apiFilters.brands && Array.isArray(apiFilters.brands) && apiFilters.brands.length > 0) {
+        // Backend expects 'brand' (singular) parameter, not 'brands'
+        // getProducts will serialize the array as brand=Value1&brand=Value2
+        apiFilters.brand = apiFilters.brands as any
+        delete apiFilters.brands
+      }
+      const response = await apiService.getProducts({ ...apiFilters, include: 'variants' })
 
       if (response.ok && response.data) {
         let productsData: any[] = []
@@ -145,8 +156,39 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
           productsData = productsData.map((p: Product) => enrichedMap.get(p.id) ?? p)
         }
 
+        // Enrich products that have no variants in list response (so list view can show variant option names)
+        const needsVariantEnrichment = productsData.filter((p: Product) => !p.variants?.length)
+        if (needsVariantEnrichment.length > 0) {
+          const variantEnriched = await Promise.all(
+            needsVariantEnrichment.map(async (p: Product) => {
+              const resp = await apiService.getProduct(p.id)
+              if (resp.ok && resp.data && (resp.data as Product).variants?.length) {
+                return { ...p, variants: (resp.data as Product).variants }
+              }
+              return p
+            })
+          )
+          const variantEnrichedMap = new Map(variantEnriched.map((e: Product) => [e.id, e]))
+          productsData = productsData.map((p: Product) => variantEnrichedMap.get(p.id) ?? p)
+        }
+
         setProducts(productsData)
         setInitialLoadComplete(true)
+
+        // Update category counts snapshot only when no category filter is applied, so counts stay stable when user selects a category
+        const noCategoryFilter = !filters.categories || filters.categories.length === 0
+        if (noCategoryFilter && productsData.length > 0) {
+          const countByCategoryId: Record<number, number> = {}
+          productsData.forEach((p: Product) => {
+            p.categories?.forEach((c) => {
+              const id = typeof c === 'object' && c !== null && 'id' in c ? (c as ProductCategory).id : undefined
+              if (id != null) {
+                countByCategoryId[id] = (countByCategoryId[id] ?? 0) + 1
+              }
+            })
+          })
+          setCategoryCountsSnapshot(countByCategoryId)
+        }
 
         // Extract unique brands from products for filter options
         const brandSet = new Set<string>()
@@ -322,6 +364,34 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
     if (filters.search !== undefined && filters.search !== null && String(filters.search).trim().length > 0) count++
     return count
   }, [filters])
+
+  // Compute product count per category for the filter panel; use snapshot when available so counts don't change to zero when a category filter is applied
+  const categoriesWithCounts = useMemo(() => {
+    type CatWithChildren = ProductCategory & { children?: CatWithChildren[] }
+    const countByCategoryId = new Map<number, number>()
+    const useSnapshot = Object.keys(categoryCountsSnapshot).length > 0
+    if (useSnapshot) {
+      Object.entries(categoryCountsSnapshot).forEach(([id, count]) => {
+        countByCategoryId.set(Number(id), count)
+      })
+    } else {
+      products.forEach((p) => {
+        p.categories?.forEach((c) => {
+          const id = typeof c === 'object' && c !== null && 'id' in c ? (c as ProductCategory).id : undefined
+          if (id != null) {
+            countByCategoryId.set(id, (countByCategoryId.get(id) ?? 0) + 1)
+          }
+        })
+      })
+    }
+    const enrich = (cats: CatWithChildren[]): CatWithChildren[] =>
+      cats.map((cat) => ({
+        ...cat,
+        productCount: countByCategoryId.get(cat.id) ?? 0,
+        children: cat.children?.length ? enrich(cat.children) : undefined,
+      }))
+    return enrich(categories as CatWithChildren[])
+  }, [categories, products, categoryCountsSnapshot])
 
   const handleFiltersChange = useCallback((filterValues: FilterValues) => {
     const newFilters: ProductFiltersType = {
@@ -776,7 +846,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
       {showFilters && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
           <ProductFilters
-            categories={categories}
+            categories={categoriesWithCounts}
             brands={brands}
             onFilterChange={handleFiltersChange}
             onClose={() => setShowFilters(false)}

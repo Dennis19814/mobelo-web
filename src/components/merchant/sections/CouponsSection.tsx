@@ -238,6 +238,13 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
         </p>
       </div>
 
+      {/* When loading: show only spinner (same as Shipping Zones / Brands) */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        </div>
+      ) : (
+        <>
       {/* Filters and Actions */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
         <div className="flex flex-col sm:flex-row gap-3">
@@ -305,11 +312,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
       </div>
 
       {/* Coupons Table */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-        </div>
-      ) : coupons.length === 0 ? (
+      {coupons.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <p className="text-gray-500">No coupons found</p>
           <button
@@ -453,6 +456,8 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
             selectId="coupons-per-page-select"
           />
         </div>
+      )}
+        </>
       )}
 
       {/* Create Modal */}

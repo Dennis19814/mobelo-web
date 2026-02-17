@@ -1,6 +1,6 @@
 /**
  * Geographic data for shipping zones
- * Countries and US states with ISO codes
+ * Countries and states/provinces (US, Canada, Australia, UK) with ISO codes
  */
 
 export interface CountryOption {
@@ -13,8 +13,6 @@ export interface StateOption {
   name: string;
   country: string;
 }
-
-// austraila,canada,us,uk
 
 // Top countries for e-commerce
 export const COUNTRIES: CountryOption[] = [
@@ -123,6 +121,18 @@ export const US_STATES: StateOption[] = [
   { code: 'GU', name: 'Guam', country: 'US' },
 ];
 
+// Australian States and Territories
+export const AUSTRALIAN_STATES: StateOption[] = [
+  { code: 'ACT', name: 'Australian Capital Territory', country: 'AU' },
+  { code: 'NSW', name: 'New South Wales', country: 'AU' },
+  { code: 'NT', name: 'Northern Territory', country: 'AU' },
+  { code: 'QLD', name: 'Queensland', country: 'AU' },
+  { code: 'SA', name: 'South Australia', country: 'AU' },
+  { code: 'TAS', name: 'Tasmania', country: 'AU' },
+  { code: 'VIC', name: 'Victoria', country: 'AU' },
+  { code: 'WA', name: 'Western Australia', country: 'AU' },
+];
+
 // Canadian Provinces
 export const CANADIAN_PROVINCES: StateOption[] = [
   { code: 'AB', name: 'Alberta', country: 'CA' },
@@ -140,11 +150,26 @@ export const CANADIAN_PROVINCES: StateOption[] = [
   { code: 'YT', name: 'Yukon', country: 'CA' },
 ];
 
+// UK constituent countries (used as state/region in address forms)
+export const UK_COUNTRIES: StateOption[] = [
+  { code: 'ENG', name: 'England', country: 'GB' },
+  { code: 'SCT', name: 'Scotland', country: 'GB' },
+  { code: 'WLS', name: 'Wales', country: 'GB' },
+  { code: 'NIR', name: 'Northern Ireland', country: 'GB' },
+];
+
 // All states combined
 export const ALL_STATES: StateOption[] = [
   ...US_STATES,
   ...CANADIAN_PROVINCES,
+  ...AUSTRALIAN_STATES,
+  ...UK_COUNTRIES,
 ];
+
+/** Country codes that have state/province data (US, CA, GB, AU) */
+export const COUNTRIES_WITH_STATES: string[] = Array.from(
+  new Set(ALL_STATES.map(s => s.country))
+);
 
 /**
  * Get country name from ISO code

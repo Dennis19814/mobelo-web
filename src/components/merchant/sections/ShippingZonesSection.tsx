@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { apiService } from '@/lib/api-service';
 import {
   MapPin,
@@ -54,15 +54,21 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
   const [createDefaultLoading, setCreateDefaultLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const hasLoadedSuccessfullyRef = useRef(false);
+
+  const MIN_LOADING_MS = 400;
 
   const fetchZones = useCallback(async () => {
+    const startedAt = Date.now();
     try {
       setLoading(true);
       setError(null);
+
       const response = await apiService.getShippingZones();
 
       // Skip error handling for cancelled requests (React Strict Mode)
       if ((response as any).cancelled) {
+        setLoading(false);
         return;
       }
 
@@ -70,15 +76,27 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
         throw new Error('Failed to fetch shipping zones');
       }
 
+      hasLoadedSuccessfullyRef.current = true;
       setZones(response.data || []);
+      setError(null);
     } catch (err) {
       // Ignore AbortErrors from React Strict Mode
       if (err instanceof Error && err.name === 'AbortError') {
+        setLoading(false);
         return;
       }
       console.error('Error fetching shipping zones:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load zones');
+      // Only show error if we've never loaded zones (avoid overwriting after a later failed refetch)
+      if (!hasLoadedSuccessfullyRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load zones');
+      }
     } finally {
+      // Keep spinner visible at least MIN_LOADING_MS so it's not a flash (same as other pages)
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+      if (remaining > 0) {
+        await new Promise((r) => setTimeout(r, remaining));
+      }
       setLoading(false);
     }
   }, []);
@@ -166,7 +184,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
             <MapPin className="w-6 h-6 text-orange-600" />
             Shipping Zones
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1">
             Manage geographic regions for shipping rates
           </p>
         </div>
@@ -207,18 +225,20 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-600" />
-          <p className="text-sm text-green-800">{successMessage}</p>
+          <p className="text-green-800">{successMessage}</p>
         </div>
       )}
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm text-red-800">{error}</p>
+      {/* When loading: show prominent loader only (no search, no content, no error) */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
         </div>
-      )}
+      ) : null}
 
+      {/* Content - only show when not loading */}
+      {!loading && (
+        <>
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -232,11 +252,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
       </div>
 
       {/* Zones List */}
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
-        </div>
-      ) : filteredZones.length === 0 ? (
+      {filteredZones.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <MapPin className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -273,19 +289,19 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Zone Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Coverage
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Rates
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                     Actions
                   </th>
                 </tr>
@@ -375,6 +391,8 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
             </table>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Modals */}

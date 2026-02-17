@@ -2,6 +2,7 @@
 import { logger } from '@/lib/logger'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Trash2, X, Loader2, AlertTriangle } from 'lucide-react'
 
 interface DeleteConfirmationModalProps {
@@ -54,7 +55,7 @@ export default function DeleteConfirmationModal({
     ? `Are you sure you want to delete "${itemName}"? This action cannot be undone.`
     : `Are you sure you want to delete this ${itemType}? This action cannot be undone.`
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
       onClick={handleBackdropClick}
@@ -117,4 +118,8 @@ export default function DeleteConfirmationModal({
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null
 }

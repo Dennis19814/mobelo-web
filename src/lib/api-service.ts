@@ -353,7 +353,16 @@ class ApiService {
     const params = new URLSearchParams();
     if (query) {
       Object.entries(query).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value === undefined || value === null) return;
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            if (item !== undefined && item !== null && item !== '') {
+              params.append(key, String(item));
+            }
+          });
+          return;
+        }
+        if (value !== '') {
           params.append(key, String(value));
         }
       });
