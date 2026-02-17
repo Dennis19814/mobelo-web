@@ -37,6 +37,8 @@ import {
   BlockUserRequest,
   UnblockUserRequest
 } from '@/types/user.types';
+import { getCountryName } from '@/constants/countries';
+import { getCountryFromPhone } from '@/lib/phone-dial-codes';
 
 interface AppUsersSectionProps {
   appId: number;
@@ -905,11 +907,31 @@ const AppUsersSectionComponent = ({ appId, apiKey, appSecretKey }: AppUsersSecti
                         </div>
                         <div className="flex justify-between py-2 border-b border-gray-100">
                           <span className="text-sm text-gray-500">Phone</span>
-                          <span className="text-sm font-medium text-gray-900">{selectedUser.phone}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const fromPhone = getCountryFromPhone(selectedUser.phone);
+                              if (fromPhone) {
+                                const digits = selectedUser.phone.replace(/\D/g, '');
+                                const prefix = fromPhone.dialCode.replace(/\D/g, '');
+                                const rest = digits.slice(prefix.length);
+                                return rest ? `${fromPhone.dialCode} ${rest}` : selectedUser.phone;
+                              }
+                              return selectedUser.phone;
+                            })()}
+                          </span>
                         </div>
                         <div className="flex justify-between py-2 border-b border-gray-100">
                           <span className="text-sm text-gray-500">Country Code</span>
-                          <span className="text-sm font-medium text-gray-900">{selectedUser.countryCode}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {(() => {
+                              const fromPhone = getCountryFromPhone(selectedUser.phone);
+                              if (fromPhone)
+                                return `${fromPhone.dialCode} (${fromPhone.countryName})`;
+                              if (selectedUser.countryCode)
+                                return `${selectedUser.countryCode} (${getCountryName(selectedUser.countryCode)})`;
+                              return 'Not provided';
+                            })()}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center py-2">
                           <span className="text-sm text-gray-500">Status</span>

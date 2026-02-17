@@ -145,59 +145,68 @@ export default function ProductDetailsModal({
         </div>
 
         {/* Product Variants */}
-        {product.variants && product.variants.length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-3">
-            <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2 flex items-center">
-              <Package className="w-3.5 h-3.5 mr-1" />
-              Variants ({product.variants.length})
-            </h4>
-            <div className="overflow-x-auto max-h-48 overflow-y-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-white sticky top-0">
-                  <tr>
-                    {product.variants[0].option1Name && (
+        {product.variants && product.variants.length > 0 && (() => {
+          const first = product.variants[0]
+          const optionPairs: { nameKey: keyof typeof first; valueKey: keyof typeof first }[] = []
+          for (let i = 1; i <= 5; i++) {
+            const nameKey = `option${i}Name` as keyof typeof first
+            const valueKey = `option${i}Value` as keyof typeof first
+            if (first[nameKey]) optionPairs.push({ nameKey, valueKey })
+          }
+          return (
+            <div className="bg-gray-50 rounded-lg p-3">
+              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2 flex items-center">
+                <Package className="w-3.5 h-3.5 mr-1" />
+                Variants ({product.variants.length})
+              </h4>
+              <div className="overflow-x-auto max-h-48 overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-white sticky top-0">
+                    <tr>
+                      {optionPairs.map(({ nameKey }) => (
+                        <th key={nameKey} className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {String(first[nameKey] ?? '')}
+                        </th>
+                      ))}
                       <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {product.variants[0].option1Name}
+                        SKU
                       </th>
-                    )}
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SKU
-                    </th>
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Price
-                    </th>
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {product.variants.map((variant, index) => (
-                    <tr key={variant.id || index} className="hover:bg-gray-50">
-                      {variant.option1Value && (
-                        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
-                          {variant.option1Value}
-                          {variant.isDefault && (
-                            <span className="ml-1 text-xs text-green-600">(default)</span>
-                          )}
-                        </td>
-                      )}
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-600">
-                        {variant.sku || '-'}
-                      </td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900 font-medium">
-                        {variant.price ? formatCurrency(variant.price) : formatCurrency(product.basePrice)}
-                      </td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
-                        {variant.inventoryQuantity ?? '-'}
-                      </td>
+                      <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Price
+                      </th>
+                      <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Stock
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {product.variants.map((variant, index) => (
+                      <tr key={variant.id || index} className="hover:bg-gray-50">
+                        {optionPairs.map(({ valueKey }, colIndex) => (
+                          <td key={valueKey + String(colIndex)} className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
+                            {String(variant[valueKey] ?? '-')}
+                            {colIndex === 0 && variant.isDefault && (
+                              <span className="ml-1 text-xs text-green-600">(default)</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-600">
+                          {variant.sku || '-'}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          {variant.price ? formatCurrency(variant.price) : formatCurrency(product.basePrice)}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">
+                          {variant.inventoryQuantity ?? '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Inventory Information */}
         <div className="bg-gray-50 rounded-lg p-3">

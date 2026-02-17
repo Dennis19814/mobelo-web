@@ -59,6 +59,12 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
   const [countriesDropdownOpen, setCountriesDropdownOpen] = useState(false);
   const zoneTypeDropdownRef = useRef<HTMLDivElement>(null);
   const countriesDropdownRef = useRef<HTMLDivElement>(null);
+  const zoneTypeTriggerRef = useRef<HTMLButtonElement>(null);
+  const countriesTriggerRef = useRef<HTMLButtonElement>(null);
+  const [zoneTypeDropdownPosition, setZoneTypeDropdownPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 });
+  const [countriesDropdownPosition, setCountriesDropdownPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 });
+  const zoneTypePortalRef = useRef<HTMLDivElement>(null);
+  const countriesPortalRef = useRef<HTMLDivElement>(null);
 
   const closeZoneTypeDropdown = useCallback(() => setZoneTypeDropdownOpen(false), []);
   const closeCountriesDropdown = useCallback(() => setCountriesDropdownOpen(false), []);
@@ -74,7 +80,14 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
     if (!zoneTypeDropdownOpen && !countriesDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (zoneTypeDropdownRef.current?.contains(target) || countriesDropdownRef.current?.contains(target)) return;
+      if (
+        zoneTypeDropdownRef.current?.contains(target) ||
+        countriesDropdownRef.current?.contains(target) ||
+        zoneTypeTriggerRef.current?.contains(target) ||
+        countriesTriggerRef.current?.contains(target) ||
+        zoneTypePortalRef.current?.contains(target) ||
+        countriesPortalRef.current?.contains(target)
+      ) return;
       closeZoneTypeDropdown();
       closeCountriesDropdown();
     };
@@ -261,8 +274,17 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
               Zone Type
             </label>
             <button
+              ref={zoneTypeTriggerRef}
               type="button"
-              onClick={() => setZoneTypeDropdownOpen((o) => !o)}
+              onClick={() => {
+                if (!zoneTypeDropdownOpen && zoneTypeTriggerRef.current) {
+                  const rect = zoneTypeTriggerRef.current.getBoundingClientRect();
+                  const availableHeight = window.innerHeight - rect.bottom - 8; // 8px for margin
+                  const maxHeight = Math.min(240, Math.max(120, availableHeight)); // Show ~6 items (240px) but respect viewport
+                  setZoneTypeDropdownPosition({ top: rect.bottom + 2, left: rect.left, width: rect.width, maxHeight });
+                }
+                setZoneTypeDropdownOpen((o) => !o);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-left flex items-center justify-between bg-white text-sm"
             >
               <span className="truncate">
@@ -272,25 +294,37 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {zoneTypeDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '280px' }}>
-                <div className="overflow-y-auto py-1" style={{ maxHeight: '276px' }}>
-                  {ZONE_TYPE_OPTIONS.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, type: value });
-                        setZoneTypeDropdownOpen(false);
-                      }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${formData.type === value ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {zoneTypeDropdownOpen &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={zoneTypePortalRef}
+                  className="fixed z-[100] bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+                  style={{
+                    top: zoneTypeDropdownPosition.top,
+                    left: zoneTypeDropdownPosition.left,
+                    width: zoneTypeDropdownPosition.width,
+                    maxHeight: `${zoneTypeDropdownPosition.maxHeight}px`,
+                  }}
+                >
+                  <div className="overflow-y-auto py-1" style={{ maxHeight: `${zoneTypeDropdownPosition.maxHeight - 4}px` }}>
+                    {ZONE_TYPE_OPTIONS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, type: value });
+                          setZoneTypeDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${formData.type === value ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>,
+                document.body
+              )}
             <p className="text-xs text-gray-500 mt-0.5">
               {formData.type === 'domestic' && 'For shipping within your store\'s home country'}
               {formData.type === 'regional' && 'For shipping to nearby/regional countries'}
@@ -310,8 +344,17 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
             <div className="flex gap-2 mb-2" ref={countriesDropdownRef}>
               <div className="relative flex-1">
                 <button
+                  ref={countriesTriggerRef}
                   type="button"
-                  onClick={() => setCountriesDropdownOpen((o) => !o)}
+                  onClick={() => {
+                    if (!countriesDropdownOpen && countriesTriggerRef.current) {
+                      const rect = countriesTriggerRef.current.getBoundingClientRect();
+                      const availableHeight = window.innerHeight - rect.bottom - 8; // 8px for margin
+                      const maxHeight = Math.min(240, Math.max(120, availableHeight)); // Show ~6 items (240px) but respect viewport
+                      setCountriesDropdownPosition({ top: rect.bottom + 2, left: rect.left, width: rect.width, maxHeight });
+                    }
+                    setCountriesDropdownOpen((o) => !o);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-left flex items-center justify-between bg-white text-sm"
                 >
                   <span className={`truncate ${selectedCountry ? 'text-gray-700' : 'text-gray-500'}`}>
@@ -323,29 +366,41 @@ export default function ShippingZoneModal({ isOpen, onClose, onSuccess, zone }: 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                {countriesDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '280px' }}>
-                    <div className="overflow-y-auto py-1" style={{ maxHeight: '276px' }}>
-                      {COUNTRIES.filter((c) => !formData.countries.includes(c.code)).length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No more countries to add</div>
-                      ) : (
-                        COUNTRIES.filter((c) => !formData.countries.includes(c.code)).map((country) => (
-                          <button
-                            key={country.code}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCountry(country.code);
-                              setCountriesDropdownOpen(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${selectedCountry === country.code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                          >
-                            {country.name} ({country.code})
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                {countriesDropdownOpen &&
+                  typeof document !== 'undefined' &&
+                  createPortal(
+                    <div
+                      ref={countriesPortalRef}
+                      className="fixed z-[100] bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+                      style={{
+                        top: countriesDropdownPosition.top,
+                        left: countriesDropdownPosition.left,
+                        width: countriesDropdownPosition.width,
+                        maxHeight: `${countriesDropdownPosition.maxHeight}px`,
+                      }}
+                    >
+                      <div className="overflow-y-auto py-1" style={{ maxHeight: `${countriesDropdownPosition.maxHeight - 4}px` }}>
+                        {COUNTRIES.filter((c) => !formData.countries.includes(c.code)).length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-gray-500">No more countries to add</div>
+                        ) : (
+                          COUNTRIES.filter((c) => !formData.countries.includes(c.code)).map((country) => (
+                            <button
+                              key={country.code}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCountry(country.code);
+                                setCountriesDropdownOpen(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${selectedCountry === country.code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                            >
+                              {country.name} ({country.code})
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>,
+                    document.body
+                  )}
               </div>
               <button
                 type="button"

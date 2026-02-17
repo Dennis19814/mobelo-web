@@ -1,7 +1,19 @@
 'use client'
 
 import { Eye, Edit, ToggleLeft, ToggleRight, Trash2, MoreVertical } from 'lucide-react'
-import type { Product } from '@/types/product.types'
+import type { Product, ProductVariant } from '@/types/product.types'
+
+/** Collect variant option names only (e.g. Size, Color) from first variant, no values. */
+function getVariantOptionNames(variants: ProductVariant[]): string[] {
+  if (!variants?.length) return []
+  const first = variants[0]
+  const names: string[] = []
+  for (let i = 1; i <= 5; i++) {
+    const name = (first as Record<string, string | undefined>)[`option${i}Name`]
+    if (name && String(name).trim()) names.push(String(name).trim())
+  }
+  return names
+}
 
 interface ProductTableProps {
   products: Product[]
@@ -171,12 +183,15 @@ export default function ProductTable({
                   <div className="text-xs sm:text-sm text-gray-900">
                     {product.variants && product.variants.length > 0 ? (
                       <div>
-                        <span className="font-medium">{product.variants.length}</span>
-                        <span className="text-gray-500 ml-1">variant{product.variants.length > 1 ? 's' : ''}</span>
-                        {product.variants.length > 0 && product.variants[0].option1Name && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {product.variants[0].option1Name}
-                          </div>
+                        {getVariantOptionNames(product.variants).length > 0 ? (
+                          <span className="text-gray-700">
+                            {getVariantOptionNames(product.variants).join(', ')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">
+                            <span className="font-medium">{product.variants.length}</span>
+                            <span className="ml-1">variant{product.variants.length !== 1 ? 's' : ''}</span>
+                          </span>
                         )}
                       </div>
                     ) : (

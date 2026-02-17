@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, memo, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useMerchantAuth, useTaxRules, useTaxOptions, useCrudOperations } from '@/hooks';
 import { Plus, AlertCircle, Search, Loader2, Receipt, X, Percent, Pencil, Trash2 } from 'lucide-react';
 import { TaxRule, TaxRuleFormData } from '@/types/tax.types';
 import { apiService } from '@/lib/api-service';
+
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'));
 
 interface TaxRulesSectionProps {
   appId: number;
@@ -496,6 +498,8 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
   const [selectedRule, setSelectedRule] = useState<TaxRule | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const [ruleToDelete, setRuleToDelete] = useState<TaxRule | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const { rules, isLoading, error, deleteRule, refetch } = useTaxRules();
 
@@ -507,20 +511,19 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
     );
   }, [rules, searchQuery]);
 
-  const handleDeleteRule = useCallback(async (rule: TaxRule) => {
-    if (!window.confirm(`Are you sure you want to delete "${rule.name}"?`)) return;
-
-    setDeleteLoading(rule.id);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!ruleToDelete) return;
+    setDeleteLoading(ruleToDelete.id);
     try {
-      await deleteRule(rule.id);
+      await deleteRule(ruleToDelete.id);
       setSuccessMessage('Tax rule deleted successfully');
       await refetch();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to delete tax rule');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete tax rule');
     } finally {
       setDeleteLoading(null);
     }
-  }, [deleteRule, refetch, setError, setSuccessMessage]);
+  }, [ruleToDelete, deleteRule, refetch, setError, setSuccessMessage]);
 
   if (error) {
     return (
@@ -626,7 +629,14 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
                         <Pencil className="h-4 w-4" />
 
                       </button>
-                      <button onClick={() => handleDeleteRule(rule)} disabled={deleteLoading === rule.id} className="text-red-600 hover:text-red-900 disabled:opacity-50">
+                      <button
+                        onClick={() => {
+                          setRuleToDelete(rule);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        disabled={deleteLoading === rule.id}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                      >
                         {deleteLoading === rule.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
@@ -654,6 +664,21 @@ const TaxRulesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxRulesSecti
         rule={selectedRule}
         headers={headers}
       />
+      <Suspense fallback={null}>
+        {isDeleteModalOpen && ruleToDelete && (
+          <DeleteConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => {
+              setIsDeleteModalOpen(false);
+              setRuleToDelete(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Tax Rule"
+            itemType="tax rule"
+            itemName={ruleToDelete.name}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
