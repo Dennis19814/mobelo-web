@@ -9,6 +9,7 @@ import { Pagination } from '../common'
 // Lazy load modals for better performance
 const CreateCouponModal = lazy(() => import('../CreateCouponModal'))
 const EditCouponModal = lazy(() => import('../EditCouponModal'))
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
 
 interface CouponsSectionProps {
   appId: number
@@ -29,6 +30,9 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [loadingCoupon, setLoadingCoupon] = useState(false)
+  const [couponToDelete, setCouponToDelete] = useState<Coupon | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const totalPages = useMemo(() => Math.ceil(total / (filters.limit || 20)), [total, filters.limit])
 
@@ -62,16 +66,25 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this coupon?')) return
+  const handleDeleteClick = (coupon: Coupon) => {
+    setCouponToDelete(coupon)
+    setIsDeleteModalOpen(true)
+  }
 
+  const handleDeleteConfirm = async () => {
+    if (!couponToDelete) return
+    setDeleteLoading(true)
     try {
-      const response = await apiService.deleteCoupon(id)
+      const response = await apiService.deleteCoupon(couponToDelete.id)
       if (response.ok) {
+        setIsDeleteModalOpen(false)
+        setCouponToDelete(null)
         loadCoupons()
       }
     } catch (error) {
       console.error('Failed to delete coupon:', error)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -425,13 +438,12 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
 
                       </button>
                       <button
-                        onClick={() => handleDelete(coupon.id)}
-                        className="text-gray-600 hover:text-red-600 text-xs sm:text-sm p-1"
-                                                   title="Delete Coupon"
-
+                        onClick={() => handleDeleteClick(coupon)}
+                        disabled={deleteLoading}
+                        className="text-gray-600 hover:text-red-600 text-xs sm:text-sm p-1 disabled:opacity-50"
+                        title="Delete Coupon"
                       >
-                                      <Trash2 className="h-4 w-4" />
-
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -494,6 +506,23 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
               setEditingCoupon(null)
               loadCoupons()
             }}
+          />
+        </Suspense>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && couponToDelete && (
+        <Suspense fallback={null}>
+          <DeleteConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => {
+              setIsDeleteModalOpen(false)
+              setCouponToDelete(null)
+            }}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Coupon"
+            itemType="coupon"
+            itemName={couponToDelete.code || couponToDelete.name || 'this coupon'}
           />
         </Suspense>
       )}
