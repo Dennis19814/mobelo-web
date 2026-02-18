@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { apiService } from '@/lib/api-service';
 import {
   Truck,
@@ -78,19 +78,17 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const MIN_LOADING_MS = 400;
+  const zonesFetchIdRef = useRef(0);
+  const ratesFetchIdRef = useRef(0);
 
   const fetchZones = useCallback(async () => {
-    const startedAt = Date.now();
+    const thisId = ++zonesFetchIdRef.current;
     try {
       setZonesLoading(true);
       const response = await apiService.getShippingZones();
 
-      // Skip error handling for cancelled requests (React Strict Mode)
-      if ((response as any).cancelled) {
-        return;
-      }
+      if (thisId !== zonesFetchIdRef.current) return;
+      if ((response as any).cancelled) return;
 
       if (!response.ok) {
         throw new Error('Failed to fetch shipping zones');
@@ -98,57 +96,50 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
 
       const zonesData = response.data || [];
       setZones(zonesData);
+      setError(null);
 
-      // Select first zone by default; if no zones, no rates to load
       if (zonesData.length > 0 && !selectedZoneId) {
         setSelectedZoneId(zonesData[0].id);
       } else if (zonesData.length === 0) {
         setLoading(false);
       }
     } catch (err) {
-      // Ignore AbortErrors from React Strict Mode
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
+      if (thisId !== zonesFetchIdRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') return;
       console.error('Error fetching zones:', err);
       setError(err instanceof Error ? err.message : 'Failed to load zones');
     } finally {
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-      if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
-      setZonesLoading(false);
+      if (thisId === zonesFetchIdRef.current) {
+        setZonesLoading(false);
+      }
     }
   }, [selectedZoneId]);
 
   const fetchRates = useCallback(async (zoneId: number) => {
-    const startedAt = Date.now();
+    const thisId = ++ratesFetchIdRef.current;
     try {
       setLoading(true);
       setError(null);
       const response = await apiService.getShippingRatesByZone(zoneId);
 
-      // Skip error handling for cancelled requests (React Strict Mode)
-      if ((response as any).cancelled) {
-        return;
-      }
+      if (thisId !== ratesFetchIdRef.current) return;
+      if ((response as any).cancelled) return;
 
       if (!response.ok) {
         throw new Error('Failed to fetch shipping rates');
       }
 
       setRates(response.data || []);
+      setError(null);
     } catch (err) {
-      // Ignore AbortErrors from React Strict Mode
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
+      if (thisId !== ratesFetchIdRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') return;
       console.error('Error fetching shipping rates:', err);
       setError(err instanceof Error ? err.message : 'Failed to load rates');
     } finally {
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-      if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
-      setLoading(false);
+      if (thisId === ratesFetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -300,8 +291,8 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
         </div>
       )}
 
-      {/* Error Message - only when not loading */}
-      {!zonesLoading && !loading && error && (
+      {/* Error Message - only when not loading and no data to show */}
+      {!zonesLoading && !loading && error && (zones.length === 0 || (selectedZoneId != null && rates.length === 0)) && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-red-600" />
           <p className="text-red-800">{error}</p>
@@ -354,6 +345,7 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
               placeholder="Search rates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
@@ -384,9 +376,9 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
+              <div className="overflow-x-auto overflow-y-visible min-w-0 w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="w-full min-w-full divide-y divide-gray-200" style={{ minWidth: '640px' }}>
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -522,6 +514,7 @@ const ShippingRatesSection = ({ appId, apiKey, appSecretKey }: ShippingRatesSect
             onSuccess={() => {
               setIsModalOpen(false);
               setSelectedRate(null);
+              setSearchQuery(''); // Clear search so new/updated rate is visible
               if (selectedZoneId) {
                 fetchRates(selectedZoneId);
               }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '@/lib/api-service';
 import { Category, CreateCategoryData, UpdateCategoryData, CategoryReorderData } from '@/types/category';
 import { logger } from '@/lib/logger';
@@ -30,13 +30,15 @@ export function useCategories(options: UseCategoriesOptions): UseCategoriesRetur
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchIdRef = useRef(0);
 
   // Create a stable reference for headers using individual key/value pairs
   const apiKey = headers?.['x-api-key'];
   const appSecretKey = headers?.['x-app-secret'];
 
-  // Fetch categories
+  // Fetch categories - only apply result if this request is still the latest (avoids error flash when Strict Mode or race causes two requests)
   const fetchCategories = useCallback(async () => {
+    const thisId = ++fetchIdRef.current;
     try {
       setIsLoading(true);
       setError(null);
@@ -46,6 +48,8 @@ export function useCategories(options: UseCategoriesOptions): UseCategoriesRetur
         hierarchy,
         rootOnly,
       });
+
+      if (thisId !== fetchIdRef.current) return;
 
       logger.debug('Categories fetched', { response: response.ok, dataLength: response.data?.length });
       console.log('[DEBUG] Categories fetched from API:', {
@@ -61,11 +65,13 @@ export function useCategories(options: UseCategoriesOptions): UseCategoriesRetur
 
       if (response.ok) {
         setCategories(response.data || []);
+        setError(null);
         console.log('[DEBUG] Categories state updated');
       } else {
         throw new Error('Failed to fetch categories');
       }
     } catch (err) {
+      if (thisId !== fetchIdRef.current) return;
       // Silently ignore cancelled requests (normal in dev mode with React Strict Mode)
       if (err instanceof Error && (err.name === 'AbortError' || err.message === 'Request was cancelled')) {
         return;
@@ -80,7 +86,9 @@ export function useCategories(options: UseCategoriesOptions): UseCategoriesRetur
         hasAppSecret: !!appSecretKey
       });
     } finally {
-      setIsLoading(false);
+      if (thisId === fetchIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [appId, hierarchy, rootOnly, apiKey, appSecretKey]);
 

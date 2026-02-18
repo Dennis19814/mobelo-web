@@ -1000,11 +1000,37 @@ export function PurchaseOrderDetailsModal({
 
   if (!isOpen) return null
 
+  // Normalize shippingCost, otherFees, and totalTax from API response (may be null, undefined, or under different keys)
+  const raw = purchaseOrder as any
+  const shippingCost = Number(raw.shippingCost ?? raw.shipping_cost ?? 0)
+  const otherFees = Number(raw.otherFees ?? raw.other_fees ?? 0)
+  const totalTax = Number(raw.totalTax ?? raw.total_tax ?? 0)
+
   const itemsTotal = purchaseOrder.items.reduce(
     (sum, item) => sum + Number(item.quantity) * Number(item.unitCost),
     0
   )
-  const total = itemsTotal + Number(purchaseOrder.shippingCost || 0) + Number(purchaseOrder.otherFees || 0)
+  
+  // Use backend-calculated total if available (it includes shipping and fees), otherwise calculate it
+  const calculatedTotal = itemsTotal + shippingCost + otherFees
+  const total = purchaseOrder.total != null && purchaseOrder.total > 0
+    ? purchaseOrder.total
+    : calculatedTotal
+  
+  // Debug log to help diagnose discrepancies
+  if (process.env.NODE_ENV === 'development' || typeof window !== 'undefined') {
+    console.log('[PurchaseOrderDetails] Total calculation:', {
+      itemsTotal,
+      shippingCost,
+      otherFees,
+      calculatedTotal,
+      backendTotal: purchaseOrder.total,
+      usingBackendTotal: purchaseOrder.total != null && purchaseOrder.total > 0,
+      finalTotal: total,
+      rawShippingCost: raw.shippingCost,
+      rawOtherFees: raw.otherFees
+    })
+  }
 
   const totalOrdered = purchaseOrder.items.reduce(
     (sum, item) => sum + item.quantity,
@@ -1181,15 +1207,19 @@ export function PurchaseOrderDetailsModal({
               <span className="font-medium">${Number(itemsTotal).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span>Tax</span>
+              <span className="font-medium">${totalTax.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
               <span>Shipping Cost</span>
               <span className="font-medium">
-                ${Number(purchaseOrder.shippingCost || 0).toFixed(2)}
+                ${shippingCost.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Other Fees</span>
               <span className="font-medium">
-                ${Number(purchaseOrder.otherFees || 0).toFixed(2)}
+                ${otherFees.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between font-semibold text-lg border-t pt-2">

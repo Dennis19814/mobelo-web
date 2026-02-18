@@ -176,10 +176,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
     fetchProductCounts();
   }, [headers, flattenedCategoriesBase.length, appId, flattenedCategoriesBase]);
 
-  // Track if we're still processing categories (fetching or processing product counts)
-  // Show spinner immediately on mount until categories are loaded (like inventory page)
-  // Show spinner if: still loading categories OR haven't loaded once yet OR loading product counts for existing categories
-  const isProcessingCategories = isLoading || !hasLoadedOnce.current || (categories.length > 0 && isLoadingProductCounts);
+  // Single loader: show only until categories are fetched. Product counts load in background and update the table.
+  const isProcessingCategories = isLoading;
 
   // Enhance flattened categories with product counts
   const flattenedCategories = useMemo((): Category[] => {
@@ -564,8 +562,8 @@ const CategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: CategoriesS
         </div>
       </div>
 
-      {/* Error State */}
-      {error && (
+      {/* Error State - only show when load finished with error and no categories (hook ignores stale request results so no flash) */}
+      {error && categories.length === 0 && !isLoading && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 w-full max-w-full min-w-0">
           <div className="flex items-center space-x-2">
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />

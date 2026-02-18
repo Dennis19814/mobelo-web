@@ -55,20 +55,21 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const hasLoadedSuccessfullyRef = useRef(false);
-
-  const MIN_LOADING_MS = 400;
+  const fetchIdRef = useRef(0);
 
   const fetchZones = useCallback(async () => {
-    const startedAt = Date.now();
+    const thisId = ++fetchIdRef.current;
     try {
       setLoading(true);
       setError(null);
 
       const response = await apiService.getShippingZones();
 
+      if (thisId !== fetchIdRef.current) return;
+
       // Skip error handling for cancelled requests (React Strict Mode)
       if ((response as any).cancelled) {
-        setLoading(false);
+        if (thisId === fetchIdRef.current) setLoading(false);
         return;
       }
 
@@ -80,24 +81,20 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
       setZones(response.data || []);
       setError(null);
     } catch (err) {
+      if (thisId !== fetchIdRef.current) return;
       // Ignore AbortErrors from React Strict Mode
       if (err instanceof Error && err.name === 'AbortError') {
-        setLoading(false);
+        if (thisId === fetchIdRef.current) setLoading(false);
         return;
       }
       console.error('Error fetching shipping zones:', err);
-      // Only show error if we've never loaded zones (avoid overwriting after a later failed refetch)
       if (!hasLoadedSuccessfullyRef.current) {
         setError(err instanceof Error ? err.message : 'Failed to load zones');
       }
     } finally {
-      // Keep spinner visible at least MIN_LOADING_MS so it's not a flash (same as other pages)
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-      if (remaining > 0) {
-        await new Promise((r) => setTimeout(r, remaining));
+      if (thisId === fetchIdRef.current) {
+        setLoading(false);
       }
-      setLoading(false);
     }
   }, []);
 
@@ -247,6 +244,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
           placeholder="Search zones..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoComplete="off"
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
       </div>
@@ -407,6 +405,7 @@ const ShippingZonesSection = ({ appId, apiKey, appSecretKey }: ShippingZonesSect
             onSuccess={() => {
               setIsModalOpen(false);
               setSelectedZone(null);
+              setSearchQuery(''); // Clear search so new/updated zone is visible in the list
               fetchZones();
             }}
             zone={selectedZone}

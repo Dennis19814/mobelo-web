@@ -59,6 +59,7 @@ export default function BrandSelectorWithImages({
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const optionsRef = useRef<(HTMLDivElement | null)[]>([])
+  const lastSyncedValueRef = useRef<string | number | null>(null)
 
   // Debounced search
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -174,21 +175,18 @@ export default function BrandSelectorWithImages({
     }
   }, [inputValue, isOpen, fetchBrands, searchTerm])
 
-  // Initialize input value only on component mount or when brands are loaded
+  // Sync displayed value from prop only when the prop actually changes (e.g. new product loaded), not when user is typing/erasing
   useEffect(() => {
-    // Only set initial value once when brands are loaded
-    if (brands.length > 0 && inputValue === '') {
-      if (typeof value === 'string' && value) {
-        setInputValue(value)
-      } else if (typeof value === 'number') {
-        // Find brand by ID and set the name
-        const brand = brands.find(b => b.id === value)
-        if (brand) {
-          setInputValue(brand.name)
-        }
-      }
-    }
-  }, [brands, inputValue, value])
+    const propDisplayValue =
+      typeof value === 'string'
+        ? (value ?? '')
+        : typeof value === 'number'
+          ? (brands.find(b => b.id === value)?.name ?? '')
+          : ''
+    if (lastSyncedValueRef.current === value) return
+    lastSyncedValueRef.current = value
+    setInputValue(propDisplayValue)
+  }, [value, brands])
 
   // Validation logic
   const isBrandValid = useCallback((brandName: string) => {
@@ -214,6 +212,8 @@ export default function BrandSelectorWithImages({
     const newValue = e.target.value
     setInputValue(newValue)
     setHighlightedIndex(-1)
+    lastSyncedValueRef.current = newValue
+    onChange(null, newValue)
 
     if (!isOpen) {
       setIsOpen(true)
@@ -233,22 +233,19 @@ export default function BrandSelectorWithImages({
     // Small delay to allow for option selection
     setTimeout(() => {
       setIsOpen(false)
-      // Update the actual value when focusing out
       const trimmedInput = inputValue.trim()
-      if (trimmedInput && trimmedInput !== value) {
-        console.log('Updating brand on blur:', trimmedInput)
+      const currentValueStr = typeof value === 'string' ? value : (typeof value === 'number' ? brands.find(b => b.id === value)?.name : '') ?? ''
+      if (trimmedInput !== currentValueStr) {
         onChange(null, trimmedInput)
-
-        // Only auto-add to local brands list if not requiring explicit creation
-        if (!requireExplicitCreation && !brands.some(b => b.name.toLowerCase() === trimmedInput.toLowerCase())) {
-          setBrands(prev => [{
-            id: -1,
-            name: trimmedInput,
-            slug: trimmedInput.toLowerCase().replace(/\s+/g, '-'),
-            isActive: true,
-            displayOrder: 999
-          } as Brand, ...prev].sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)))
-        }
+      }
+      if (trimmedInput && !requireExplicitCreation && !brands.some(b => b.name.toLowerCase() === trimmedInput.toLowerCase())) {
+        setBrands(prev => [{
+          id: -1,
+          name: trimmedInput,
+          slug: trimmedInput.toLowerCase().replace(/\s+/g, '-'),
+          isActive: true,
+          displayOrder: 999
+        } as Brand, ...prev].sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)))
       }
     }, 150)
   }, [inputValue, value, onChange, brands, requireExplicitCreation])
