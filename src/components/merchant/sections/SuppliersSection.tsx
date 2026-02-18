@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { Users, Search, Plus, Loader2, Edit2, XCircle, CheckCircle, BarChart3, Mail, Phone, MapPin, X } from 'lucide-react'
 import {
   useSuppliers,
@@ -13,12 +13,16 @@ import {
 import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '@/types/purchase-order.types'
 import toast from 'react-hot-toast'
 
+// Lazy load modals for better performance
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
+
 export default function SuppliersSection() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [statsSupplier, setStatsSupplier] = useState<Supplier | null>(null)
+  const [supplierToDeactivate, setSupplierToDeactivate] = useState<Supplier | null>(null)
 
   // Fetch suppliers
   const { data: suppliersData, isLoading, error } = useSuppliers({
@@ -43,14 +47,15 @@ export default function SuppliersSection() {
     setIsModalOpen(true)
   }, [])
 
-  const handleDeactivate = useCallback(async (supplier: Supplier) => {
-    const confirmed = window.confirm(
-      `Deactivate supplier "${supplier.company}"?\n\nThis will mark the supplier as inactive. You can reactivate them later.`
-    )
-    if (!confirmed) return
+  const handleDeactivate = useCallback((supplier: Supplier) => {
+    setSupplierToDeactivate(supplier)
+  }, [])
 
-    deactivateMutation.mutate(supplier.id)
-  }, [deactivateMutation])
+  const handleConfirmDeactivate = useCallback(async () => {
+    if (!supplierToDeactivate) return
+    deactivateMutation.mutate(supplierToDeactivate.id)
+    setSupplierToDeactivate(null)
+  }, [supplierToDeactivate, deactivateMutation])
 
   const handleActivate = useCallback((supplier: Supplier) => {
     activateMutation.mutate(supplier.id)
@@ -267,6 +272,23 @@ export default function SuppliersSection() {
           supplier={statsSupplier}
           onClose={() => setStatsSupplier(null)}
         />
+      )}
+
+      {/* Delete/Deactivate Confirmation Modal */}
+      {supplierToDeactivate && (
+        <Suspense fallback={null}>
+          <DeleteConfirmationModal
+            isOpen={!!supplierToDeactivate}
+            onClose={() => setSupplierToDeactivate(null)}
+            onConfirm={handleConfirmDeactivate}
+            title="Deactivate Supplier"
+            message={`This will mark the supplier "${supplierToDeactivate.company}" as inactive. You can reactivate them later.`}
+            itemName={supplierToDeactivate.company}
+            itemType="supplier"
+            confirmButtonText="Deactivate"
+            cancelButtonText="Cancel"
+          />
+        </Suspense>
       )}
     </div>
   )
