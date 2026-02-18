@@ -6,6 +6,7 @@ import { useMerchantAuth, useTaxRules, useTaxOptions, useCrudOperations } from '
 import { Plus, AlertCircle, Search, Loader2, Receipt, X, Percent, Pencil, Trash2 } from 'lucide-react';
 import { TaxRule, TaxRuleFormData } from '@/types/tax.types';
 import { apiService } from '@/lib/api-service';
+import { COUNTRIES } from '@/constants/countries';
 
 const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'));
 
@@ -49,7 +50,8 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
 
 
   const dropdownRefs = [countryDropdownRef, taxCategoryDropdownRef, taxTypeDropdownRef, stateDropdownRef, addressTypeDropdownRef];
-  const anyDropdownOpen = countryDropdownOpen || taxCategoryDropdownOpen || taxTypeDropdownOpen || stateDropdownOpen || addressTypeDropdownOpen;
+  const anyDropdownOpen =
+    countryDropdownOpen || taxCategoryDropdownOpen || taxTypeDropdownOpen || stateDropdownOpen || addressTypeDropdownOpen;
 
   const closeAllDropdowns = useCallback(() => {
     setCountryDropdownOpen(false);
@@ -246,10 +248,17 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
               >
                 <span className="truncate">
                   {selectedCountry
-                    ? options?.countries?.find((c) => c.code === selectedCountry)?.name ?? selectedCountry
+                    ? `${COUNTRIES.find((c) => c.code === selectedCountry)?.name ?? selectedCountry} (${selectedCountry})`
                     : 'All Countries'}
                 </span>
-                <svg className={`w-4 h-4 text-gray-500 shrink-0 ml-2 transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className={`w-4 h-4 text-gray-500 shrink-0 ml-2 transition-transform ${
+                    countryDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -265,11 +274,13 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
                         setFormData({ ...formData, countries: [], states: [] });
                         setCountryDropdownOpen(false);
                       }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${!selectedCountry ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${
+                        !selectedCountry ? 'bg-orange-50 text-orange-700' : 'text-gray-700'
+                      }`}
                     >
                       All Countries
                     </button>
-                    {options?.countries?.map((country) => (
+                    {COUNTRIES.map((country) => (
                       <button
                         key={country.code}
                         type="button"
@@ -277,9 +288,11 @@ const TaxRuleModal = ({ isOpen, onClose, onSuccess, rule, headers }: any) => {
                           setFormData({ ...formData, countries: [country.code], states: [] });
                           setCountryDropdownOpen(false);
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${selectedCountry === country.code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-orange-50 ${
+                          selectedCountry === country.code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'
+                        }`}
                       >
-                        {country.name}
+                        {country.name} ({country.code})
                       </button>
                     ))}
                   </div>
