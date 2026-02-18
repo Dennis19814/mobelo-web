@@ -486,18 +486,18 @@ function AppSpecContent() {
   const isDarkTheme = checkIsDarkTheme(selectedThemeId)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
       <Navigation hideMenuItems={true} showGenerateNewApp={true} />
-      <div className="mx-auto max-w-5xl px-4 pt-20 md:pt-28 lg:pt-24 pb-12 w-full flex-1">
+      <div className="mx-auto max-w-5xl px-4 pt-20 md:pt-28 lg:pt-24 pb-12 w-full flex-1 min-w-0">
         <header className="mb-6">
           <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex w-max items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm">
               Your Mobile App
             </span>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="m-0 text-4xl md:text-5xl font-extrabold text-gray-900">{spec.concept.appName}</h1>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+            <h1 className="m-0 min-w-0 text-4xl md:text-5xl font-extrabold text-gray-900 truncate">{spec.concept.appName}</h1>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -507,17 +507,17 @@ function AppSpecContent() {
                     router.push('/')
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 whitespace-nowrap"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
               </button>
               <button
                 onClick={handleBuildMobileApp}
-                className="inline-flex h-11 w-max items-center justify-center gap-2 rounded-lg bg-green-600 px-5 text-base font-semibold text-white shadow hover:bg-green-700 transition-colors"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 text-base font-semibold text-white shadow hover:bg-green-700 transition-colors whitespace-nowrap"
               >
-                <Sparkles className="h-5 w-5" />
-                Build Mobile App
+                <Sparkles className="h-5 w-5 flex-shrink-0" />
+                <span>Build Mobile App</span>
               </button>
             </div>
           </div>

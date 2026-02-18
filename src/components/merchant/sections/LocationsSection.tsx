@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { MapPin, Search, Plus, Loader2, Check, X, Edit2, Trash2 } from 'lucide-react'
 import { useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, useActivateLocation } from '@/hooks/useLocations'
 import type { Location, CreateLocationDto, UpdateLocationDto } from '@/types/purchase-order.types'
@@ -8,12 +8,15 @@ import toast from 'react-hot-toast'
 import { COUNTRIES, getCountryName } from '@/constants/countries'
 import { getStatesForCountry, hasStates, getStateName } from '@/constants/states'
 
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
+
 export default function LocationsSection() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [locationToDelete, setLocationToDelete] = useState<Location | null>(null)
 
   // Fetch locations
   const { data: locationsData, isLoading, error } = useLocations({
@@ -40,19 +43,19 @@ export default function LocationsSection() {
     setIsModalOpen(true)
   }, [])
 
-  const handleDelete = useCallback(async (location: Location) => {
+  const handleDelete = useCallback((location: Location) => {
     if (locations.filter((l: Location) => l.status === 'active').length <= 1) {
       toast.error('Cannot delete the last active location')
       return
     }
+    setLocationToDelete(location)
+  }, [locations])
 
-    const confirmed = window.confirm(
-      `Delete location "${location.name}"?\n\nThis will mark it as inactive. You can reactivate it later.`
-    )
-    if (!confirmed) return
-
-    deleteMutation.mutate(location.id)
-  }, [locations, deleteMutation])
+  const handleConfirmDelete = useCallback(async () => {
+    if (!locationToDelete) return
+    deleteMutation.mutate(locationToDelete.id)
+    setLocationToDelete(null)
+  }, [locationToDelete, deleteMutation])
 
   const handleActivate = useCallback((location: Location) => {
     activateMutation.mutate(location.id)
@@ -276,6 +279,23 @@ export default function LocationsSection() {
           }}
           isSaving={createMutation.isPending || updateMutation.isPending}
         />
+      )}
+
+      {/* Delete confirmation modal */}
+      {locationToDelete && (
+        <Suspense fallback={null}>
+          <DeleteConfirmationModal
+            isOpen={!!locationToDelete}
+            onClose={() => setLocationToDelete(null)}
+            onConfirm={handleConfirmDelete}
+            title="Delete Location"
+            message={`This will mark "${locationToDelete.name}" as inactive. You can reactivate it later.`}
+            itemName={locationToDelete.name}
+            itemType="location"
+            confirmButtonText="Delete"
+            cancelButtonText="Cancel"
+          />
+        </Suspense>
       )}
     </div>
   )

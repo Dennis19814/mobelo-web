@@ -82,20 +82,26 @@ export default function ShippingRateModal({ isOpen, onClose, onSuccess, zoneId, 
 
   useEffect(() => {
     if (rate) {
+      // Normalize condition fields: treat null, undefined, or invalid numbers as undefined so inputs show empty
+      const toNum = (v: number | null | undefined): number | undefined => {
+        if (v == null) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : undefined;
+      };
       setFormData({
         name: rate.name || '',
         description: rate.description || '',
         method: rate.method || 'flat_rate',
-        baseRate: rate.baseRate || 0,
-        pricePerKg: rate.pricePerKg || 0,
-        percentageOfTotal: rate.percentageOfTotal || 0,
-        minOrderAmount: rate.minOrderAmount,
-        maxOrderAmount: rate.maxOrderAmount,
-        freeShippingThreshold: rate.freeShippingThreshold,
-        minWeight: rate.minWeight,
-        maxWeight: rate.maxWeight,
-        deliveryMinDays: rate.deliveryMinDays || 3,
-        deliveryMaxDays: rate.deliveryMaxDays || 5,
+        baseRate: rate.baseRate ?? 0,
+        pricePerKg: rate.pricePerKg ?? 0,
+        percentageOfTotal: rate.percentageOfTotal ?? 0,
+        minOrderAmount: toNum(rate.minOrderAmount),
+        maxOrderAmount: toNum(rate.maxOrderAmount),
+        freeShippingThreshold: toNum(rate.freeShippingThreshold),
+        minWeight: toNum(rate.minWeight),
+        maxWeight: toNum(rate.maxWeight),
+        deliveryMinDays: rate.deliveryMinDays ?? 3,
+        deliveryMaxDays: rate.deliveryMaxDays ?? 5,
         isActive: rate.isActive ?? true,
         isTaxable: rate.isTaxable ?? true,
       });
@@ -143,15 +149,16 @@ export default function ShippingRateModal({ isOpen, onClose, onSuccess, zoneId, 
     setError(null);
 
     try {
+      // Send null explicitly for cleared condition fields so the backend persists "erased" state
+      const optNum = (v: number | undefined): number | null => (v != null && Number.isFinite(v) ? v : null);
       const payload = {
         zoneId,
         ...formData,
-        // Clean up undefined values
-        minOrderAmount: formData.minOrderAmount || undefined,
-        maxOrderAmount: formData.maxOrderAmount || undefined,
-        freeShippingThreshold: formData.freeShippingThreshold || undefined,
-        minWeight: formData.minWeight || undefined,
-        maxWeight: formData.maxWeight || undefined,
+        minOrderAmount: optNum(formData.minOrderAmount),
+        maxOrderAmount: optNum(formData.maxOrderAmount),
+        freeShippingThreshold: optNum(formData.freeShippingThreshold),
+        minWeight: optNum(formData.minWeight),
+        maxWeight: optNum(formData.maxWeight),
       };
 
       const response = rate
