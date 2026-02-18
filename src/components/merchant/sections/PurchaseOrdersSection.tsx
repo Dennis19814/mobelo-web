@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   FileText,
@@ -31,6 +31,10 @@ import {
 } from '../modals/PurchaseOrderModals'
 import toast from 'react-hot-toast'
 
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
+
+type POConfirmAction = { type: 'delete'; po: PurchaseOrder } | { type: 'markOrdered'; po: PurchaseOrder } | { type: 'close'; po: PurchaseOrder }
+
 const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
   draft: 'bg-blue-100 text-blue-700',
   ordered: 'bg-orange-100 text-orange-700',
@@ -56,6 +60,7 @@ export default function PurchaseOrdersSection() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null)
   const [receivingPO, setReceivingPO] = useState<PurchaseOrder | null>(null)
+  const [poConfirmAction, setPoConfirmAction] = useState<POConfirmAction | null>(null)
 
   const handleCreatePurchaseOrder = () => {
     const currentUrl = new URL(window.location.href)
@@ -83,47 +88,38 @@ export default function PurchaseOrdersSection() {
   const markAsOrderedMutation = useMarkPurchaseOrderAsOrdered()
   const closeMutation = useClosePurchaseOrder()
 
-  const handleDelete = useCallback(async (po: PurchaseOrder) => {
+  const handleDelete = useCallback((po: PurchaseOrder) => {
     if (po.status !== 'draft') {
       toast.error('Only draft purchase orders can be deleted')
       return
     }
+    setPoConfirmAction({ type: 'delete', po })
+  }, [])
 
-    const confirmed = window.confirm(
-      `Delete Purchase Order ${po.referenceNumber}?\n\nThis action cannot be undone.`
-    )
-    if (!confirmed) return
-
-    deleteMutation.mutate(po.id)
-  }, [deleteMutation])
-
-  const handleMarkAsOrdered = useCallback(async (po: PurchaseOrder) => {
+  const handleMarkAsOrdered = useCallback((po: PurchaseOrder) => {
     if (po.status !== 'draft') {
       toast.error('Only draft purchase orders can be marked as ordered')
       return
     }
+    setPoConfirmAction({ type: 'markOrdered', po })
+  }, [])
 
-    const confirmed = window.confirm(
-      `Mark Purchase Order ${po.referenceNumber} as ordered?\n\nThis will lock the supplier and location, and add items to incoming stock.`
-    )
-    if (!confirmed) return
-
-    markAsOrderedMutation.mutate(po.id)
-  }, [markAsOrderedMutation])
-
-  const handleClose = useCallback(async (po: PurchaseOrder) => {
+  const handleClose = useCallback((po: PurchaseOrder) => {
     if (!['ordered', 'partial', 'received'].includes(po.status)) {
       toast.error('Only ordered, partial, or received purchase orders can be closed')
       return
     }
+    setPoConfirmAction({ type: 'close', po })
+  }, [])
 
-    const confirmed = window.confirm(
-      `Close Purchase Order ${po.referenceNumber}?\n\nThis will remove any unreceived items from incoming stock.`
-    )
-    if (!confirmed) return
-
-    closeMutation.mutate(po.id)
-  }, [closeMutation])
+  const handleConfirmPoAction = useCallback(async () => {
+    if (!poConfirmAction) return
+    const { type, po } = poConfirmAction
+    if (type === 'delete') deleteMutation.mutate(po.id)
+    else if (type === 'markOrdered') markAsOrderedMutation.mutate(po.id)
+    else if (type === 'close') closeMutation.mutate(po.id)
+    setPoConfirmAction(null)
+  }, [poConfirmAction, deleteMutation, markAsOrderedMutation, closeMutation])
 
   const calculateProgress = (po: PurchaseOrder) => {
     const totalItems = po.items.length
@@ -438,6 +434,41 @@ export default function PurchaseOrdersSection() {
           purchaseOrder={receivingPO}
           onClose={() => setReceivingPO(null)}
         />
+      )}
+
+      {/* Confirmation modals for Delete / Mark as Ordered / Close */}
+      {poConfirmAction && (
+        <Suspense fallback={null}>
+          <DeleteConfirmationModal
+            isOpen={!!poConfirmAction}
+            onClose={() => setPoConfirmAction(null)}
+            onConfirm={handleConfirmPoAction}
+            title={
+              poConfirmAction.type === 'delete'
+                ? 'Delete Purchase Order'
+                : poConfirmAction.type === 'markOrdered'
+                  ? 'Mark as Ordered'
+                  : 'Close Purchase Order'
+            }
+            message={
+              poConfirmAction.type === 'delete'
+                ? `Delete Purchase Order ${poConfirmAction.po.referenceNumber}? This action cannot be undone.`
+                : poConfirmAction.type === 'markOrdered'
+                  ? `Mark Purchase Order ${poConfirmAction.po.referenceNumber} as ordered? This will lock the supplier and location, and add items to incoming stock.`
+                  : `Close Purchase Order ${poConfirmAction.po.referenceNumber}? This will remove any unreceived items from incoming stock.`
+            }
+            itemName={poConfirmAction.po.referenceNumber}
+            itemType="purchase order"
+            confirmButtonText={
+              poConfirmAction.type === 'delete'
+                ? 'Delete'
+                : poConfirmAction.type === 'markOrdered'
+                  ? 'Mark as Ordered'
+                  : 'Close'
+            }
+            cancelButtonText="Cancel"
+          />
+        </Suspense>
       )}
     </div>
   )

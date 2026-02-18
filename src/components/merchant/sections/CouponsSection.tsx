@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { apiService } from '@/lib/api-service'
 import { Coupon, CouponFilters, CouponStatus, DiscountType, TargetScope, BuyXGetYConfig } from '@/types/coupon'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
@@ -24,6 +24,8 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     page: 1,
     limit: 20,
   })
+  const [searchInput, setSearchInput] = useState('')
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [total, setTotal] = useState(0)
   const [selectedCoupons, setSelectedCoupons] = useState<number[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -43,6 +45,23 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   const handleLimitChange = (limit: number) => {
     setFilters({ ...filters, limit, page: 1 })
   }
+
+  // Debounce search: update filters (and trigger API) after user stops typing so the input is not tied to API re-renders
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((prev) => {
+        const nextSearch = searchInput.trim() || undefined
+        if (prev.search === nextSearch) return prev
+        return { ...prev, search: nextSearch, page: 1 }
+      })
+      searchDebounceRef.current = null
+    }, 400)
+    searchDebounceRef.current = t
+    return () => {
+      clearTimeout(t)
+      searchDebounceRef.current = null
+    }
+  }, [searchInput])
 
   useEffect(() => {
     loadCoupons()
@@ -266,15 +285,15 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
             type="text"
             placeholder="Search coupons..."
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            value={filters.search || ''}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
 
           {/* Status Filter */}
           <select
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             value={filters.status || ''}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value as CouponStatus, page: 1 })}
+            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value as CouponStatus, page: 1 }))}
           >
             <option value="">All Statuses</option>
             <option value="active">Active</option>
@@ -288,7 +307,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
           <select
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             value={filters.discountType || ''}
-            onChange={(e) => setFilters({ ...filters, discountType: e.target.value as DiscountType, page: 1 })}
+            onChange={(e) => setFilters((prev) => ({ ...prev, discountType: e.target.value as DiscountType, page: 1 }))}
           >
             <option value="">All Types</option>
             <option value="percentage">Percentage</option>

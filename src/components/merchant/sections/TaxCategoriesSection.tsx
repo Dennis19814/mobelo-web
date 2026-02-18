@@ -10,6 +10,7 @@ import { useCrudOperations } from '@/hooks/useCrudOperations';
 // Lazy load modals
 const AddTaxCategoryModal = lazy(() => import('@/components/merchant/modals/AddTaxCategoryModal'));
 const EditTaxCategoryModal = lazy(() => import('@/components/merchant/modals/EditTaxCategoryModal'));
+const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'));
 
 interface TaxCategoriesSectionProps {
   appId: number;
@@ -26,6 +27,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
   const [selectedCategory, setSelectedCategory] = useState<TaxCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<TaxCategory | null>(null);
 
   const {
     categories,
@@ -56,22 +58,25 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
     setIsEditModalOpen(true);
   }, []);
 
-  const handleDeleteCategory = useCallback(async (category: TaxCategory) => {
-    if (!window.confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      return;
-    }
+  const handleDeleteCategory = useCallback((category: TaxCategory) => {
+    setCategoryToDelete(category);
+  }, []);
 
-    setDeleteLoading(category.id);
+  const handleConfirmDelete = useCallback(async () => {
+    if (!categoryToDelete) return;
+
+    setDeleteLoading(categoryToDelete.id);
     try {
-      await deleteCategory(category.id);
+      await deleteCategory(categoryToDelete.id);
       setSuccessMessage('Tax category deleted successfully');
       await refreshCategories();
+      setCategoryToDelete(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete tax category');
     } finally {
       setDeleteLoading(null);
     }
-  }, [deleteCategory, refreshCategories, setError, setSuccessMessage]);
+  }, [categoryToDelete, deleteCategory, refreshCategories, setError, setSuccessMessage]);
 
   const handleAddSuccess = useCallback(async () => {
     setIsAddModalOpen(false);
@@ -249,6 +254,19 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
             onSuccess={handleEditSuccess}
             category={selectedCategory}
             headers={headers || undefined}
+          />
+        )}
+        {categoryToDelete && (
+          <DeleteConfirmationModal
+            isOpen={!!categoryToDelete}
+            onClose={() => setCategoryToDelete(null)}
+            onConfirm={handleConfirmDelete}
+            title="Delete Tax Category"
+            message={`Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`}
+            itemName={categoryToDelete.name}
+            itemType="tax category"
+            confirmButtonText="Delete"
+            cancelButtonText="Cancel"
           />
         )}
       </Suspense>
