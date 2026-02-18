@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '@/lib/api-service';
 import { TaxCategory, TaxCategoryFormData } from '@/types/tax.types';
 
@@ -20,25 +20,33 @@ export function useTaxCategories(options: UseTaxCategoriesOptions = {}): UseTaxC
   const [categories, setCategories] = useState<TaxCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchIdRef = useRef(0);
 
-  // Fetch tax categories
+  // Fetch tax categories - only apply result if this request is still the latest (avoids empty then table flash)
   const fetchCategories = useCallback(async () => {
+    const thisId = ++fetchIdRef.current;
     try {
       setIsLoading(true);
       setError(null);
 
       const response = await apiService.getTaxCategories();
 
+      if (thisId !== fetchIdRef.current) return;
+
       if (response.ok) {
         setCategories(response.data || []);
+        setError(null);
       } else {
         throw new Error('Failed to fetch tax categories');
       }
     } catch (err) {
+      if (thisId !== fetchIdRef.current) return;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (thisId === fetchIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 

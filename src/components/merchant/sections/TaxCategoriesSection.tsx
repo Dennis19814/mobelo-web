@@ -27,6 +27,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
   const [selectedCategory, setSelectedCategory] = useState<TaxCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<TaxCategory | null>(null);
 
   const {
@@ -58,11 +59,12 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
     setIsEditModalOpen(true);
   }, []);
 
-  const handleDeleteCategory = useCallback((category: TaxCategory) => {
+  const handleDeleteClick = useCallback((category: TaxCategory) => {
     setCategoryToDelete(category);
+    setIsDeleteModalOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!categoryToDelete) return;
 
     setDeleteLoading(categoryToDelete.id);
@@ -70,16 +72,18 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
       await deleteCategory(categoryToDelete.id);
       setSuccessMessage('Tax category deleted successfully');
       await refreshCategories();
-      setCategoryToDelete(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete tax category');
     } finally {
       setDeleteLoading(null);
+      setIsDeleteModalOpen(false);
+      setCategoryToDelete(null);
     }
   }, [categoryToDelete, deleteCategory, refreshCategories, setError, setSuccessMessage]);
 
   const handleAddSuccess = useCallback(async () => {
     setIsAddModalOpen(false);
+    setSearchQuery(''); // Clear search so new category is visible in the list
     await refreshCategories();
     setSuccessMessage('Tax category created successfully');
   }, [refreshCategories, setSuccessMessage]);
@@ -87,11 +91,12 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
   const handleEditSuccess = useCallback(async () => {
     setIsEditModalOpen(false);
     setSelectedCategory(null);
+    setSearchQuery(''); // Clear search so updated category is visible in the list
     await refreshCategories();
     setSuccessMessage('Tax category updated successfully');
   }, [refreshCategories, setSuccessMessage]);
 
-  if (error) {
+  if (error && categories.length === 0 && !isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -135,6 +140,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
           placeholder="Search tax categories..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoComplete="off"
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
       </div>
@@ -167,23 +173,24 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden w-full">
+          <div className="overflow-x-auto overflow-y-visible min-w-0 w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full min-w-full divide-y divide-gray-200 table-fixed" style={{ minWidth: '640px' }}>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[35%]">
                   Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">
                   Default
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">
                   Order
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">
                   Actions
                 </th>
               </tr>
@@ -216,7 +223,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
 
                     </button>
                     <button
-                      onClick={() => handleDeleteCategory(category)}
+                      onClick={() => handleDeleteClick(category)}
                       disabled={deleteLoading === category.id}
                       className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
                     >
@@ -231,6 +238,7 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
      </div>
@@ -256,17 +264,17 @@ const TaxCategoriesSectionComponent = ({ appId, apiKey, appSecretKey }: TaxCateg
             headers={headers || undefined}
           />
         )}
-        {categoryToDelete && (
+        {isDeleteModalOpen && categoryToDelete && (
           <DeleteConfirmationModal
-            isOpen={!!categoryToDelete}
-            onClose={() => setCategoryToDelete(null)}
-            onConfirm={handleConfirmDelete}
+            isOpen={isDeleteModalOpen}
+            onClose={() => {
+              setIsDeleteModalOpen(false);
+              setCategoryToDelete(null);
+            }}
+            onConfirm={handleDeleteConfirm}
             title="Delete Tax Category"
-            message={`Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`}
-            itemName={categoryToDelete.name}
             itemType="tax category"
-            confirmButtonText="Delete"
-            cancelButtonText="Cancel"
+            itemName={categoryToDelete.name || 'this tax category'}
           />
         )}
       </Suspense>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { apiService } from '@/lib/api-service'
 import { Coupon, CouponFilters, CouponStatus, DiscountType, TargetScope, BuyXGetYConfig } from '@/types/coupon'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
@@ -46,29 +46,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     setFilters({ ...filters, limit, page: 1 })
   }
 
-  // Debounce search: update filters (and trigger API) after user stops typing so the input is not tied to API re-renders
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setFilters((prev) => {
-        const nextSearch = searchInput.trim() || undefined
-        if (prev.search === nextSearch) return prev
-        return { ...prev, search: nextSearch, page: 1 }
-      })
-      searchDebounceRef.current = null
-    }, 400)
-    searchDebounceRef.current = t
-    return () => {
-      clearTimeout(t)
-      searchDebounceRef.current = null
-    }
-  }, [searchInput])
-
-  useEffect(() => {
-    loadCoupons()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters])
-
-  const loadCoupons = async () => {
+  const loadCoupons = useCallback(async () => {
     try {
       setLoading(true)
       const response = await apiService.getCoupons(filters)
@@ -83,7 +61,11 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
+
+  useEffect(() => {
+    loadCoupons()
+  }, [loadCoupons])
 
   const handleDeleteClick = (coupon: Coupon) => {
     setCouponToDelete(coupon)
@@ -356,7 +338,8 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+          <div className="overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '640px' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left">
@@ -470,6 +453,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -497,7 +481,9 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
           <CreateCouponModal
             onClose={() => setShowCreateModal(false)}
             onSuccess={() => {
-              loadCoupons()
+              setShowCreateModal(false)
+              // Reset to page 1 and clear search/status so the new coupon shows in the table (useEffect will refetch)
+              setFilters((f) => ({ ...f, page: 1, limit: f.limit || 20, search: undefined, status: undefined }))
             }}
           />
         </Suspense>
