@@ -62,6 +62,20 @@ interface App {
     cdnUrl?: string
     uploadedAt: Date
   }
+  showAppNameWithLogo?: boolean
+  splashUrl?: string
+  splashTagline?: string
+  splashDescription?: string
+  bannerJson?: Array<{
+    id: string
+    title: string
+    subtitle: string
+    buttonText: string
+    badge?: string
+    limitedTime: boolean
+    backgroundColor: string
+    textColor: string
+  }>
 }
 
 interface ApiKeysData {
@@ -347,7 +361,25 @@ export default function MerchantPanel() {
       // Find and set the current app
       const selectedApp = appsData.find(app => app.id === appId)
       if (selectedApp) {
-        setCurrentApp(selectedApp)
+        // `getApps()` list may not include full app settings (e.g. bannerJson).
+        // Fetch full app details so Settings > General persists correctly across refresh.
+        let mergedApp: App = selectedApp
+        if (!(staffAccessToken && staffAppData)) {
+          try {
+            const detailsRes = await apiService.getApp(selectedApp.id)
+            if (detailsRes.ok && detailsRes.data) {
+              mergedApp = { ...selectedApp, ...(detailsRes.data as any) }
+            }
+          } catch (e) {
+            logger.warn('[MerchantPanel] Failed to fetch full app details; using list item only', {
+              error: e instanceof Error ? e.message : String(e),
+              appId: selectedApp.id,
+            })
+          }
+        }
+
+        setCurrentApp(mergedApp)
+        setApps((prev) => prev.map((a) => (a.id === selectedApp.id ? ({ ...a, ...mergedApp } as any) : a)))
       } else {
         setError('App not found or you don\'t have access to this app')
       }
