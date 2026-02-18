@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, lazy, Suspense } from 'react'
+import { useState, useCallback } from 'react'
 import { MapPin, Search, Plus, Loader2, Check, X, Edit2, Trash2 } from 'lucide-react'
 import { useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, useActivateLocation } from '@/hooks/useLocations'
 import type { Location, CreateLocationDto, UpdateLocationDto } from '@/types/purchase-order.types'
@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import { COUNTRIES, getCountryName } from '@/constants/countries'
 import { getStatesForCountry, hasStates, getStateName } from '@/constants/states'
 
-const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
+import DeleteConfirmationModal from '@/components/modals/DeleteConfirmationModal'
 
 export default function LocationsSection() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,8 +53,7 @@ export default function LocationsSection() {
 
   const handleConfirmDelete = useCallback(async () => {
     if (!locationToDelete) return
-    deleteMutation.mutate(locationToDelete.id)
-    setLocationToDelete(null)
+    await deleteMutation.mutateAsync(locationToDelete.id)
   }, [locationToDelete, deleteMutation])
 
   const handleActivate = useCallback((location: Location) => {
@@ -283,19 +282,17 @@ export default function LocationsSection() {
 
       {/* Delete confirmation modal */}
       {locationToDelete && (
-        <Suspense fallback={null}>
-          <DeleteConfirmationModal
-            isOpen={!!locationToDelete}
-            onClose={() => setLocationToDelete(null)}
-            onConfirm={handleConfirmDelete}
-            title="Delete Location"
-            message={`This will mark "${locationToDelete.name}" as inactive. You can reactivate it later.`}
-            itemName={locationToDelete.name}
-            itemType="location"
-            confirmButtonText="Delete"
-            cancelButtonText="Cancel"
-          />
-        </Suspense>
+        <DeleteConfirmationModal
+          isOpen={!!locationToDelete}
+          onClose={() => setLocationToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Location"
+          message={`This will mark "${locationToDelete.name}" as inactive. You can reactivate it later.`}
+          itemName={locationToDelete.name}
+          itemType="location"
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+        />
       )}
     </div>
   )

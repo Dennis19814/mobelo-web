@@ -149,8 +149,8 @@ export default function ShippingRateModal({ isOpen, onClose, onSuccess, zoneId, 
     setError(null);
 
     try {
-      // Send null explicitly for cleared condition fields so the backend persists "erased" state
-      const optNum = (v: number | undefined): number | null => (v != null && Number.isFinite(v) ? v : null);
+      // Send undefined for cleared condition fields
+      const optNum = (v: number | undefined): number | undefined => (v != null && Number.isFinite(v) ? v : undefined);
       const payload = {
         zoneId,
         ...formData,

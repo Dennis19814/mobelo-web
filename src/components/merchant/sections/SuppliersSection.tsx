@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, lazy, Suspense } from 'react'
+import { useState, useCallback } from 'react'
 import { Users, Search, Plus, Loader2, Edit2, XCircle, CheckCircle, BarChart3, Mail, Phone, MapPin, X } from 'lucide-react'
 import {
   useSuppliers,
@@ -14,8 +14,7 @@ import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '@/types/pur
 import toast from 'react-hot-toast'
 import { COUNTRIES } from '@/constants/countries'
 
-// Lazy load modals for better performance
-const DeleteConfirmationModal = lazy(() => import('@/components/modals/DeleteConfirmationModal'))
+import DeleteConfirmationModal from '@/components/modals/DeleteConfirmationModal'
 
 export default function SuppliersSection() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,8 +53,7 @@ export default function SuppliersSection() {
 
   const handleConfirmDeactivate = useCallback(async () => {
     if (!supplierToDeactivate) return
-    deactivateMutation.mutate(supplierToDeactivate.id)
-    setSupplierToDeactivate(null)
+    await deactivateMutation.mutateAsync(supplierToDeactivate.id)
   }, [supplierToDeactivate, deactivateMutation])
 
   const handleActivate = useCallback((supplier: Supplier) => {
@@ -277,19 +275,17 @@ export default function SuppliersSection() {
 
       {/* Delete/Deactivate Confirmation Modal */}
       {supplierToDeactivate && (
-        <Suspense fallback={null}>
-          <DeleteConfirmationModal
-            isOpen={!!supplierToDeactivate}
-            onClose={() => setSupplierToDeactivate(null)}
-            onConfirm={handleConfirmDeactivate}
-            title="Deactivate Supplier"
-            message={`This will mark the supplier "${supplierToDeactivate.company}" as inactive. You can reactivate them later.`}
-            itemName={supplierToDeactivate.company}
-            itemType="supplier"
-            confirmButtonText="Deactivate"
-            cancelButtonText="Cancel"
-          />
-        </Suspense>
+        <DeleteConfirmationModal
+          isOpen={!!supplierToDeactivate}
+          onClose={() => setSupplierToDeactivate(null)}
+          onConfirm={handleConfirmDeactivate}
+          title="Deactivate Supplier"
+          message={`This will mark the supplier "${supplierToDeactivate.company}" as inactive. You can reactivate them later.`}
+          itemName={supplierToDeactivate.company}
+          itemType="supplier"
+          confirmButtonText="Deactivate"
+          cancelButtonText="Cancel"
+        />
       )}
     </div>
   )
