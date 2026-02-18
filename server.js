@@ -44,10 +44,18 @@ app.prepare().then(() => {
     })
   )
 
+  // Serve Next.js static assets directly from filesystem (CSS, JS chunks, etc.)
+  server.use('/_next/static', express.static(path.join(__dirname, '.next/static'), {
+    maxAge: '1y',
+    immutable: true,
+  }))
+
   // Serve pre-compressed static files if they exist
   server.get(/\.(js|css|html|svg|json|xml|txt)$/, (req, res, next) => {
     const acceptEncoding = req.headers['accept-encoding'] || ''
-    const filePath = path.join(__dirname, '.next', 'static', req.path)
+    // Fix: strip /_next/static/ prefix to resolve the correct file path
+    const staticRelPath = req.path.replace(/^\/_next\/static\//, '')
+    const filePath = path.join(__dirname, '.next', 'static', staticRelPath)
 
     // Try to serve pre-compressed Brotli file
     if (acceptEncoding.includes('br')) {

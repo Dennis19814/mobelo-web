@@ -5,7 +5,9 @@
       "Bash(npm run type-check:*)",
       "Bash(cat:*)",
       "Bash(ssh:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

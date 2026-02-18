@@ -161,6 +161,8 @@ function AppBuilderContent() {
   const lastProcessedReloadTimestampRef = useRef<string | null>(null)
   const lastProcessedRestartTimestampRef = useRef<string | null>(null)
   const previousSocketExpoInfoRef = useRef<ExpoInfo | null>(null)
+  // Tracks the timestamp when a restart was requested; used by polling fallback to detect completion
+  const restartRequestedAtRef = useRef<number | null>(null)
 
   // Centralized request cancellation with automatic cleanup
   const abortController = useAbortController()
@@ -279,14 +281,17 @@ function AppBuilderContent() {
     if (!appId) return
 
     try {
+      // Capture restart request time BEFORE queuing — polling fallback uses this to detect completion
+      restartRequestedAtRef.current = Date.now()
       setIsRestarting(true)
       logger.debug('[AppBuilder] Restarting app:', { appId })
       await apiService.restartApp(Number(appId), abortController.getSignal())
-      logger.debug('[AppBuilder] Restart queued successfully')
-      // Wait for appRestartedEvent to update state
+      logger.debug('[AppBuilder] Restart queued — socket event or polling will detect completion')
+      // Wait for appRestartedEvent (socket) OR polling fallback to update state and reload iframe
     } catch (error: unknown) {
       logger.error('[AppBuilder] Error restarting app:', { error })
       setIsRestarting(false)
+      restartRequestedAtRef.current = null
 
       // Better error messages
       const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
@@ -306,50 +311,15 @@ function AppBuilderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
-  // Define handleReloadApp for fast reload without restart
-  const handleReloadApp = useCallback(async () => {
-    if (!appId || isReloading) return
-
-    try {
-      setIsReloading(true)
-      logger.debug('[AppBuilder] Reloading app:', { appId })
-
-      // Set timeout fallback (5 seconds) in case Socket.io event doesn't arrive
-      reloadTimeoutIdRef.current = timeouts.setTimeout(() => {
-        logger.warn('[AppBuilder] Reload timeout reached, clearing isReloading state (Socket.io event may have been lost)')
-        setIsReloading(false)
-        reloadTimeoutIdRef.current = undefined
-      }, 5000)
-
-      await apiService.reloadApp(Number(appId), abortController.getSignal())
-      logger.debug('[AppBuilder] Reload queued successfully, waiting for Socket.io confirmation...')
-      // Wait for app-reloaded Socket.io event to update state (or timeout)
-    } catch (error: unknown) {
-      logger.error('[AppBuilder] Error reloading app:', { error })
-
-      // Clear timeout on error
-      if (reloadTimeoutIdRef.current !== undefined) {
-        timeouts.clearTimeout(reloadTimeoutIdRef.current)
-        reloadTimeoutIdRef.current = undefined
-      }
-
-      setIsReloading(false)
-
-      // Better error messages
-      const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
-      let errorMessage = 'Failed to reload app. Please try again.'
-
-      if (err.response?.status === 404) {
-        errorMessage = 'App not found or not running.'
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message
-      }
-
-      toast.error(errorMessage)
-    }
-    // abortController deliberately excluded from deps (new object on every render)
+  // Define handleReloadApp — triggers a full app restart (npm install + --reset-cache + Expo start).
+  // This is the correct behavior for the 🔄 button: theme changes, new packages, and config
+  // changes all require a full restart via ExpoRunnerService, not just an iframe reload.
+  // The restart flow (polling + socket) handles iframe reload once Expo is back up.
+  const handleReloadApp = useCallback(() => {
+    if (!appId || isRestarting) return
+    handleRestartApp()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appId, isReloading, timeouts])
+  }, [appId, isRestarting, handleRestartApp])
 
   // Memoize handleCopy to prevent recreation
   const handleCopy = useCallback((text: string, field: string) => {
@@ -932,8 +902,8 @@ function AppBuilderContent() {
             if (timeSinceCreation < RECENT_THRESHOLD_MS) {
               logger.debug('[AppBuilder] App was recently created, skipping auto-restart to avoid race condition with generation job')
               // Don't auto-restart - app is likely still being generated
-            } else if (!isRestarting && !isGenerating) {
-              // App is older and expired - safe to auto-restart (only if not already restarting/generating)
+            } else if (!isRestarting && !isGenerating && app.status !== 'failed') {
+              // App is older and expired - safe to auto-restart (only if not already restarting/generating and not failed)
               logger.debug('[AppBuilder] App is not recent and not currently restarting, triggering auto-restart')
               handleRestartApp()
             } else {
@@ -960,8 +930,8 @@ function AppBuilderContent() {
             logger.debug('[AppBuilder] App was recently created, skipping auto-restart to avoid race condition with generation job')
             // Don't auto-restart - app is likely still being generated
             // User can manually restart if needed
-          } else if (!isRestarting && !isGenerating) {
-            // App is older and has no Expo info - safe to auto-restart (only if not already restarting/generating)
+          } else if (!isRestarting && !isGenerating && app.status !== 'failed') {
+            // App is older and has no Expo info - safe to auto-restart (only if not already restarting/generating and not failed)
             logger.debug('[AppBuilder] App is not recent and not currently restarting, triggering auto-restart')
             handleRestartApp()
           } else {
@@ -996,9 +966,10 @@ function AppBuilderContent() {
     }
   }, [appTimeoutEvent, appId])
 
-  // Monitor app restart event
-  // Note: The actual iframe reload is handled by the socketExpoInfo effect above
-  // This effect only tracks that a restart event was received for deduplication
+  // Monitor app restart event and refresh the iframe preview
+  // NOTE: We cannot rely on the socketExpoInfo effect for this because its deep-equality
+  // guard (webUrl/qrCode/port) skips updates when values are identical — which is always
+  // the case for restarts since the port and URL never change between restarts.
   useEffect(() => {
     logger.debug('[AppBuilder] appRestartedEvent changed:', { appRestartedEvent, appId })
     if (appRestartedEvent && appRestartedEvent.appId === Number(appId)) {
@@ -1008,10 +979,22 @@ function AppBuilderContent() {
         return
       }
 
-      logger.debug('[AppBuilder] ✅ App restart event matches current app:', { appRestartedEvent })
+      logger.debug('[AppBuilder] ✅ App restart event matches current app, refreshing preview:', { appRestartedEvent })
 
       // Mark this event as processed
       lastProcessedRestartTimestampRef.current = appRestartedEvent.timestamp
+
+      // Socket event arrived — clear polling fallback tracker (setIsRestarting(false) will stop the polling useEffect)
+      restartRequestedAtRef.current = null
+
+      // Force iframe refresh even when webUrl/qrCode/port are identical to before restart.
+      // Wait for Expo server to fully start before refreshing the iframe.
+      setIsAppRunning(true)
+      setIsRestarting(false)
+      timeouts.setTimeout(() => {
+        logger.debug('[AppBuilder] Incrementing iframe key after app restart')
+        setIframeKey(prev => prev + 1)
+      }, APP_BUILDER_CONFIG.EXPO_SERVER_STARTUP_DELAY_MS)
     } else if (appRestartedEvent) {
       logger.debug('[AppBuilder] ⚠️ App restart event for different app, ignoring:', {
         eventAppId: appRestartedEvent.appId,
@@ -1021,6 +1004,61 @@ function AppBuilderContent() {
     // Only depend on timestamp to avoid re-running when object reference changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appRestartedEvent?.timestamp, appId])
+
+  // Polling fallback: when waiting for restart, poll /expo-status every 15s.
+  // This detects restart completion even if the Socket.io 'app-restarted' event is missed
+  // (which can happen when the WebSocket drops during the 60-120s restart window).
+  // When the socket event arrives first, setIsRestarting(false) stops this polling via cleanup.
+  useEffect(() => {
+    if (!isRestarting || !appId) return
+
+    // Capture the restart-request timestamp for comparison
+    const pollStartTime = restartRequestedAtRef.current ?? Date.now()
+    const MAX_POLL_MS = 5 * 60 * 1000  // 5 minutes hard timeout
+    const POLL_INTERVAL_MS = 15 * 1000 // check every 15 seconds
+
+    logger.debug('[AppBuilder] 🔄 Starting expo-status polling fallback', { appId, pollStartTime })
+
+    const intervalId = setInterval(async () => {
+      // Hard timeout — stop polling and surface error
+      if (Date.now() - pollStartTime > MAX_POLL_MS) {
+        clearInterval(intervalId)
+        restartRequestedAtRef.current = null
+        setIsRestarting(false)
+        toast.error('App restart timed out after 5 minutes. Please try again.')
+        return
+      }
+
+      try {
+        const status = await apiService.getExpoStatus(Number(appId))
+        if (status?.startedAt) {
+          const startedAt = new Date(status.startedAt).getTime()
+          // Only treat as "restarted" if Expo started AFTER we requested the restart
+          if (startedAt > pollStartTime) {
+            logger.debug('[AppBuilder] ✅ Polling detected restart complete', { startedAt, pollStartTime })
+            clearInterval(intervalId)
+            restartRequestedAtRef.current = null
+            setIsAppRunning(true)
+            setIsRestarting(false)
+            // Brief delay to let Expo fully serve the bundle before reloading
+            timeouts.setTimeout(() => {
+              logger.debug('[AppBuilder] Reloading iframe after polling-detected restart')
+              setIframeKey(prev => prev + 1)
+            }, APP_BUILDER_CONFIG.EXPO_SERVER_STARTUP_DELAY_MS)
+          }
+        }
+      } catch {
+        // Keep polling silently — transient network errors are expected during restart
+      }
+    }, POLL_INTERVAL_MS)
+
+    // Cleanup: runs when isRestarting→false (socket path) or appId changes or unmount
+    return () => {
+      logger.debug('[AppBuilder] 🛑 Stopping expo-status polling (isRestarting cleared or cleanup)')
+      clearInterval(intervalId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRestarting, appId])
 
   // Monitor app reload event
   useEffect(() => {
@@ -1573,11 +1611,22 @@ function AppBuilderContent() {
       })
     } else if (lastEvent.status === 'failed') {
       logger.error('[AppBuilder] Job failed event received:', { lastEvent })
-
-      // Set isGenerating to false when failed
       setIsGenerating(false)
 
-      // Add error message to chat
+      // Detect restart failures: restart processor sends jobId=null, generation sends a numeric jobId.
+      // Restart failures should NOT show "App generation failed" or update the progress bar —
+      // they are transient restart errors unrelated to the generation pipeline.
+      const isRestartFailure = !lastEvent.jobId
+      if (isRestartFailure) {
+        logger.error('[AppBuilder] App restart failed (restart job):', { errorMessage: lastEvent.errorMessage })
+        // Clear restart state so the UI recovers (stops spinner, stops polling)
+        setIsRestarting(false)
+        restartRequestedAtRef.current = null
+        toast.error(`Restart failed: ${lastEvent.errorMessage || 'Unknown error. Please try again.'}`)
+        return
+      }
+
+      // Generation failure — add to chat and mark progress bar as failed
       const failureMessage: ChatMessage = {
         role: 'assistant',
         content: `❌ App generation failed: ${lastEvent.errorMessage || 'Unknown error'}`,
@@ -1661,6 +1710,14 @@ function AppBuilderContent() {
       contentPreview: data.content.substring(0, 100)
     })
 
+    // When worker signals git commit is done, trigger API-based restart from frontend.
+    // This is more reliable than the worker calling restartApp() directly, because
+    // the socket event from a worker-side restart fires ~2-3min later when the
+    // WebSocket may have dropped and missed the event.
+    if (data.type === 'stdout' && data.content.includes('Changes committed')) {
+      handleRestartApp()
+    }
+
     const assistantMessage: ChatMessage = {
       role: 'assistant' as const,
       content: data.content,
@@ -1677,7 +1734,7 @@ function AppBuilderContent() {
 
     // Save assistant message to database
     saveChatMessage(assistantMessage)
-  }, [claudeSessionId, saveChatMessage])
+  }, [claudeSessionId, saveChatMessage, handleRestartApp])
 
   // Memoize Claude Code progress handler for git operations
   const handleClaudeCodeProgress = useCallback((data: {
@@ -2303,10 +2360,10 @@ function AppBuilderContent() {
     </div>
     <button
       onClick={handleReloadApp}
-      disabled={!expoInfo || isReloading || !isAppRunning || isGenerating}
+      disabled={!expoInfo || isRestarting || !isAppRunning || isGenerating}
       className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg disabled:opacity-50 transition-colors flex-shrink-0"
     >
-      <RefreshCw className={`w-4 h-4 ${isReloading ? 'animate-spin' : ''}`} />
+      <RefreshCw className={`w-4 h-4 ${isRestarting ? 'animate-spin' : ''}`} />
     </button>
   </div>
 

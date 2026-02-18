@@ -113,7 +113,7 @@ const ProductsSectionComponent = ({ appId, apiKey, appSecretKey, onAddProduct }:
       if (apiFilters.brands && Array.isArray(apiFilters.brands) && apiFilters.brands.length > 0) {
         // Backend expects 'brand' (singular) parameter, not 'brands'
         // getProducts will serialize the array as brand=Value1&brand=Value2
-        apiFilters.brand = apiFilters.brands as any
+        ;(apiFilters as any).brand = apiFilters.brands
         delete apiFilters.brands
       }
       const response = await apiService.getProducts({ ...apiFilters, include: 'variants' })

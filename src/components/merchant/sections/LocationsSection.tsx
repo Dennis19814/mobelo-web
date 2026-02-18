@@ -13,6 +13,7 @@ export default function LocationsSection() {
   const [showInactive, setShowInactive] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
 
   // Fetch locations
   const { data: locationsData, isLoading, error } = useLocations({
@@ -29,11 +30,13 @@ export default function LocationsSection() {
 
   const handleCreate = useCallback(() => {
     setEditingLocation(null)
+    setModalError(null)
     setIsModalOpen(true)
   }, [])
 
   const handleEdit = useCallback((location: Location) => {
     setEditingLocation(location)
+    setModalError(null)
     setIsModalOpen(true)
   }, [])
 
@@ -239,11 +242,14 @@ export default function LocationsSection() {
       {isModalOpen && (
         <LocationModal
           location={editingLocation}
+          error={modalError}
           onClose={() => {
             setIsModalOpen(false)
             setEditingLocation(null)
+            setModalError(null)
           }}
           onSave={(data) => {
+            setModalError(null)
             if (editingLocation) {
               updateMutation.mutate(
                 { id: editingLocation.id, data: data as UpdateLocationDto },
@@ -252,12 +258,18 @@ export default function LocationsSection() {
                     setIsModalOpen(false)
                     setEditingLocation(null)
                   },
+                  onError: (err: Error) => {
+                    setModalError(err.message || 'Failed to update location')
+                  },
                 }
               )
             } else {
               createMutation.mutate(data as CreateLocationDto, {
                 onSuccess: () => {
                   setIsModalOpen(false)
+                },
+                onError: (err: Error) => {
+                  setModalError(err.message || 'Failed to create location')
                 },
               })
             }
@@ -275,9 +287,10 @@ interface LocationModalProps {
   onClose: () => void
   onSave: (data: CreateLocationDto | UpdateLocationDto) => void
   isSaving: boolean
+  error: string | null
 }
 
-function LocationModal({ location, onClose, onSave, isSaving }: LocationModalProps) {
+function LocationModal({ location, onClose, onSave, isSaving, error }: LocationModalProps) {
   const [formData, setFormData] = useState({
     name: location?.name || '',
     address: location?.address || '',
@@ -443,6 +456,14 @@ function LocationModal({ location, onClose, onSave, isSaving }: LocationModalPro
             />
             <span className="text-sm text-gray-700">Set as default location</span>
           </label>
+
+          {/* Inline error message */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <X className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2 pt-2">
