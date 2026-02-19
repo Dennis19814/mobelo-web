@@ -669,9 +669,39 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
       if (apiKey) headers['x-api-key'] = apiKey
       if (appSecretKey) headers['x-app-secret'] = appSecretKey
 
+      const normalizedShippingInfoForSave = {
+        width: formData.shippingInfo?.width ?? null,
+        height: formData.shippingInfo?.height ?? null,
+        length: formData.shippingInfo?.length ?? null,
+        dimensionUnit: formData.shippingInfo?.dimensionUnit || 'cm',
+        shippingClass: formData.shippingInfo?.shippingClass || 'standard',
+        processingTime: formData.shippingInfo?.processingTime || '1-2 business days',
+        shippingZones: Array.isArray(formData.shippingInfo?.shippingZones) ? formData.shippingInfo.shippingZones : [],
+        freeShipping: !!formData.shippingInfo?.freeShipping,
+        flatRate: formData.shippingInfo?.flatRate ?? null,
+        calculatedShipping: !!formData.shippingInfo?.calculatedShipping
+      }
+
+      const normalizedReturnPolicy = formData.returnPolicy?.trim() || ''
+      const normalizedWarranty = formData.warranty?.trim() || ''
+
       const productPayload = {
         ...formData,
         status,
+        shippingInfo: normalizedShippingInfoForSave,
+        // Compatibility for APIs that parse alternate shipping keys
+        shipping: normalizedShippingInfoForSave,
+        returnPolicy: normalizedReturnPolicy,
+        return_policy: normalizedReturnPolicy,
+        warranty: normalizedWarranty,
+        warranty_info: normalizedWarranty,
+        warrantyInformation: normalizedWarranty,
+        metadata: {
+          ...(formData.metadata || {}),
+          shippingInfo: normalizedShippingInfoForSave,
+          returnPolicy: normalizedReturnPolicy,
+          warranty: normalizedWarranty
+        },
         thumbnailUrl: productMedia.find(m => m.isPrimary)?.url || formData.thumbnailUrl
       }
 
