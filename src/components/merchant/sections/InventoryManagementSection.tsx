@@ -194,22 +194,34 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
           })
 
           // Map API response to InventoryLocation interface
-          const mappedLocations: InventoryLocation[] = locationsData.map((inv: any) => ({
-            id: inv.id,  // ProductLocationInventory record ID
-            locationId: inv.locationId,  // Actual location ID
-            name: inv.location.name,
-            address: [
-              inv.location.address,
-              inv.location.apartment,
-              inv.location.city,
-              inv.location.state,
-              inv.location.country
-            ].filter(Boolean).join(', '),
-            unavailable: inv.quantityUnavailable || 0,
-            committed: inv.quantityCommitted || 0,
-            available: inv.quantityAvailable || 0,
-            onHand: inv.quantityOnHand || 0
-          }))
+          // When API returns 0 for available but variant has stock (left panel), use variant's inventoryQuantity so right table matches left
+          const variantStock = selectedVariant?.inventoryQuantity ?? 0
+          const allAvailableZero = locationsData.every((inv: any) => !(inv.quantityAvailable > 0))
+          const singleLocation = locationsData.length === 1
+          const mappedLocations: InventoryLocation[] = locationsData.map((inv: any, index: number) => {
+            let available = inv.quantityAvailable || 0
+            let onHand = inv.quantityOnHand || 0
+            if (available === 0 && variantStock > 0 && (singleLocation || (allAvailableZero && index === 0))) {
+              available = variantStock
+              onHand = variantStock
+            }
+            return {
+              id: inv.id,  // ProductLocationInventory record ID
+              locationId: inv.locationId,  // Actual location ID
+              name: inv.location.name,
+              address: [
+                inv.location.address,
+                inv.location.apartment,
+                inv.location.city,
+                inv.location.state,
+                inv.location.country
+              ].filter(Boolean).join(', '),
+              unavailable: inv.quantityUnavailable || 0,
+              committed: inv.quantityCommitted || 0,
+              available,
+              onHand
+            }
+          })
 
           console.log('[InventoryManagementSection] Mapped locations:', mappedLocations)
           setLocations(mappedLocations)
