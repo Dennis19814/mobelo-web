@@ -12,7 +12,7 @@ interface VideoModalProps {
 export default function VideoModal({
   isOpen,
   onClose,
-  videoUrl = 'https://play.gumlet.io/embed/698bf85dfc23d3d76fdffca5?autoplay=1'
+  videoUrl = 'https://play.gumlet.io/embed/698bf85dfc23d3d76fdffca5'
 }: VideoModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)

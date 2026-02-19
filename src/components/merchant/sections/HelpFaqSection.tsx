@@ -422,7 +422,7 @@ export default function HelpFaqSection({ onNavigate }: HelpFaqSectionProps) {
       <div className="mt-12 text-center">
         <p className="text-gray-500">
           Still have questions?{' '}
-          <a href="#" className="text-orange-600 hover:text-orange-700 font-medium">
+          <a href="https://calendly.com/mobelo/schedule-a-demo" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-700 font-medium">
             Contact Support
           </a>
         </p>

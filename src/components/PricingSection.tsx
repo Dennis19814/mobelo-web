@@ -126,7 +126,7 @@ export default function PricingSection() {
           <div>Starter plan includes 14-day free trial.</div>
           <div>
             Need a custom plan?{' '}
-            <a className="text-orange-600 font-semibold hover:underline" href="#">
+            <a className="text-orange-600 font-semibold hover:underline" href="https://calendly.com/mobelo/schedule-a-demo" target="_blank" rel="noopener noreferrer">
               Contact our sales team
             </a>
           </div>
