@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense,useRef } from 'react'
 import { apiService } from '@/lib/api-service'
 import { Coupon, CouponFilters, CouponStatus, DiscountType, TargetScope, BuyXGetYConfig } from '@/types/coupon'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
