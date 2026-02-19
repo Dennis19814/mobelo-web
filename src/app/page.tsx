@@ -9,24 +9,17 @@ import {
   Smartphone,
   ShieldCheck,
   Sparkles,
-  LayoutTemplate,
-  Database,
   Clock4,
   Shield,
   Headphones,
   Package2,
-  Image as ImageIcon,
   CreditCard,
-  ClipboardList,
   Paintbrush,
-  Upload,
-  Bell,
   Server,
   Check,
   Users,
   Store,
   Download,
-  Palette,
   Rocket,
   Star,
   Play,
@@ -82,7 +75,7 @@ const whyPoints = [
   { title: 'Production Ready Apps', desc: 'Mobelo builds production-ready mobile apps you can launch instantly.', icon: Sparkles },
   { title: 'No Token Limits!', desc: 'Build without restrictions, unlike platforms that cap usage and tokens.', icon: Infinity },
   { title: 'Full App Preview', desc: 'Mobelo builds a fully functional app from one prompt, ready to preview instantly.', icon: Eye },
-  { title: 'Premium AI Models', desc: 'Built using premium OpenAI and Anthropic models, including GPT-5.2 and Claude Sonnet 4.2.', icon: Zap },
+  { title: 'Premium AI Models', desc: 'Built using premium OpenAI and Anthropic models, including GPT-4o and Claude 3.5 Sonnet.', icon: Zap },
   { title: 'Merchant Panel Access', desc: 'Fully functional enterprise-grade merchant panel to manage your entire commerce platform.', icon: LayoutDashboard },
   { title: 'Premium Support', desc: 'We\'ll help you ship and iterate quickly with live support when you need it.', icon: Headphones },
 ]
@@ -98,7 +91,7 @@ const launchFeatures = [
 
 const steps = [
   { title: 'Build Your Store', desc: 'Generate a complete, production-ready fully functional mobile commerce app from a single prompt.', icon: Sparkles },
-  { title: 'Customize Your App', desc: 'Customize your app using simple prompts, powered by Claude Code for fast, intelligent generation.', icon: Paintbrush },
+  { title: 'Customize Your App', desc: 'Customize your app using simple prompts, powered by Claude AI for fast, intelligent generation.', icon: Paintbrush },
   { title: 'Launch & Manage', desc: 'Export your app code, publish to app stores, and manage everything from your powerful merchant dashboard.', icon: Rocket },
 ]
 
@@ -294,66 +287,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900">
-      {/* Structured Data - FAQPage */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'FAQPage',
-            mainEntity: faqs.map(faq => ({
-              '@type': 'Question',
-              name: faq.q,
-              acceptedAnswer: {
-                '@type': 'Answer',
-                text: faq.a
-              }
-            }))
-          })
-        }}
-      />
-
-      {/* Structured Data - Reviews/Testimonials */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'Product',
-            name: 'Mobelo Mobile App Builder',
-            description: 'AI-powered mobile app builder for e-commerce',
-            brand: {
-              '@type': 'Brand',
-              name: 'Mobelo'
-            },
-            aggregateRating: {
-              '@type': 'AggregateRating',
-              ratingValue: '4.9',
-              reviewCount: testimonials.length,
-              bestRating: '5',
-              worstRating: '1'
-            },
-            review: testimonials.map(t => ({
-              '@type': 'Review',
-              author: {
-                '@type': 'Person',
-                name: t.name
-              },
-              reviewRating: {
-                '@type': 'Rating',
-                ratingValue: '5',
-                bestRating: '5'
-              },
-              reviewBody: t.quote,
-              publisher: {
-                '@type': 'Organization',
-                name: 'Mobelo'
-              }
-            }))
-          })
-        }}
-      />
-
       <Navigation />
 
       <main className="flex-1">
@@ -361,13 +294,13 @@ export default function HomePage() {
         <section className="relative bg-gradient-to-b from-orange-50 via-white to-amber-50 min-h-screen flex items-center py-12 md:py-16 lg:py-20 pt-20 md:pt-28 lg:pt-24" aria-label="Hero section">
           <div className="absolute inset-0" aria-hidden="true" />
           <div className="relative mx-auto max-w-6xl px-4 md:px-6 w-full grid gap-8 md:gap-12 lg:grid-cols-2 items-center">
-            <article className="space-y-6">
+            <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-white via-[#fff4e8] to-white px-4 py-2 shadow-sm text-sm font-semibold text-orange-600 border-2 border-transparent bg-clip-padding" style={{ backgroundImage: 'linear-gradient(white, white), linear-gradient(to right, #fb923c, #fdba74)', backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box' }}>
                 <Sparkles className="w-4 h-4 text-orange-600" aria-hidden="true" />
                 <span className="font-bold">AI-Powered Platform</span>
               </div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-extrabold leading-tight text-slate-900">
-                Build Your Mobile App,{' '}
+                Build Your E-Commerce Mobile App,{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-500">
                   in Minutes
                 </span>
@@ -376,10 +309,12 @@ export default function HomePage() {
                 Create professional iOS and Android shopping apps with AI-powered design, integrated Stripe payments, and a complete merchant dashboard. No coding required.
               </p>
               <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => {
-                    // Only show sign-in modal if user is not authenticated
+                <a
+                  href="/app-builder"
+                  onClick={(e) => {
+                    // If not authenticated, show sign-in modal instead of navigating
                     if (!isOwnerAuthenticated()) {
+                      e.preventDefault()
                       setShowSigninModal(true)
                     }
                   }}
@@ -388,7 +323,7 @@ export default function HomePage() {
                 >
                   Start Building Free
                   <span className="text-lg" aria-hidden="true">→</span>
-                </button>
+                </a>
                 <button
                   onClick={() => setShowVideoModal(true)}
                   className="rounded-xl bg-white px-6 py-3 text-slate-800 font-semibold border border-slate-200 shadow-[0_10px_20px_rgba(0,0,0,0.05)] hover:border-orange-200 hover:text-orange-600 transition flex items-center gap-2"
@@ -430,7 +365,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </article>
+            </div>
 
             <HomeAppBuilder />
           </div>
@@ -456,14 +391,11 @@ export default function HomePage() {
 
         {/* Why Choose */}
         <section id="features" className="bg-white min-h-screen flex items-center pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="features-heading">
-        {/* <section
-          id="features"
-          className="bg-white pt-20 md:pt-28 lg:pt-24 pb-12 md:pb-16 lg:pb-20 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24"
-          aria-labelledby="features-heading"
-        > */}
           <div className="mx-auto max-w-6xl px-4 md:px-6 w-full">
             <div className="text-center space-y-3 mb-10">
-              <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose Mobelo?</h2>
+              <h2 id="features-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">
+                <a href="/features" className="hover:text-orange-600 transition-colors">Why Choose Mobelo?</a>
+              </h2>
               <p className="text-slate-600">AI-driven mobile apps, launch-ready builds, and an enterprise-grade merchant panel.</p>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -551,9 +483,14 @@ export default function HomePage() {
 
             {/* CTA Button */}
             <div className="mt-12 text-center">
-              <button className="rounded-[14px] border border-orange-500 bg-orange-500 px-8 py-4 text-base font-semibold text-white shadow-md hover:bg-white hover:text-slate-900 hover:border-slate-200 transition-all duration-200">
+              <a
+                href="https://calendly.com/mobelo/schedule-a-demo?month=2026-02"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-[14px] border border-orange-500 bg-orange-500 px-8 py-4 text-base font-semibold text-white shadow-md hover:bg-white hover:text-slate-900 hover:border-slate-200 transition-all duration-200"
+              >
                 Schedule a Demo
-              </button>
+              </a>
             </div>
           </div>
         </section>
@@ -641,13 +578,15 @@ export default function HomePage() {
       </div>
 
       {/* 3. Content Area - Stretches to show full image including bottom tabs */}
-      <div className="flex-1 w-full relative bg-white overflow-hidden"> 
+      <div className="flex-1 w-full relative bg-white overflow-hidden">
         {tpl.image && (
-          <img
+          <Image
             src={tpl.image}
             alt={`${tpl.name} mockup`}
-            className="w-full h-full object-fill" 
-            style={{ display: 'block' }}
+            fill
+            className="object-fill"
+            loading="lazy"
+            sizes="(max-width: 768px) 50vw, 33vw"
           />
         )}
       </div>
@@ -805,9 +744,13 @@ export default function HomePage() {
               <h3 className="text-4xl font-bold text-slate-900">Still have questions?</h3>
               <p className="text-slate-600 max-w-md mx-auto">Our team is here to help you get started. Chat with us and we'll help you launch faster.</p>
               <div className="flex justify-center pt-2">
-                <button className="rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-3 text-white font-semibold shadow-lg shadow-orange-300/40 hover:from-orange-700 hover:to-orange-600 transition" aria-label="Contact support team">
+                <a
+                  href="mailto:support@mobelo.dev"
+                  className="inline-block rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-3 text-white font-semibold shadow-lg shadow-orange-300/40 hover:from-orange-700 hover:to-orange-600 transition"
+                  aria-label="Contact support team"
+                >
                   Contact Support
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -915,9 +858,14 @@ export default function HomePage() {
               </div>
               <div className="border-t border-slate-200 pt-4 flex flex-col items-center gap-3">
                 <div className="text-sm text-slate-700">Want to see it in action first?</div>
-                <button className="rounded-[14px] border border-orange-500 bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-white hover:text-slate-800 hover:border-slate-200 transition">
+                <a
+                  href="https://calendly.com/mobelo/schedule-a-demo?month=2026-02"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-[14px] border border-orange-500 bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-white hover:text-slate-800 hover:border-slate-200 transition"
+                >
                   Schedule a Demo
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -940,6 +888,44 @@ export default function HomePage() {
       <VideoModal
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
+      />
+
+      {/* Page-specific JSON-LD: only on home page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://mobelo.dev/' },
+              { '@type': 'ListItem', position: 2, name: 'Pricing', item: 'https://mobelo.dev/pricing' },
+              { '@type': 'ListItem', position: 3, name: 'Features', item: 'https://mobelo.dev/features' },
+              { '@type': 'ListItem', position: 4, name: 'App Builder', item: 'https://mobelo.dev/app-builder' },
+            ],
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              { '@type': 'Question', name: 'How long does it take to launch?', acceptedAnswer: { '@type': 'Answer', text: "Mobelo generates your complete mobile app in 4-8 minutes. You can refine it using simple prompts and publish with a few clicks. App Store and Play Store approvals may take a few days and are subject to their review processes, which are outside Mobelo's control." } },
+              { '@type': 'Question', name: 'Do I need design or coding skills?', acceptedAnswer: { '@type': 'Answer', text: 'No design or coding skills are required. Mobelo uses premium layouts, follows industry standards, and builds fully functional features, so you can launch without any technical expertise.' } },
+              { '@type': 'Question', name: 'Can I publish to both iOS and Android?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. You can publish your app to both iOS and Android, and book a support session with our team for hands-on assistance if needed.' } },
+              { '@type': 'Question', name: 'Can I use my own products and content?', acceptedAnswer: { '@type': 'Answer', text: "Yes. You have full control over your app's products and content. Manage products, orders, inventory, and more through the merchant panel." } },
+              { '@type': 'Question', name: 'Are there any hidden or upfront costs?', acceptedAnswer: { '@type': 'Answer', text: 'No. There are no hidden or upfront costs. You only pay a monthly fee plus a sales-based commission, ranging from 0.4% to a maximum of 1%, depending on your plan.' } },
+              { '@type': 'Question', name: 'Who owns the app and source code?', acceptedAnswer: { '@type': 'Answer', text: 'You own your mobile app and its source code. You can export the full source code at any time.' } },
+              { '@type': 'Question', name: 'Does Mobelo handle hosting and infrastructure?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Mobelo provides fully managed infrastructure, including hosting, updates, monitoring, and maintenance.' } },
+              { '@type': 'Question', name: 'Is the app production-ready or just a demo?', acceptedAnswer: { '@type': 'Answer', text: 'Mobelo builds fully production-ready mobile apps designed for real users, real traffic, and real transactions.' } },
+              { '@type': 'Question', name: 'What happens if I cancel my subscription?', acceptedAnswer: { '@type': 'Answer', text: 'You can cancel at any time. Your app will stop receiving updates and managed services, but your data and source code remain yours.' } },
+              { '@type': 'Question', name: 'Is Mobelo GDPR compliant?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Mobelo is designed with GDPR compliance in mind, including data handling and privacy controls.' } },
+            ],
+          }),
+        }}
       />
     </div>
   )

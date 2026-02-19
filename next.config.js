@@ -23,13 +23,17 @@ const nextConfig = {
     },
   },
 
-  // Generate unique build ID for cache busting
+  // Generate stable build ID using git SHA for CDN cache efficiency
   generateBuildId: async () => {
-    // Use timestamp in development, commit hash or build number in production
     if (process.env.NODE_ENV === 'development') {
       return `dev-${Date.now()}`
     }
-    return `build-${Date.now()}`
+    try {
+      const { execSync } = require('child_process')
+      return execSync('git rev-parse HEAD').toString().trim()
+    } catch {
+      return `build-${Date.now()}`
+    }
   },
 
   // Simplified dev indicators to reduce resource conflicts
@@ -199,6 +203,10 @@ const nextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
           },
         ],
       },

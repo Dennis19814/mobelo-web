@@ -219,28 +219,31 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 shrink-0">
               {!hideMenuItems && (
                 <>
-                  <button
-                    onClick={() => scrollToSection('features')}
+                  <a
+                    href="/#features"
+                    onClick={(e) => { e.preventDefault(); scrollToSection('features') }}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
-                      isInTechSection 
-                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                      isInTechSection
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
                         : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
                     }`}
                   >
                     Features
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('how-it-works')}
+                  </a>
+                  <a
+                    href="/#how-it-works"
+                    onClick={(e) => { e.preventDefault(); scrollToSection('how-it-works') }}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
-                      isInTechSection 
-                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50' 
+                      isInTechSection
+                        ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
                         : 'text-slate-700 hover:text-orange-600 hover:bg-orange-50'
                     }`}
                   >
                     How it works
-                  </button>
-                         <button
-                    onClick={() => scrollToSection('faq')}
+                  </a>
+                  <a
+                    href="/#faq"
+                    onClick={(e) => { e.preventDefault(); scrollToSection('faq') }}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
                       isInTechSection
                         ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
@@ -248,9 +251,10 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                     }`}
                   >
                     FAQ
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('pricing')}
+                  </a>
+                  <a
+                    href="/#pricing"
+                    onClick={(e) => { e.preventDefault(); scrollToSection('pricing') }}
                     className={`font-medium transition-all duration-200 px-2 md:px-3 py-1.5 md:py-2 rounded-[14px] text-sm lg:text-base whitespace-nowrap ${
                       isInTechSection
                         ? 'text-white hover:text-orange-400 hover:bg-slate-800/50'
@@ -258,7 +262,7 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
                     }`}
                   >
                     Pricing
-                  </button>
+                  </a>
            
                 </>
               )}
@@ -393,30 +397,34 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
               <div className="space-y-2">
                 {!hideMenuItems && (
                   <>
-                    <button
-                      onClick={() => scrollToSection('features')}
+                    <a
+                      href="/#features"
+                      onClick={(e) => { e.preventDefault(); scrollToSection('features') }}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
                     >
                       Features
-                    </button>
-                    <button
-                      onClick={() => scrollToSection('how-it-works')}
+                    </a>
+                    <a
+                      href="/#how-it-works"
+                      onClick={(e) => { e.preventDefault(); scrollToSection('how-it-works') }}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
                     >
                       How it works
-                    </button>
-                    <button
-                      onClick={() => scrollToSection('pricing')}
+                    </a>
+                    <a
+                      href="/#pricing"
+                      onClick={(e) => { e.preventDefault(); scrollToSection('pricing') }}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
                     >
                       Pricing
-                    </button>
-                    <button
-                      onClick={() => scrollToSection('faq')}
+                    </a>
+                    <a
+                      href="/#faq"
+                      onClick={(e) => { e.preventDefault(); scrollToSection('faq') }}
                       className="block w-full text-left px-3 py-2 text-slate-700 hover:text-orange-600 hover:bg-orange-50 font-medium transition-all duration-200 rounded-[14px]"
                     >
                       FAQ
-                    </button>
+                    </a>
                   </>
                 )}
                 {isAuthenticated && (

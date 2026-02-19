@@ -30,7 +30,9 @@ export default function PricingSection() {
     <section id="pricing" className="bg-white py-16 scroll-mt-20 md:scroll-mt-28 lg:scroll-mt-24" aria-labelledby="pricing-heading">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
         <div className="text-center space-y-3 mb-10">
-          <h2 id="pricing-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">Simple, Transparent Pricing</h2>
+          <h2 id="pricing-heading" className="text-3xl md:text-4xl font-extrabold text-slate-900">
+            <a href="/pricing" className="hover:text-orange-600 transition-colors">Simple, Transparent Pricing</a>
+          </h2>
           <p className="text-slate-600">Choose the plan that fits your business. All plans include a 14-day free trial.</p>
         </div>
         <div className="flex justify-center mb-8">

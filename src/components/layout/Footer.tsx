@@ -43,30 +43,33 @@ export default function Footer() {
 
           {/* Navigation Links */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-            <button
-              onClick={() => handleLinkClick('features')}
+            <a
+              href="/#features"
+              onClick={(e) => { e.preventDefault(); handleLinkClick('features') }}
               className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium hover:underline underline-offset-4"
             >
               Features
-            </button>
-            <button
-              onClick={() => handleLinkClick('how-it-works')}
+            </a>
+            <a
+              href="/#how-it-works"
+              onClick={(e) => { e.preventDefault(); handleLinkClick('how-it-works') }}
               className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium hover:underline underline-offset-4"
             >
               How it works
-            </button>
+            </a>
             <Link
               href="/pricing"
               className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium hover:underline underline-offset-4"
             >
               Pricing
             </Link>
-            <button
-              onClick={() => handleLinkClick('faq')}
+            <a
+              href="/#faq"
+              onClick={(e) => { e.preventDefault(); handleLinkClick('faq') }}
               className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium hover:underline underline-offset-4"
             >
               FAQ
-            </button>
+            </a>
             <Link
               href="/terms"
               className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium hover:underline underline-offset-4"

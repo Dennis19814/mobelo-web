@@ -25,14 +25,10 @@ export default function PricingPage() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     setIsAuthed(!!token)
 
-    // Redirect to home if not authenticated
-    if (!token) {
-      router.push('/')
-      return
+    // Check active subscription only if authenticated
+    if (token) {
+      checkExistingSubscription()
     }
-
-    // Check if user already has an active paid subscription
-    checkExistingSubscription()
   }, [router])
 
   const checkExistingSubscription = async () => {
