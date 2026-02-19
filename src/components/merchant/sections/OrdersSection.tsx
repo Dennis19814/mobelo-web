@@ -32,18 +32,12 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Initialize filters with last 7 days
-  const today = new Date();
-  const last7Days = new Date(today);
-  last7Days.setDate(today.getDate() - 7);
-
+  // Initialize filters without date limits (all-time by default)
   const [filters, setFilters] = useState<OrderFilters>({
     page: 1,
     limit: 20,
     sortBy: 'createdAt',
     sortOrder: 'DESC',
-    dateFrom: last7Days.toISOString().split('T')[0],
-    dateTo: today.toISOString().split('T')[0],
   });
 
   // Modal states
@@ -92,52 +86,40 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
 
   // Handle status filter (clears other status-related filters)
   const handleStatusFilter = useCallback((status: OrderStatus) => {
-    const today = new Date();
-    const last7Days = new Date(today);
-    last7Days.setDate(today.getDate() - 7);
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
       page: 1,
-      limit: 20,
-      sortBy: 'createdAt',
-      sortOrder: 'DESC',
-      dateFrom: last7Days.toISOString().split('T')[0],
-      dateTo: today.toISOString().split('T')[0],
-      status, // Only set this status
-    });
+      status,
+      paymentStatus: undefined,
+      fulfillmentStatus: undefined,
+      search: undefined,
+    }));
     setSearchQuery('');
   }, []);
 
   // Handle payment status filter (clears other payment-related filters)
   const handlePaymentStatusFilter = useCallback((paymentStatus: PaymentStatus) => {
-    const today = new Date();
-    const last7Days = new Date(today);
-    last7Days.setDate(today.getDate() - 7);
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
       page: 1,
-      limit: 20,
-      sortBy: 'createdAt',
-      sortOrder: 'DESC',
-      dateFrom: last7Days.toISOString().split('T')[0],
-      dateTo: today.toISOString().split('T')[0],
-      paymentStatus, // Only set this payment status
-    });
+      paymentStatus,
+      status: undefined,
+      fulfillmentStatus: undefined,
+      search: undefined,
+    }));
     setSearchQuery('');
   }, []);
 
   // Handle fulfillment status filter (clears other fulfillment-related filters)
   const handleFulfillmentStatusFilter = useCallback((fulfillmentStatus: FulfillmentStatus) => {
-    const today = new Date();
-    const last7Days = new Date(today);
-    last7Days.setDate(today.getDate() - 7);
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
       page: 1,
-      limit: 20,
-      sortBy: 'createdAt',
-      sortOrder: 'DESC',
-      dateFrom: last7Days.toISOString().split('T')[0],
-      dateTo: today.toISOString().split('T')[0],
-      fulfillmentStatus, // Only set this fulfillment status
-    });
+      fulfillmentStatus,
+      status: undefined,
+      paymentStatus: undefined,
+      search: undefined,
+    }));
     setSearchQuery('');
   }, []);
 
@@ -210,20 +192,14 @@ const OrdersSectionComponent = ({ appId, apiKey, appSecretKey }: OrdersSectionPr
     await refetch();
   }, [refetch, setSuccessMessage]);
 
-  // Check if any filters are active (besides default last 7 days)
+  // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    const today = new Date();
-    const last7Days = new Date(today);
-    last7Days.setDate(today.getDate() - 7);
-    const defaultDateFrom = last7Days.toISOString().split('T')[0];
-    const defaultDateTo = today.toISOString().split('T')[0];
-
     return (
       !!filters.status ||
       !!filters.paymentStatus ||
       !!filters.fulfillmentStatus ||
-      (!!filters.dateFrom && filters.dateFrom !== defaultDateFrom) ||
-      (!!filters.dateTo && filters.dateTo !== defaultDateTo) ||
+      !!filters.dateFrom ||
+      !!filters.dateTo ||
       !!searchQuery
     );
   }, [filters, searchQuery]);

@@ -3,7 +3,8 @@ import { logger } from '@/lib/logger'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, LayoutGrid, AlertCircle, ArrowLeft, ChevronRight as ChevronRightIcon, ChevronDown, ChevronUp } from 'lucide-react'
+import NextImage from 'next/image'
+import { X, Upload, Plus, Trash2, Loader2, Package, DollarSign, Box, Layers, Image, FolderTree, Truck, Edit2, Check, XCircle, Tags, ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, LayoutGrid, AlertCircle, ArrowLeft, ChevronRight as ChevronRightIcon, ChevronDown, ChevronUp, Folder } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import type { CreateProductDto, ProductCategory, ProductVariant, ProductMedia } from '@/types/product.types'
 import VariantManager from '../VariantManager'
@@ -24,6 +25,38 @@ interface AddProductSectionProps {
   apiKey?: string
   appSecretKey?: string
   onSuccess?: () => void
+}
+
+/** Renders category image or icon in dropdown (same style as Brand selector). */
+function CategoryThumbnail({ category }: { category: ProductCategory }) {
+  const [imageError, setImageError] = useState(false)
+
+  if (category.imageUrl && !imageError) {
+    return (
+      <div className="relative w-10 h-10 rounded-lg border border-gray-200 bg-white p-1 flex-shrink-0 overflow-hidden">
+        <NextImage
+          src={category.imageUrl}
+          alt={category.name}
+          fill
+          className="object-contain"
+          onError={() => setImageError(true)}
+          unoptimized
+        />
+      </div>
+    )
+  }
+  if (category.iconUrl) {
+    return (
+      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 flex items-center justify-center flex-shrink-0">
+        <CategoryIcon iconUrl={category.iconUrl} size={24} />
+      </div>
+    )
+  }
+  return (
+    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 flex items-center justify-center flex-shrink-0">
+      <Folder className="w-5 h-5 text-indigo-500" />
+    </div>
+  )
 }
 
 export default function AddProductSection({ appId, apiKey, appSecretKey, onSuccess }: AddProductSectionProps) {
@@ -636,9 +669,39 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
       if (apiKey) headers['x-api-key'] = apiKey
       if (appSecretKey) headers['x-app-secret'] = appSecretKey
 
+      const normalizedShippingInfoForSave = {
+        width: formData.shippingInfo?.width ?? null,
+        height: formData.shippingInfo?.height ?? null,
+        length: formData.shippingInfo?.length ?? null,
+        dimensionUnit: formData.shippingInfo?.dimensionUnit || 'cm',
+        shippingClass: formData.shippingInfo?.shippingClass || 'standard',
+        processingTime: formData.shippingInfo?.processingTime || '1-2 business days',
+        shippingZones: Array.isArray(formData.shippingInfo?.shippingZones) ? formData.shippingInfo.shippingZones : [],
+        freeShipping: !!formData.shippingInfo?.freeShipping,
+        flatRate: formData.shippingInfo?.flatRate ?? null,
+        calculatedShipping: !!formData.shippingInfo?.calculatedShipping
+      }
+
+      const normalizedReturnPolicy = formData.returnPolicy?.trim() || ''
+      const normalizedWarranty = formData.warranty?.trim() || ''
+
       const productPayload = {
         ...formData,
         status,
+        shippingInfo: normalizedShippingInfoForSave,
+        // Compatibility for APIs that parse alternate shipping keys
+        shipping: normalizedShippingInfoForSave,
+        returnPolicy: normalizedReturnPolicy,
+        return_policy: normalizedReturnPolicy,
+        warranty: normalizedWarranty,
+        warranty_info: normalizedWarranty,
+        warrantyInformation: normalizedWarranty,
+        metadata: {
+          ...(formData.metadata || {}),
+          shippingInfo: normalizedShippingInfoForSave,
+          returnPolicy: normalizedReturnPolicy,
+          warranty: normalizedWarranty
+        },
         thumbnailUrl: productMedia.find(m => m.isPrimary)?.url || formData.thumbnailUrl
       }
 
@@ -2041,8 +2104,8 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                       return (
                         <div
                           key={category.id}
-                          className={`px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
-                            isSelected ? 'bg-blue-50' : ''
+                          className={`px-3 py-3 cursor-pointer flex items-center justify-between gap-3 transition-all duration-150 border-b border-gray-50 last:border-b-0 group ${
+                            isSelected ? 'bg-gradient-to-r from-blue-50 to-indigo-50' : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100'
                           }`}
                           onClick={() => {
                             if (hasChildren) {
@@ -2056,12 +2119,15 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
                             }
                           }}
                         >
-                          <span className={`text-sm ${isSelected ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
-                            {category.name}
-                          </span>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <CategoryThumbnail category={category} />
+                            <span className={`text-sm truncate ${isSelected ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                              {category.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
                             {isSelected && (
-                              <Check className="w-4 h-4 text-gray-900" />
+                              <Check className="w-4 h-4 text-orange-600" />
                             )}
                             {hasChildren && (
                               <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />

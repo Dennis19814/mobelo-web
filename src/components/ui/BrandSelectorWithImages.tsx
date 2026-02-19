@@ -175,15 +175,31 @@ export default function BrandSelectorWithImages({
     }
   }, [inputValue, isOpen, fetchBrands, searchTerm])
 
-  // Sync displayed value from prop only when the prop actually changes (e.g. new product loaded), not when user is typing/erasing
+  // Sync displayed value from prop:
+  // - immediately when prop changes (e.g. new product loaded)
+  // - again when brands finish loading and we can resolve brandId -> brand name
   useEffect(() => {
+    const numericValue =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && /^\d+$/.test(value)
+          ? Number(value)
+          : null
+
     const propDisplayValue =
       typeof value === 'string'
         ? (value ?? '')
-        : typeof value === 'number'
-          ? (brands.find(b => b.id === value)?.name ?? '')
+        : numericValue !== null
+          ? (brands.find(b => b.id === numericValue)?.name ?? '')
           : ''
-    if (lastSyncedValueRef.current === value) return
+
+    const valueChanged = lastSyncedValueRef.current !== value
+    const canResolveNumericBrand = numericValue !== null && propDisplayValue !== ''
+
+    // Allow resync when numeric brand id becomes resolvable after brands load,
+    // even if the raw value itself did not change.
+    if (!valueChanged && !canResolveNumericBrand) return
+
     lastSyncedValueRef.current = value
     setInputValue(propDisplayValue)
   }, [value, brands])

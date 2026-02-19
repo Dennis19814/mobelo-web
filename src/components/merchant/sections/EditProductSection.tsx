@@ -77,6 +77,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
   const [inventoryExpanded, setInventoryExpanded] = useState(false) // Collapsed by default
   const variantErrorRef = useRef<HTMLDivElement>(null)
   const pageTopRef = useRef<HTMLDivElement>(null)
+  const initialVariantsFingerprintRef = useRef<string>('')
 
   const [formData, setFormData] = useState<UpdateProductDto>({
     name: '',
@@ -119,6 +120,36 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
     tags: [],
     variants: []
   })
+
+  const normalizeVariantForFingerprint = (variant: ProductVariant) => {
+    const trimVal = (val?: string) => (val ?? '').trim()
+
+    return {
+      id: variant.id ?? null,
+      option1Name: trimVal(variant.option1Name),
+      option1Value: trimVal(variant.option1Value),
+      option2Name: trimVal(variant.option2Name),
+      option2Value: trimVal(variant.option2Value),
+      option3Name: trimVal(variant.option3Name),
+      option3Value: trimVal(variant.option3Value),
+      sku: trimVal(variant.sku),
+      price:
+        typeof variant.price === 'number'
+          ? variant.price
+          : parseFloat(String(variant.price ?? 0)) || 0,
+      inventoryQuantity:
+        typeof variant.inventoryQuantity === 'number'
+          ? variant.inventoryQuantity
+          : parseInt(String(variant.inventoryQuantity ?? 0), 10) || 0,
+      position: variant.position ?? null,
+      isDefault: !!variant.isDefault,
+    }
+  }
+
+  const buildVariantsFingerprint = (variants: ProductVariant[] = []) => {
+    const normalized = variants.map(normalizeVariantForFingerprint)
+    return JSON.stringify(normalized)
+  }
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -486,8 +517,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
           }
         }
         
-        // If no cached data, fetch from API
-        if (!productData) {
+        // Always fetch latest product from API for complete/authoritative data.
+        // Keep cached data only as a fallback when API fails.
+        {
           const headers: any = {}
           if (apiKey) headers['x-api-key'] = apiKey
           if (appSecretKey) headers['x-app-secret'] = appSecretKey
@@ -508,7 +540,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
 
           if (response.ok && response.data) {
             productData = response.data
-          } else {
+          } else if (!productData) {
             setErrors({ submit: 'Failed to load product data' })
             setLoadingProduct(false)
             return
@@ -533,6 +565,8 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             position: v.position,
             isDefault: v.isDefault || false
           }))
+
+          initialVariantsFingerprintRef.current = buildVariantsFingerprint(mappedVariants)
           
           logger.debug('EditProductSection: Loaded product with variants', {
             productId: productData.id,
@@ -540,6 +574,105 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             variants: mappedVariants
           })
           
+          // Normalize shipping info from API (supports object, JSON string, and fallback keys)
+          const defaultShippingInfo = {
+            width: undefined,
+            height: undefined,
+            length: undefined,
+            dimensionUnit: 'cm',
+            shippingClass: 'standard',
+            processingTime: '1-2 business days',
+            shippingZones: [],
+            freeShipping: false,
+            flatRate: undefined,
+            calculatedShipping: false
+          }
+
+          let normalizedShippingInfo: any = {}
+          if (typeof productData.shippingInfo === 'string') {
+            try {
+              normalizedShippingInfo = JSON.parse(productData.shippingInfo)
+            } catch {
+              normalizedShippingInfo = {}
+            }
+          } else if (productData.shippingInfo && typeof productData.shippingInfo === 'object') {
+            normalizedShippingInfo = productData.shippingInfo
+          } else if ((productData as any).shipping && typeof (productData as any).shipping === 'object') {
+            normalizedShippingInfo = (productData as any).shipping
+          } else if (productData.metadata?.shippingInfo && typeof productData.metadata.shippingInfo === 'object') {
+            normalizedShippingInfo = productData.metadata.shippingInfo
+          } else if (productData.metadata?.shipping && typeof productData.metadata.shipping === 'object') {
+            normalizedShippingInfo = productData.metadata.shipping
+          } else if ((productData.metadata as any)?.shipping_info && typeof (productData.metadata as any).shipping_info === 'object') {
+            normalizedShippingInfo = (productData.metadata as any).shipping_info
+          }
+
+          // Fallback: map common flat/snake_case fields returned by some APIs
+          const rootShippingInfo = {
+            width: (productData as any).width ?? (productData as any).shippingWidth ?? (productData as any).shipping_width,
+            height: (productData as any).height ?? (productData as any).shippingHeight ?? (productData as any).shipping_height,
+            length: (productData as any).length ?? (productData as any).shippingLength ?? (productData as any).shipping_length,
+            dimensionUnit: (productData as any).dimensionUnit ?? (productData as any).dimension_unit,
+            shippingClass: (productData as any).shippingClass ?? (productData as any).shipping_class,
+            processingTime: (productData as any).processingTime ?? (productData as any).processing_time,
+            shippingZones: (productData as any).shippingZones ?? (productData as any).shipping_zones,
+            freeShipping: (productData as any).freeShipping ?? (productData as any).free_shipping,
+            flatRate: (productData as any).flatRate ?? (productData as any).flat_rate,
+            calculatedShipping: (productData as any).calculatedShipping ?? (productData as any).calculated_shipping
+          }
+
+          const mergedShippingInfo = {
+            ...defaultShippingInfo,
+            ...rootShippingInfo,
+            ...normalizedShippingInfo,
+            shippingZones: Array.isArray(normalizedShippingInfo?.shippingZones)
+              ? normalizedShippingInfo.shippingZones
+              : Array.isArray(rootShippingInfo.shippingZones)
+                ? rootShippingInfo.shippingZones
+              : defaultShippingInfo.shippingZones
+          }
+
+          const hasShippingValues =
+            rootShippingInfo.width !== undefined ||
+            rootShippingInfo.height !== undefined ||
+            rootShippingInfo.length !== undefined ||
+            rootShippingInfo.flatRate !== undefined ||
+            !!rootShippingInfo.shippingClass ||
+            !!rootShippingInfo.processingTime ||
+            (Array.isArray(rootShippingInfo.shippingZones) && rootShippingInfo.shippingZones.length > 0) ||
+            rootShippingInfo.freeShipping === true ||
+            rootShippingInfo.calculatedShipping === true ||
+            normalizedShippingInfo.width !== undefined ||
+            normalizedShippingInfo.height !== undefined ||
+            normalizedShippingInfo.length !== undefined ||
+            normalizedShippingInfo.flatRate !== undefined ||
+            !!normalizedShippingInfo.shippingClass ||
+            !!normalizedShippingInfo.processingTime ||
+            (Array.isArray(normalizedShippingInfo.shippingZones) && normalizedShippingInfo.shippingZones.length > 0) ||
+            normalizedShippingInfo.freeShipping === true ||
+            normalizedShippingInfo.calculatedShipping === true
+
+          const resolvedRequiresShipping =
+            typeof productData.requiresShipping === 'boolean'
+              ? productData.requiresShipping
+              : !productData.isDigital && hasShippingValues
+
+          const resolvedReturnPolicy =
+            productData.returnPolicy ??
+            (productData as any).return_policy ??
+            (productData.metadata as any)?.returnPolicy ??
+            (productData.metadata as any)?.return_policy ??
+            ''
+
+          const resolvedWarranty =
+            productData.warranty ??
+            (productData as any).warranty_info ??
+            (productData as any).warrantyInformation ??
+            (productData.metadata as any)?.warranty ??
+            (productData.metadata as any)?.warranty_info ??
+            (productData.metadata as any)?.warrantyInformation ??
+            ''
+
           // Initialize formData with product data
           setFormData({
             name: productData.name,
@@ -559,21 +692,10 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
             featured: productData.featured || false,
             isDigital: productData.isDigital || false,
             isNew: productData.isNew || false,
-            requiresShipping: productData.requiresShipping || false,
-            shippingInfo: productData.shippingInfo || {
-              width: undefined,
-              height: undefined,
-              length: undefined,
-              dimensionUnit: 'cm',
-              shippingClass: 'standard',
-              processingTime: '1-2 business days',
-              shippingZones: [],
-              freeShipping: false,
-              flatRate: undefined,
-              calculatedShipping: false
-            },
-            returnPolicy: productData.returnPolicy || '',
-            warranty: productData.warranty || '',
+            requiresShipping: resolvedRequiresShipping,
+            shippingInfo: mergedShippingInfo,
+            returnPolicy: resolvedReturnPolicy,
+            warranty: resolvedWarranty,
             categoryIds: productData.categories?.map((c: ProductCategory) => c.id) || [],
             tags: productData.tags || [],
             trackInventory: productData.trackInventory || false,
@@ -929,6 +1051,8 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
       }
 
       const normalizedVariants = (formData.variants || []).map(normalizeVariant)
+      const currentVariantsFingerprint = buildVariantsFingerprint(normalizedVariants)
+      const variantsChanged = currentVariantsFingerprint !== initialVariantsFingerprintRef.current
 
       // Validate variants
       const invalidOpt1 = normalizedVariants.find(v => !v.option1Name || !v.option1Value)
@@ -1006,6 +1130,22 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         return cleaned
       })
 
+      const normalizedShippingInfoForSave = {
+        width: formData.shippingInfo?.width ?? null,
+        height: formData.shippingInfo?.height ?? null,
+        length: formData.shippingInfo?.length ?? null,
+        dimensionUnit: formData.shippingInfo?.dimensionUnit || 'cm',
+        shippingClass: formData.shippingInfo?.shippingClass || 'standard',
+        processingTime: formData.shippingInfo?.processingTime || '1-2 business days',
+        shippingZones: Array.isArray(formData.shippingInfo?.shippingZones) ? formData.shippingInfo.shippingZones : [],
+        freeShipping: !!formData.shippingInfo?.freeShipping,
+        flatRate: formData.shippingInfo?.flatRate ?? null,
+        calculatedShipping: !!formData.shippingInfo?.calculatedShipping
+      }
+
+      const normalizedReturnPolicy = formData.returnPolicy?.trim() || ''
+      const normalizedWarranty = formData.warranty?.trim() || ''
+
       // Prepare update data - explicitly set fields to avoid sending unwanted data
       const updateData: any = {
         name: formData.name,
@@ -1026,23 +1166,39 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
         isNew: formData.isNew,
         isDigital: formData.isDigital,
         requiresShipping: formData.requiresShipping,
-        shippingInfo: formData.shippingInfo,
-        returnPolicy: formData.returnPolicy,
-        warranty: formData.warranty,
+        shippingInfo: normalizedShippingInfoForSave,
+        // Compatibility for APIs that parse alternate shipping keys
+        shipping: normalizedShippingInfoForSave,
+        returnPolicy: normalizedReturnPolicy,
+        return_policy: normalizedReturnPolicy,
+        warranty: normalizedWarranty,
+        warranty_info: normalizedWarranty,
+        warrantyInformation: normalizedWarranty,
         categoryIds: formData.categoryIds,
         tags: formData.tags,
         trackInventory: formData.trackInventory,
         inventoryQuantity: formData.inventoryQuantity,
         minimumQuantity: formData.minimumQuantity,
         maximumQuantity: formData.maximumQuantity,
-        variants: cleanedVariants,
-        metadata: formData.metadata
+        metadata: {
+          ...(formData.metadata || {}),
+          shippingInfo: normalizedShippingInfoForSave,
+          returnPolicy: normalizedReturnPolicy,
+          warranty: normalizedWarranty
+        }
+      }
+
+      // Avoid destructive variant sync when variants are unchanged.
+      // This prevents FK errors for products with variants referenced by order_items.
+      if (variantsChanged) {
+        updateData.variants = cleanedVariants
       }
       
       // Log the data being sent for debugging
       logger.debug('Updating product with data:', {
         productId,
         variantCount: cleanedVariants.length,
+        variantsChanged,
         variants: cleanedVariants,
         updateDataKeys: Object.keys(updateData)
       })
@@ -1062,6 +1218,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
       const response = await apiService.updateProduct(productId, updateData)
 
       if (response.ok && response.data) {
+        initialVariantsFingerprintRef.current = currentVariantsFingerprint
         console.log('[EditProduct] Product updated successfully:', {
           productId,
           responseTrackInventory: response.data.trackInventory,
@@ -1914,7 +2071,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                             <label className="block text-xs text-gray-600 mb-1">Length</label>
                             <input
                               type="number"
-                              value={formData.shippingInfo?.length || ''}
+                              value={formData.shippingInfo?.length ?? ''}
                               onChange={(e) => handleInputChange('shippingInfo', {
                                 ...formData.shippingInfo,
                                 length: e.target.value ? parseFloat(e.target.value) : undefined
@@ -1930,7 +2087,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                             <label className="block text-xs text-gray-600 mb-1">Width</label>
                             <input
                               type="number"
-                              value={formData.shippingInfo?.width || ''}
+                              value={formData.shippingInfo?.width ?? ''}
                               onChange={(e) => handleInputChange('shippingInfo', {
                                 ...formData.shippingInfo,
                                 width: e.target.value ? parseFloat(e.target.value) : undefined
@@ -1946,7 +2103,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                             <label className="block text-xs text-gray-600 mb-1">Height</label>
                             <input
                               type="number"
-                              value={formData.shippingInfo?.height || ''}
+                              value={formData.shippingInfo?.height ?? ''}
                               onChange={(e) => handleInputChange('shippingInfo', {
                                 ...formData.shippingInfo,
                                 height: e.target.value ? parseFloat(e.target.value) : undefined
@@ -2077,7 +2234,7 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
                                 </label>
                                 <input
                                   type="number"
-                                  value={formData.shippingInfo?.flatRate || ''}
+                                  value={formData.shippingInfo?.flatRate ?? ''}
                                   onChange={(e) => handleInputChange('shippingInfo', {
                                     ...formData.shippingInfo,
                                     flatRate: e.target.value ? parseFloat(e.target.value) : undefined
