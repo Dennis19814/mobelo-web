@@ -2220,9 +2220,11 @@ function AppBuilderContent() {
             {/* Prominent Initial Loading Spinner */}
             {(isInitialLoad || isLoadingHistory || isLoadingExpoInfo) && chatMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 sm:py-16 md:py-20">
-                <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-orange-500 animate-spin mb-4 sm:mb-5 md:mb-6" />
-                <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">Mobile app development settings are loading...</p>
-                <p className="text-xs sm:text-sm text-gray-500">Please wait while we prepare your workspace</p>
+                <div className="relative w-12 h-12 mb-6">
+                  <div className="absolute inset-0 rounded-full border-4 border-orange-100" />
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-500 animate-spin" />
+                </div>
+                <p className="text-sm sm:text-base text-gray-500">Please wait while we prepare your workspace</p>
               </div>
             )}
             {isLoadingHistory && chatMessages.length > 0 && (
