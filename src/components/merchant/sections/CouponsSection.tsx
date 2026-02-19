@@ -26,6 +26,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   })
   const [searchInput, setSearchInput] = useState('')
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [total, setTotal] = useState(0)
   const [selectedCoupons, setSelectedCoupons] = useState<number[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -46,15 +47,26 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     setFilters({ ...filters, limit, page: 1 })
   }
 
-  const loadCoupons = useCallback(async () => {
+  const loadCoupons = useCallback(async (overrideFilters?: Partial<CouponFilters>) => {
+    const effectiveFilters = overrideFilters ? { ...filters, ...overrideFilters } : filters
     try {
       setLoading(true)
-      const response = await apiService.getCoupons(filters)
+      const response = await apiService.getCoupons(effectiveFilters)
 
       if (response.ok) {
-        const normalizedList = (response.data.data || []).map((item: Coupon) => normalizeCoupon(item))
+        const data = response.data as Record<string, unknown>
+        let rawList: unknown[] = []
+        if (Array.isArray(data?.data)) {
+          rawList = data.data
+        } else if (Array.isArray(data?.coupons)) {
+          rawList = data.coupons
+        } else if (Array.isArray(data)) {
+          rawList = data
+        }
+        const normalizedList = rawList.map((item: unknown) => normalizeCoupon(item as any))
         setCoupons(normalizedList)
-        setTotal(response.data.total || 0)
+        const totalCount = (data?.total as number) ?? (data?.meta as Record<string, number>)?.total ?? rawList.length
+        setTotal(totalCount)
       }
     } catch (error) {
       console.error('Failed to load coupons:', error)
@@ -66,6 +78,26 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   useEffect(() => {
     loadCoupons()
   }, [loadCoupons])
+
+  // Debounce search input and sync to filters
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setFilters((prev) => ({
+        ...prev,
+        search: searchInput.trim() || undefined,
+        page: 1,
+      }))
+      searchDebounceRef.current = null
+    }, 300)
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current)
+      }
+    }
+  }, [searchInput])
 
   const handleDeleteClick = (coupon: Coupon) => {
     setCouponToDelete(coupon)
@@ -243,7 +275,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   }
 
   return (
-    <div className="overflow-x-hidden min-w-0">
+    <div className="w-full overflow-x-auto min-w-0">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Coupons & Discounts</h1>
@@ -252,18 +284,12 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
         </p>
       </div>
 
-      {/* When loading: show only spinner (same as Shipping Zones / Brands) */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-        </div>
-      ) : (
-        <>
-      {/* Filters and Actions */}
+      {/* Filters and Actions - Always visible */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search coupons..."
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -326,7 +352,13 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
       </div>
 
       {/* Coupons Table */}
-      {coupons.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+          </div>
+        </div>
+      ) : coupons.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <p className="text-gray-500">No coupons found</p>
           <button
@@ -337,9 +369,9 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '640px' }}>
+        <div className="w-full bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="w-full overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left">
@@ -458,7 +490,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
       )}
 
       {/* Pagination */}
-      {coupons.length > 0 && (
+      {coupons.length > 0 && !loading && (
         <div className="mt-4">
           <Pagination
             totalItems={total}
@@ -472,8 +504,6 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
           />
         </div>
       )}
-        </>
-      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -482,8 +512,11 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
             onClose={() => setShowCreateModal(false)}
             onSuccess={() => {
               setShowCreateModal(false)
-              // Reset to page 1 and clear search/status so the new coupon shows in the table (useEffect will refetch)
-              setFilters((f) => ({ ...f, page: 1, limit: f.limit || 20, search: undefined, status: undefined }))
+              setSearchInput('')
+              setSelectedCoupons([])
+              const refreshFilters: Partial<CouponFilters> = { page: 1, search: undefined, status: undefined, discountType: undefined }
+              setFilters((f) => ({ ...f, ...refreshFilters, limit: f.limit || 20 }))
+              loadCoupons(refreshFilters)
             }}
           />
         </Suspense>
