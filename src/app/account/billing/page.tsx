@@ -9,10 +9,11 @@ import { apiService } from '@/lib/api-service'
 import { Loader2, CreditCard, Download } from 'lucide-react'
 
 type InvoiceRow = { id: string; number: string; date: string; amount: number; currency: string; status: string; pdfUrl?: string }
+type PaymentMethod = { brand: string; last4: string; expMonth: number; expYear: number } | null
 
 function statusBadge(status: string) {
-  if (status === 'Paid') return <Badge variant="success" size="sm">Paid</Badge>
-  if (status === 'Past Due') return <Badge variant="destructive" size="sm">Past Due</Badge>
+  if (status === 'paid') return <Badge variant="success" size="sm">Paid</Badge>
+  if (status === 'open') return <Badge variant="destructive" size="sm">Past Due</Badge>
   return <Badge variant="secondary" size="sm">{status}</Badge>
 }
 
@@ -23,15 +24,21 @@ export default function BillingPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [pageLoading, setPageLoading] = useState(true)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null)
   const limit = 5
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
-    apiService.getInvoices(currentPage, limit).then((res) => {
-      if (res.ok && mounted) {
-        setInvoices(res.data.data || [])
-        setTotalPages(Math.ceil(res.data.total / limit))
+    // Fetch payment method and first page of invoices in parallel
+    Promise.all([
+      apiService.getPaymentMethod(),
+      apiService.getInvoices(1, limit),
+    ]).then(([pmRes, invRes]) => {
+      if (!mounted) return
+      if (pmRes.ok && pmRes.data) setPaymentMethod(pmRes.data)
+      if (invRes.ok) {
+        setInvoices(invRes.data.data || [])
+        setTotalPages(Math.ceil(invRes.data.total / limit))
       }
     }).catch(() => { }).finally(() => {
       if (mounted) {
@@ -40,7 +47,47 @@ export default function BillingPage() {
       }
     })
     return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    if (currentPage === 1) return // already loaded on mount
+    let mounted = true
+    setLoading(true)
+    apiService.getInvoices(currentPage, limit).then((res) => {
+      if (res.ok && mounted) {
+        setInvoices(res.data.data || [])
+        setTotalPages(Math.ceil(res.data.total / limit))
+      }
+    }).catch(() => { }).finally(() => {
+      if (mounted) setLoading(false)
+    })
+    return () => { mounted = false }
   }, [currentPage])
+
+  const handleDownload = async (pdfUrl: string) => {
+    // Our authenticated download endpoint (mobeloPdfUrl) requires the JWT token.
+    // A plain <a href> opens without the auth header and would return 401.
+    // Use fetch() with the token and open the resulting blob URL instead.
+    if (pdfUrl.startsWith('/api/')) {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+        const res = await fetch(pdfUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (!res.ok) throw new Error(`${res.status}`)
+        const blob = await res.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, '_blank')
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000)
+      } catch {
+        // Fallback: let the browser try directly (will prompt login if needed)
+        window.open(pdfUrl, '_blank')
+      }
+    } else {
+      // Stripe-hosted or other public URL — open directly
+      window.open(pdfUrl, '_blank')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -69,10 +116,18 @@ export default function BillingPage() {
                     <CardDescription>Used for renewals</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium text-gray-900">Visa •••• 4242</div>
-                      <div className="text-xs text-gray-500">Expires 08/28</div>
-                    </div>
+                    {paymentMethod ? (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-900 capitalize">
+                          {paymentMethod.brand} •••• {paymentMethod.last4}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Expires {String(paymentMethod.expMonth).padStart(2, '0')}/{String(paymentMethod.expYear).slice(-2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">No card on file</div>
+                    )}
                   </CardContent>
                   <CardFooter>
                     <Button
@@ -140,15 +195,13 @@ export default function BillingPage() {
                                 <td className="py-3">{statusBadge(inv.status)}</td>
                                 <td className="py-3 text-right">
                                   {inv.pdfUrl ? (
-                                    <a
-                                      href={inv.pdfUrl}
-                                      target="_blank"
+                                    <button
+                                      onClick={() => handleDownload(inv.pdfUrl!)}
                                       className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline"
-                                      rel="noreferrer"
                                     >
                                       <Download className="w-4 h-4" />
                                       Download
-                                    </a>
+                                    </button>
                                   ) : (
                                     <span className="text-gray-400">—</span>
                                   )}

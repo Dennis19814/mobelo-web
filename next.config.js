@@ -208,6 +208,29 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
+          {
+            // Single consolidated CSP — replaces the old <meta> tag in layout.tsx.
+            // Covers: Stripe Elements, Facebook Pixel, Google Fonts, Gumlet video,
+            // all Mobelo API/worker/publish subdomains, and Next.js dev requirements.
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              // Next.js requires unsafe-inline/eval; Stripe and Facebook Pixel scripts
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://connect.facebook.net https://localhost:* http://localhost:*",
+              // Stripe Elements iframes + Mobelo app preview iframes + Gumlet video player
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://e1.mobelo.xyz https://*.mobelo.dev http://*.mobelo.dev https://app-*.mobelo.dev http://app-*.mobelo.dev https://play.gumlet.io https://*.gumlet.io https://localhost:* http://localhost:*",
+              // Stripe API tokenisation + all Mobelo backends + Facebook + Gumlet CDN
+              "connect-src 'self' https://api.stripe.com https://api.mobelo.dev wss://api.mobelo.dev https://worker.mobelo.dev wss://worker.mobelo.dev https://publish.mobelo.dev wss://publish.mobelo.dev https://www.facebook.com https://connect.facebook.net https://*.gumlet.io https://localhost:* http://localhost:* ws://localhost:* wss://localhost:*",
+              // Stripe branding images + S3 product images + Facebook pixel + generic https
+              "img-src 'self' data: blob: https: http: https://*.stripe.com https://mobelo-products.s3.eu-west-1.amazonaws.com https://mobelo-products.s3.amazonaws.com https://i.pravatar.cc https://www.facebook.com",
+              // Google Fonts CSS
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              // Google Fonts files
+              "font-src 'self' data: https://fonts.gstatic.com",
+              // Web workers (used by some Stripe internals and PDF handling)
+              "worker-src 'self' blob:",
+            ].join('; '),
+          },
         ],
       },
       // JavaScript chunks - Different caching for dev vs production

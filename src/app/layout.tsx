@@ -125,19 +125,7 @@ export default function RootLayout({
         {/* Theme color for mobile browsers */}
         <meta name="theme-color" content="#fb923c" />
 
-        {/* Security headers - disable CSP in development to avoid blocking Next dev assets */}
-        {process.env.NODE_ENV === 'production' && (
-          <meta
-            httpEquiv="Content-Security-Policy"
-            content="default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://localhost:* http://localhost:* https://connect.facebook.net;
-              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-              img-src 'self' data: blob: https: http: https://www.facebook.com;
-              font-src 'self' data: https://fonts.gstatic.com;
-              connect-src 'self' https://api.mobelo.dev wss://api.mobelo.dev https://worker.mobelo.dev wss://worker.mobelo.dev https://publish.mobelo.dev wss://publish.mobelo.dev https://localhost:* http://localhost:* ws://localhost:* wss://localhost:* https://www.facebook.com https://connect.facebook.net https://*.gumlet.io;
-              frame-src 'self' https://e1.mobelo.xyz https://*.mobelo.dev http://*.mobelo.dev https://app-*.mobelo.dev http://app-*.mobelo.dev https://localhost:* http://localhost:* https://play.gumlet.io https://*.gumlet.io;"
-          />
-        )}
+        {/* CSP is set via next.config.js headers() — single source of truth, no meta tag needed */}
 
         {/* Structured Data - Organization */}
         <script

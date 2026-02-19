@@ -65,6 +65,11 @@ class ApiService {
     const response = await httpClient.get('/v1/billing/diagnostics')
     return { ok: response.ok, status: response.status, data: response.data }
   }
+
+  async getPaymentMethod(): Promise<ApiResponse<{ brand: string; last4: string; expMonth: number; expYear: number } | null>> {
+    const response = await httpClient.get('/v1/billing/payment-method')
+    return { ok: response.ok, status: response.status, data: response.data }
+  }
   // Authentication
   async login(email: string): Promise<ApiResponse> {
     const response = await httpClient.post('/v1/platform/auth/login', { email });
