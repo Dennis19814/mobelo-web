@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import {
@@ -181,6 +182,7 @@ const moreFaqs = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
   const [showSigninModal, setShowSigninModal] = useState(false)
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [trialEmail, setTrialEmail] = useState('')
@@ -310,7 +312,7 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
-                  href="/app-builder"
+                  href={isLoggedIn ? '/my-apps' : '/app-builder'}
                   onClick={(e) => {
                     // If not authenticated, show sign-in modal instead of navigating
                     if (!isOwnerAuthenticated()) {
@@ -647,9 +649,10 @@ export default function HomePage() {
               <div className="mt-10 flex justify-center">
                 <button
                   onClick={() => {
-                    // Only show sign-in modal if user is not authenticated
                     if (!isOwnerAuthenticated()) {
                       setShowSigninModal(true)
+                    } else {
+                      router.push('/my-apps')
                     }
                   }}
                   className="rounded-[14px] bg-orange-500 px-8 py-3 text-white font-semibold shadow-lg shadow-orange-400/30 hover:bg-orange-600 transition flex items-center gap-2"
@@ -745,7 +748,9 @@ export default function HomePage() {
               <p className="text-slate-600 max-w-md mx-auto">Our team is here to help you get started. Chat with us and we'll help you launch faster.</p>
               <div className="flex justify-center pt-2">
                 <a
-                  href="mailto:support@mobelo.dev"
+                  href="https://calendly.com/mobelo/schedule-a-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-block rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-3 text-white font-semibold shadow-lg shadow-orange-300/40 hover:from-orange-700 hover:to-orange-600 transition"
                   aria-label="Contact support team"
                 >
