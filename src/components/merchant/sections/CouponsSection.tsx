@@ -47,15 +47,26 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
     setFilters({ ...filters, limit, page: 1 })
   }
 
-  const loadCoupons = useCallback(async () => {
+  const loadCoupons = useCallback(async (overrideFilters?: Partial<CouponFilters>) => {
+    const effectiveFilters = overrideFilters ? { ...filters, ...overrideFilters } : filters
     try {
       setLoading(true)
-      const response = await apiService.getCoupons(filters)
+      const response = await apiService.getCoupons(effectiveFilters)
 
       if (response.ok) {
-        const normalizedList = (response.data.data || []).map((item: Coupon) => normalizeCoupon(item))
+        const data = response.data as Record<string, unknown>
+        let rawList: unknown[] = []
+        if (Array.isArray(data?.data)) {
+          rawList = data.data
+        } else if (Array.isArray(data?.coupons)) {
+          rawList = data.coupons
+        } else if (Array.isArray(data)) {
+          rawList = data
+        }
+        const normalizedList = rawList.map((item: unknown) => normalizeCoupon(item as any))
         setCoupons(normalizedList)
-        setTotal(response.data.total || 0)
+        const totalCount = (data?.total as number) ?? (data?.meta as Record<string, number>)?.total ?? rawList.length
+        setTotal(totalCount)
       }
     } catch (error) {
       console.error('Failed to load coupons:', error)
@@ -264,7 +275,7 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
   }
 
   return (
-    <div className="overflow-x-hidden min-w-0">
+    <div className="w-full overflow-x-auto min-w-0">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Coupons & Discounts</h1>
@@ -358,9 +369,9 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '640px' }}>
+        <div className="w-full bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="w-full overflow-x-auto overflow-y-visible min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left">
@@ -502,8 +513,10 @@ export default function CouponsSection({ appId, apiKey, appSecretKey }: CouponsS
             onSuccess={() => {
               setShowCreateModal(false)
               setSearchInput('')
-              // Reset to page 1 and clear search/status so the new coupon shows in the table
-              setFilters((f) => ({ ...f, page: 1, limit: f.limit || 20, search: undefined, status: undefined }))
+              setSelectedCoupons([])
+              const refreshFilters: Partial<CouponFilters> = { page: 1, search: undefined, status: undefined, discountType: undefined }
+              setFilters((f) => ({ ...f, ...refreshFilters, limit: f.limit || 20 }))
+              loadCoupons(refreshFilters)
             }}
           />
         </Suspense>
