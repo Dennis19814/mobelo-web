@@ -1,5 +1,6 @@
 'use client'
 import { logger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -888,6 +889,7 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
         }
 
         // Call success callback and navigate to products page
+        toast.success('Product created successfully')
         onSuccess?.()
         resetForm()
         // Explicitly navigate to products (router.back() can land on wrong page)
@@ -897,11 +899,15 @@ export default function AddProductSection({ appId, apiKey, appSecretKey, onSucce
           router.replace(`/merchant-panel/${pathMatch[1]}?section=products`)
         }
       } else {
-        setErrors({ submit: response.data?.message || 'Failed to create product' })
+        const errorMessage = response.data?.message || response.data?.error || 'Failed to create product'
+        toast.error(errorMessage)
+        setErrors({ submit: errorMessage })
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while creating the product'
+      toast.error(errorMessage)
       logger.error('Error creating product:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
-      setErrors({ submit: 'An error occurred while creating the product' })
+      setErrors({ submit: errorMessage })
     } finally {
       setLoading(false)
     }
