@@ -1,5 +1,6 @@
 'use client'
 import { logger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -1326,10 +1327,12 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
           }
         })
 
+        toast.success('Product updated successfully')
         onSuccess?.()
         router.back()
       } else {
         const errorMessage = response.data?.message || response.data?.error || 'Failed to update product'
+        toast.error(errorMessage)
         logger.error('Update product failed:', { 
           status: response.status,
           message: errorMessage,
@@ -1340,8 +1343,9 @@ export default function EditProductSection({ appId, productId, apiKey, appSecret
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error('Error updating product:', { 
-        error: errorMessage, 
+      toast.error(`An error occurred while updating the product: ${errorMessage}`)
+      logger.error('Error updating product:', {
+        error: errorMessage,
         stack: error instanceof Error ? error.stack : undefined,
         variants: formData.variants
       })
