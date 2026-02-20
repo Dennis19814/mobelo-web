@@ -126,7 +126,7 @@ function CheckoutSummaryContent() {
 
             {!plan && (
               <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[{ k: 'trial', p: 0, d: 'Start free and explore' }, { k: 'startup', p: 49, d: 'For small teams' }, { k: 'growth', p: 99, d: 'For scaling stores' }].map((p) => (
+                {[{ k: 'trial', p: 0, d: 'Start free and explore' }, { k: 'starter', p: 49, d: 'For small teams' }, { k: 'growth', p: 99, d: 'For scaling stores' }].map((p) => (
                   <Card key={p.k} className="border-gray-200">
                     <CardHeader>
                       <CardTitle className="text-base">{PLAN_NAMES[p.k as PlanKey]}</CardTitle>

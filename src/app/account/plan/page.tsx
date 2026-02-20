@@ -76,14 +76,11 @@ export default function AccountPlanPage() {
       }
       if (results[1].status === 'fulfilled' && results[1].value.ok) {
         const subscriptionData = results[1].value.data as any
-        console.log('[DEBUG] Subscription data loaded:', subscriptionData)
         setSubscription(subscriptionData)
         // Set initial billing cycle to match current subscription
         if (subscriptionData?.billing) {
           setBillingCycle(subscriptionData.billing)
         }
-      } else {
-        console.log('[DEBUG] Failed to load subscription:', results[1])
       }
 
       setPageLoading(false)
@@ -144,8 +141,6 @@ export default function AccountPlanPage() {
             <div className="max-w-6xl mx-auto">
               {/* Current Plan Status Banner */}
               <>
-                {console.log('[DEBUG] Rendering banners - effectiveSubscription:', effectiveSubscription, 'currentPlan:', currentPlan)}
-
                 {/* Current Plan Banner - show trial banner for entrepreneur, regular banner for paid plans */}
                 {currentPlan === 'trial' ? (
                   <div className="mb-8 rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-5 shadow-sm">
@@ -250,10 +245,13 @@ export default function AccountPlanPage() {
                     </svg>
                     <div>
                       <div className="font-medium text-gray-900">
-                        Scheduled plan change to <strong>{PLAN_NAMES[scheduled.targetPlan]} ({scheduled.targetBilling === 'annual' ? 'Annual' : 'Monthly'})</strong>
+                        {scheduled.targetPlan === 'trial'
+                          ? 'Subscription cancellation scheduled'
+                          : <>Scheduled plan change to <strong>{PLAN_NAMES[scheduled.targetPlan]} ({scheduled.targetBilling === 'annual' ? 'Annual' : 'Monthly'})</strong></>
+                        }
                       </div>
                       <div className="text-gray-600 mt-0.5">
-                        Effective on {new Date(scheduled.effectiveDate).toLocaleDateString()}
+                        {scheduled.targetPlan === 'trial' ? 'Cancels' : 'Effective'} on {new Date(scheduled.effectiveDate).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -374,6 +372,7 @@ export default function AccountPlanPage() {
                 })}
               </div>
 
+              {currentPlan !== 'trial' && (
               <div className="mt-8">
                 <Card className="border-gray-200">
                   <CardHeader>
@@ -393,6 +392,7 @@ export default function AccountPlanPage() {
                   </CardFooter>
                 </Card>
               </div>
+              )}
             </div>
           </section>
         )}
@@ -412,7 +412,7 @@ export default function AccountPlanPage() {
             <h3 className="text-xl font-semibold text-gray-900 mb-3">Cancel Subscription?</h3>
             <p className="text-sm text-gray-600 mb-6">
               Your subscription will be canceled at the end of the current billing period.
-              You'll continue to have access to all features until then. This action cannot be undone.
+              You'll continue to have access to all features until then. You can cancel this change any time from this page.
             </p>
             <div className="flex gap-3">
               <Button
@@ -427,7 +427,21 @@ export default function AccountPlanPage() {
                 disabled={loading === 'cancel'}
                 onClick={async () => {
                   setShowCancelModal(false)
-                  await handleChange('trial', 'monthly')
+                  setLoading('cancel')
+                  setActionMsg('')
+                  try {
+                    const res = await apiService.schedulePlanChange('trial', 'monthly')
+                    if (res.ok) {
+                      setScheduled({ targetPlan: 'trial', targetBilling: 'monthly', effectiveDate: res.data.effectiveDate })
+                      setActionMsg(`Subscription will cancel on ${new Date(res.data.effectiveDate).toLocaleDateString()}.`)
+                    } else {
+                      setActionMsg('Could not schedule cancellation.')
+                    }
+                  } catch {
+                    setActionMsg('Could not schedule cancellation.')
+                  } finally {
+                    setLoading(null)
+                  }
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-300 disabled:text-gray-500"
               >

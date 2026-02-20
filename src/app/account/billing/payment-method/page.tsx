@@ -22,11 +22,21 @@ function UpdateCardForm({ onSaved }: { onSaved: () => void }) {
     setSaving(true)
     setError(null)
     try {
-      const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' })
+      const { error, setupIntent } = await stripe.confirmSetup({ elements, redirect: 'if_required' })
       if (error) {
         setError(error.message || 'Failed to update card')
         setSaving(false)
         return
+      }
+      // Immediately set the new card as the customer's default payment method.
+      // The setup_intent.succeeded webhook also does this, but calling it here
+      // ensures the card is ready for any immediate charges/upgrades.
+      if (setupIntent?.id) {
+        try {
+          await apiService.attachPaymentMethod({ setupIntentId: setupIntent.id })
+        } catch {
+          // Non-fatal: webhook will handle it if this fails
+        }
       }
       onSaved()
     } catch (err) {

@@ -333,7 +333,7 @@ export default function MyApps() {
             <div className="flex items-center space-x-6">
               <Link href="/" aria-label="Go to home" className="flex items-center group">
                 <Image
-                  src="/Logo-new.png"
+                  src="/logo-new.png"
                   alt="mobelo logo"
                   width={120}
                   height={40}

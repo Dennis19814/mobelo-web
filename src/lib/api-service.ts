@@ -16,7 +16,7 @@ export interface ApiResponse<T = any> {
 
 class ApiService {
   // Billing (Platform-level)
-  async createSubscriptionIntent(payload: { plan: Exclude<PlanKey, 'trial'>; billing: BillingCycle; coupon?: string; company?: { name?: string; taxId?: string; addressLine1?: string; city?: string; country?: string } }): Promise<ApiResponse<{ clientSecret: string; subscriptionId: string; customerId: string; isUpgrade?: boolean; prorationDetails?: { proratedAmount: number; currency: string; currentPlan: string; currentBilling: string; newPlan: string; newBilling: string; nextBillingDate: string; nextBillingAmount: number } }>> {
+  async createSubscriptionIntent(payload: { plan: Exclude<PlanKey, 'trial'>; billing: BillingCycle; coupon?: string; company?: { name?: string; taxId?: string; addressLine1?: string; city?: string; country?: string } }): Promise<ApiResponse<{ clientSecret: string | null; subscriptionId: string; customerId: string; isUpgrade?: boolean; isScheduled?: boolean; effectiveDate?: string; prorationDetails?: { proratedAmount: number; currency: string; currentPlan: string; currentBilling: string; newPlan: string; newBilling: string; nextBillingDate: string; nextBillingAmount: number } }>> {
     const response = await httpClient.post('/v1/billing/create-subscription', payload)
     return { ok: response.ok, status: response.status, data: response.data }
   }
@@ -272,7 +272,7 @@ class ApiService {
     const queryString = params.toString();
     const url = queryString ? `/v1/merchant/products/categories?${queryString}` : `/v1/merchant/products/categories`;
 
-    const response = await httpClient.get(url, { cancelKey: 'getCategories' });
+    const response = await httpClient.get(url);
     return { ok: response.ok, status: response.status, data: response.data };
   }
 

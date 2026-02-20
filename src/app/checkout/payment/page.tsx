@@ -143,10 +143,20 @@ function CheckoutPaymentContent() {
         const res = await apiService.createSubscriptionIntent({ plan, billing, coupon: coupon || undefined })
         if (res.ok) {
           if (mounted) {
+            // Downgrade scheduled at period end — redirect to done with scheduled info
+            if (!res.data.clientSecret && res.data.isScheduled) {
+              const effectiveDateParam = res.data.effectiveDate ? `&effectiveDate=${encodeURIComponent(res.data.effectiveDate)}` : ''
+              router.push(`/checkout/done?plan=${plan}&billing=${billing}&scheduled=true${effectiveDateParam}`)
+              return
+            }
+
             // If there's no clientSecret, it means the invoice was already paid (upgrade complete)
             if (!res.data.clientSecret && res.data.isUpgrade) {
               // Upgrade completed automatically, redirect to success
-              router.push(`/checkout/done?plan=${plan}&billing=${billing}`)
+              const renewalParam = res.data.prorationDetails?.nextBillingDate
+                ? `&renewalDate=${encodeURIComponent(res.data.prorationDetails.nextBillingDate)}`
+                : ''
+              router.push(`/checkout/done?plan=${plan}&billing=${billing}${renewalParam}`)
               return
             }
 
@@ -228,7 +238,17 @@ function CheckoutPaymentContent() {
                     )}
                     {clientSecret && stripePromise ? (
                       <Elements options={{ clientSecret, appearance: { theme: 'flat' } }} stripe={stripePromise}>
-                        <PaymentForm onBack={handleBack} onSuccess={() => router.push(`/checkout/done?plan=${plan}&billing=${billing}`)} clientSecret={clientSecret} />
+                        <PaymentForm onBack={handleBack} onSuccess={async () => {
+                          try {
+                            const sub = await apiService.getSubscription()
+                            const renewalParam = sub.ok && sub.data?.currentPeriodEnd
+                              ? `&renewalDate=${encodeURIComponent(sub.data.currentPeriodEnd)}`
+                              : ''
+                            router.push(`/checkout/done?plan=${plan}&billing=${billing}${renewalParam}`)
+                          } catch {
+                            router.push(`/checkout/done?plan=${plan}&billing=${billing}`)
+                          }
+                        }} clientSecret={clientSecret} />
                       </Elements>
                     ) : (
                       !error && (
