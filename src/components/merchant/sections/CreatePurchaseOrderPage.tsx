@@ -11,6 +11,8 @@ import {
   FileText,
   ArrowRight,
   X,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 import {
@@ -102,6 +104,9 @@ export default function CreatePurchaseOrderPage() {
   const [modalProducts, setModalProducts] = useState<Product[]>([])
   const [modalSearching, setModalSearching] = useState(false)
   const [selectedVariants, setSelectedVariants] = useState<Map<string, { product: Product; variantId?: number }>>(new Map())
+  const [expandedProductIds, setExpandedProductIds] = useState<Set<number>>(new Set())
+  const [loadingVariantProductIds, setLoadingVariantProductIds] = useState<Set<number>>(new Set())
+  const [productDetails, setProductDetails] = useState<Record<number, Product>>({})
 
   const createMutation = useCreatePurchaseOrder()
 
@@ -214,6 +219,7 @@ export default function CreatePurchaseOrderPage() {
         search: modalProductSearch || undefined,
         status: 'active',
         limit: 100,
+        include: 'variants',
       })
 
       if (response.ok && response.data) {
@@ -239,6 +245,7 @@ export default function CreatePurchaseOrderPage() {
       apiService.getProducts({
         status: 'active',
         limit: 100,
+        include: 'variants',
       }).then((response) => {
         if (response.ok && response.data) {
           const products = Array.isArray(response.data)
@@ -257,13 +264,75 @@ export default function CreatePurchaseOrderPage() {
     } else {
       setModalProductSearch('')
       setSelectedVariants(new Map())
+      setExpandedProductIds(new Set())
+      setLoadingVariantProductIds(new Set())
+      setProductDetails({})
     }
   }, [showProductModal])
+
+  // Preload full product details (variants + inventory) so available count shows without expanding
+  useEffect(() => {
+    if (!showProductModal || modalProducts.length === 0) return
+    const ids = modalProducts.map((p) => p.id)
+    Promise.all(ids.map((id) => apiService.getProduct(id)))
+      .then((responses) => {
+        const next: Record<number, Product> = {}
+        responses.forEach((res, i) => {
+          if (res.ok && res.data) next[ids[i]] = res.data as Product
+        })
+        setProductDetails((prev) => ({ ...prev, ...next }))
+      })
+      .catch((err) => console.error('[CreatePO] Preload product details error:', err))
+  }, [showProductModal, modalProducts])
 
   useEffect(() => {
     const timer = setTimeout(handleModalProductSearch, 300)
     return () => clearTimeout(timer)
   }, [handleModalProductSearch])
+
+  // Toggle product expand/collapse in modal (collapsible to show variants)
+  const toggleProductExpanded = async (product: Product) => {
+    const productId = product.id
+    const isCurrentlyExpanded = expandedProductIds.has(productId)
+    const hasVariants = product.variants && product.variants.length > 0
+
+    if (isCurrentlyExpanded) {
+      setExpandedProductIds((prev) => {
+        const next = new Set(prev)
+        next.delete(productId)
+        return next
+      })
+      return
+    }
+
+    // Expand immediately so user sees the row open (and loading state if we fetch)
+    setExpandedProductIds((prev) => new Set(prev).add(productId))
+
+    // If we don't have variants yet, fetch full product to get variants
+    if (!hasVariants) {
+      setLoadingVariantProductIds((prev) => new Set(prev).add(productId))
+      try {
+        const response = await apiService.getProduct(productId)
+        if (response.ok && response.data) {
+          const fullProduct = response.data as Product
+          setModalProducts((prev) =>
+            prev.map((p) =>
+              p.id === productId ? { ...p, variants: fullProduct.variants || [] } : p
+            )
+          )
+        }
+      } catch (error) {
+        console.error('[CreatePO] Load product variants error:', error)
+        toast.error('Failed to load variants')
+      } finally {
+        setLoadingVariantProductIds((prev) => {
+          const next = new Set(prev)
+          next.delete(productId)
+          return next
+        })
+      }
+    }
+  }
 
   // Handle variant selection
   const toggleVariantSelection = (product: Product, variantId?: number) => {
@@ -276,6 +345,23 @@ export default function CreatePurchaseOrderPage() {
       newSelection.set(key, { product, variantId })
     }
     
+    setSelectedVariants(newSelection)
+  }
+
+  // Toggle all variants for a product (main product checkbox)
+  const toggleAllVariantsForProduct = (product: Product) => {
+    const variants = product.variants || []
+    if (variants.length === 0) {
+      toggleVariantSelection(product)
+      return
+    }
+    const allSelected = variants.every((v) => selectedVariants.has(`${product.id}-${v.id}`))
+    const newSelection = new Map(selectedVariants)
+    if (allSelected) {
+      variants.forEach((v) => newSelection.delete(`${product.id}-${v.id}`))
+    } else {
+      variants.forEach((v) => newSelection.set(`${product.id}-${v.id}`, { product, variantId: v.id }))
+    }
     setSelectedVariants(newSelection)
   }
 
@@ -926,6 +1012,8 @@ export default function CreatePurchaseOrderPage() {
                   setShowProductModal(false)
                   setSelectedVariants(new Map())
                   setModalProductSearch('')
+                  setExpandedProductIds(new Set())
+                  setLoadingVariantProductIds(new Set())
                 }}
                 className="p-1 hover:bg-gray-100 rounded"
               >
@@ -944,9 +1032,6 @@ export default function CreatePurchaseOrderPage() {
                   placeholder="Search products"
                   className="w-full pl-10 pr-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
-                {modalSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
-                )}
               </div>
             </div>
 
@@ -963,24 +1048,59 @@ export default function CreatePurchaseOrderPage() {
               ) : (
                 <div className="space-y-4">
                   {modalProducts.map((product) => {
-                    const hasVariants = product.variants && product.variants.length > 0
+                    const effectiveProduct = productDetails[product.id] || product
+                    const detailsLoaded = product.id in productDetails
+                    const hasVariants = effectiveProduct.variants && effectiveProduct.variants.length > 0
                     const productKey = `${product.id}`
                     const isProductSelected = selectedVariants.has(productKey)
-                    
+                    const isExpanded = expandedProductIds.has(product.id)
+                    const isLoadingVariants = loadingVariantProductIds.has(product.id)
+                    // Total stock: sum variant quantities if variants exist, else product-level quantity
+                    const totalStock = hasVariants && effectiveProduct.variants
+                      ? effectiveProduct.variants.reduce((sum, v) => sum + (v.inventoryQuantity ?? 0), 0)
+                      : (effectiveProduct.inventoryQuantity ?? 0)
+                    const variantKeys = hasVariants && effectiveProduct.variants
+                      ? effectiveProduct.variants.map((v) => `${product.id}-${v.id}`)
+                      : []
+                    const allVariantsSelected = variantKeys.length > 0 && variantKeys.every((k) => selectedVariants.has(k))
+
                     return (
                       <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                        {/* Product Row */}
-                        <div className="p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                        {/* Product row - clickable to expand only when has variants */}
+                        <div
+                          role={hasVariants ? 'button' : undefined}
+                          tabIndex={hasVariants ? 0 : undefined}
+                          onClick={hasVariants ? () => toggleProductExpanded(effectiveProduct) : undefined}
+                          onKeyDown={
+                            hasVariants
+                              ? (e) =>
+                                  (e.key === 'Enter' || e.key === ' ') && toggleProductExpanded(effectiveProduct)
+                              : undefined
+                          }
+                          className={`p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors ${hasVariants ? 'cursor-pointer' : ''}`}
+                        >
+                          <span className="flex-shrink-0 w-4 flex items-center justify-center text-gray-500">
+                            {hasVariants ? (
+                              isExpanded ? (
+                                <ChevronDown className="w-4 h-4" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4" />
+                              )
+                            ) : null}
+                          </span>
                           <input
                             type="checkbox"
-                            checked={isProductSelected && !hasVariants}
-                            onChange={() => {
-                              if (!hasVariants) {
-                                toggleVariantSelection(product)
+                            checked={hasVariants ? allVariantsSelected : isProductSelected}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              if (hasVariants) {
+                                toggleAllVariantsForProduct(effectiveProduct)
+                              } else {
+                                toggleVariantSelection(effectiveProduct)
                               }
                             }}
-                            disabled={hasVariants}
-                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 flex-shrink-0"
                           />
                           <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
                             {product.thumbnailUrl ? (
@@ -998,48 +1118,77 @@ export default function CreatePurchaseOrderPage() {
                               {product.name}
                             </div>
                           </div>
-                          <div className="text-sm text-gray-600">
-                            {hasVariants
-                              ? `${product.variants?.length} variant${product.variants?.length !== 1 ? 's' : ''}`
-                              : product.inventoryQuantity !== undefined
-                              ? `${product.inventoryQuantity} available`
-                              : ''}
+                          <div className="text-sm text-gray-600 flex-shrink-0 min-w-[6rem] flex justify-end items-center gap-1">
+                            {hasVariants ? (
+                              <>
+                                {effectiveProduct.variants?.length} variant{effectiveProduct.variants?.length !== 1 ? 's' : ''}
+                                <span className="text-gray-500 ml-1">
+                                  · {totalStock} available
+                                </span>
+                              </>
+                            ) : (
+                              `${totalStock} available`
+                            )}
+                            {!detailsLoaded && (
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-1 flex-shrink-0" />
+                            )}
                           </div>
                         </div>
 
-                        {/* Variants */}
-                        {hasVariants && (
+                        {/* Collapsible: variants or loading or "no variants" */}
+                        {isExpanded && (
                           <div className="border-t bg-gray-50">
-                            {product.variants?.map((variant) => {
-                              const variantKey = `${product.id}-${variant.id}`
-                              const isVariantSelected = selectedVariants.has(variantKey)
-                              
-                              return (
-                                <div
-                                  key={variant.id}
-                                  className="p-3 flex items-center gap-3 hover:bg-white border-b border-gray-200 last:border-b-0 transition-colors"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isVariantSelected}
-                                    onChange={() => toggleVariantSelection(product, variant.id)}
-                                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm text-gray-900">
-                                      {variant.option1Value}
-                                      {variant.option2Value && ` / ${variant.option2Value}`}
-                                      {variant.option3Value && ` / ${variant.option3Value}`}
+                            {isLoadingVariants ? (
+                              <div className="p-4 pl-11 flex items-center gap-2 text-sm text-gray-500">
+                                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                                Loading variants...
+                              </div>
+                            ) : hasVariants ? (
+                              effectiveProduct.variants?.map((variant) => {
+                                const variantKey = `${product.id}-${variant.id}`
+                                const isVariantSelected = selectedVariants.has(variantKey)
+
+                                return (
+                                  <div
+                                    key={variant.id}
+                                    className="p-3 pl-11 flex items-center gap-3 hover:bg-white border-b border-gray-200 last:border-b-0 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isVariantSelected}
+                                      onChange={() => toggleVariantSelection(effectiveProduct, variant.id)}
+                                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 flex-shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm text-gray-900">
+                                        {variant.option1Value}
+                                        {variant.option2Value && ` / ${variant.option2Value}`}
+                                        {variant.option3Value && ` / ${variant.option3Value}`}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm text-gray-600 flex-shrink-0">
+                                      {variant.inventoryQuantity !== undefined
+                                        ? `${variant.inventoryQuantity} available`
+                                        : ''}
                                     </div>
                                   </div>
-                                  <div className="text-sm text-gray-600">
-                                    {variant.inventoryQuantity !== undefined
-                                      ? `${variant.inventoryQuantity} available`
-                                      : ''}
-                                  </div>
-                                </div>
-                              )
-                            })}
+                                )
+                              })
+                            ) : (
+                              <div
+                                className="p-3 pl-11 flex items-center gap-3 hover:bg-white"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isProductSelected}
+                                  onChange={() => toggleVariantSelection(effectiveProduct)}
+                                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 flex-shrink-0"
+                                />
+                                <div className="text-sm text-gray-600">No variants — add as single product</div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1060,6 +1209,8 @@ export default function CreatePurchaseOrderPage() {
                     setShowProductModal(false)
                     setSelectedVariants(new Map())
                     setModalProductSearch('')
+                    setExpandedProductIds(new Set())
+                    setLoadingVariantProductIds(new Set())
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
