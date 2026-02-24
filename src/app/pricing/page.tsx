@@ -21,16 +21,7 @@ export default function PricingPage() {
 
   const [hasActivePlan, setHasActivePlan] = useState(false)
 
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-    setIsAuthed(!!token)
-
-    // Check active subscription only if authenticated
-    if (token) {
-      checkExistingSubscription()
-    }
-  }, [router])
-
+  // Define checkExistingSubscription first so it's available when checkAuth calls it
   const checkExistingSubscription = async () => {
     setCheckingSubscription(true)
     try {
@@ -50,6 +41,39 @@ export default function PricingPage() {
       setCheckingSubscription(false)
     }
   }
+
+  // Define checkAuth outside useEffect so it can be called from onSigninSuccess
+  const checkAuth = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    setIsAuthed(!!token)
+
+    // Check active subscription only if authenticated
+    if (token) {
+      checkExistingSubscription()
+    }
+  }
+
+  useEffect(() => {
+    // Check auth on mount
+    checkAuth()
+
+    // Re-check auth when window gains focus (user might have logged in elsewhere)
+    const handleFocus = () => checkAuth()
+    window.addEventListener('focus', handleFocus)
+
+    // Listen for storage changes (login in another tab)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'access_token') {
+        checkAuth()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [router])
 
   const calculatePrice = (monthlyPrice: number) => {
     if (billing === 'annual') {
@@ -174,7 +198,7 @@ export default function PricingPage() {
         onClose={() => setShowSignin(false)}
         onSigninSuccess={() => {
           setShowSignin(false)
-          setIsAuthed(true)
+          checkAuth() // Re-check auth state and subscription after login
           if (pendingPlan) {
             router.push(`/checkout/summary?plan=${pendingPlan.plan}&billing=${pendingPlan.billing}`)
           }

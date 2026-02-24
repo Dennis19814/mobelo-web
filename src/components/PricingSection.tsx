@@ -13,9 +13,32 @@ export default function PricingSection() {
   const [isAuthed, setIsAuthed] = useState(false)
   const [pendingPlan, setPendingPlan] = useState<{ plan: string; billing: 'monthly' | 'annual' } | null>(null)
 
-  useEffect(() => {
+  // Define checkAuth outside useEffect so it can be called from onSigninSuccess
+  const checkAuth = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     setIsAuthed(!!token)
+  }
+
+  useEffect(() => {
+    // Check auth on mount
+    checkAuth()
+
+    // Re-check auth when window gains focus (user might have logged in elsewhere)
+    const handleFocus = () => checkAuth()
+    window.addEventListener('focus', handleFocus)
+
+    // Listen for storage changes (login in another tab)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'access_token') {
+        checkAuth()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorage)
+    }
   }, [])
 
   const calculatePrice = (monthlyPrice: number) => {
@@ -139,7 +162,7 @@ export default function PricingSection() {
         onClose={() => setShowSignin(false)}
         onSigninSuccess={() => {
           setShowSignin(false)
-          setIsAuthed(true)
+          checkAuth() // Re-check auth state from localStorage
           if (pendingPlan) {
             router.push(`/checkout/summary?plan=${pendingPlan.plan}&billing=${pendingPlan.billing}`)
           }

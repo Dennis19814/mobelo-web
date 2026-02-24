@@ -141,8 +141,43 @@ export default function AccountPlanPage() {
             <div className="max-w-6xl mx-auto">
               {/* Current Plan Status Banner */}
               <>
-                {/* Current Plan Banner - show trial banner for entrepreneur, regular banner for paid plans */}
-                {currentPlan === 'trial' ? (
+                {/* Paid Trial Banner - show when user upgraded to paid plan but trial is active */}
+                {effectiveSubscription.status === 'trialing' && currentPlan !== 'trial' && effectiveSubscription.currentPeriodEnd ? (
+                  <div className="mb-8 rounded-xl border-2 border-orange-400 bg-gradient-to-r from-orange-50 to-orange-100 px-6 py-5 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-6 h-6 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="flex-1">
+                        <div className="text-lg font-semibold text-gray-900">
+                          🎉 14-Day Free Trial Active: {PLAN_NAMES[currentPlan]} Plan {currentBilling === 'annual' ? '(Annual)' : '(Monthly)'}
+                        </div>
+                        {(() => {
+                          const chargeDate = new Date(effectiveSubscription.currentPeriodEnd)
+                          const now = new Date()
+                          const daysLeft = Math.ceil((chargeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+                          return (
+                            <div className="text-sm text-gray-700 mt-1">
+                              <span className="font-medium text-orange-700">
+                                {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+                              </span>
+                              <span className="text-gray-600 mx-2">·</span>
+                              <span className="text-gray-700">
+                                Your card will be charged <strong>${currentBilling === 'annual' ? Math.round(currentPaymentAmount) : currentPaymentAmount}</strong> on <strong>{chargeDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+                              </span>
+                              <span className="text-gray-600 mx-2">·</span>
+                              <span className="text-gray-600">
+                                Cancel anytime before then to avoid charges
+                              </span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : currentPlan === 'trial' ? (
+                  /* Free Trial Banner - show for entrepreneur/free tier */
                   <div className="mb-8 rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-5 shadow-sm">
                     <div className="flex items-center gap-3">
                       <svg className="w-6 h-6 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +222,7 @@ export default function AccountPlanPage() {
                             )
                           }
 
-                          // No trial data (should never happen according to user)
+                          // No trial data
                           return (
                             <div className="text-sm mt-1">
                               <span className="font-medium text-yellow-700">
@@ -204,6 +239,7 @@ export default function AccountPlanPage() {
                     </div>
                   </div>
                 ) : (
+                  /* Active Paid Plan Banner */
                   <div className="mb-8 rounded-xl border-2 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 shadow-sm">
                     <div className="flex items-center gap-3">
                       <svg className="w-6 h-6 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,6 +344,11 @@ export default function AccountPlanPage() {
                   const planId = `${plan.key}-${plan.billing}`
                   const isLoading = loading === planId
 
+                  // Detect if user is on paid trial for this specific plan
+                  const isOnPaidTrialForThisPlan = effectiveSubscription.status === 'trialing' &&
+                                                    currentPlan !== 'trial' &&
+                                                    isCurrent
+
                   return (
                     <Card
                       key={planId}
@@ -319,7 +360,8 @@ export default function AccountPlanPage() {
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-base">{plan.name}</CardTitle>
-                          {isCurrent && <Badge variant="primary" size="sm">Current</Badge>}
+                          {isCurrent && !isOnPaidTrialForThisPlan && <Badge variant="primary" size="sm">Current</Badge>}
+                          {isOnPaidTrialForThisPlan && <Badge variant="warning" size="sm">Trial Active</Badge>}
                         </div>
                         <CardDescription className="text-xs">{plan.tagline}</CardDescription>
                       </CardHeader>
@@ -337,7 +379,7 @@ export default function AccountPlanPage() {
                             ${Math.round(plan.annualPrice / 12)}/monthly billed annually
                           </div>
                         )}
-                        {isCurrent && subscription?.currentPeriodEnd && (
+                        {isCurrent && subscription?.currentPeriodEnd && !isOnPaidTrialForThisPlan && (
                           <div className="mt-2 text-xs text-orange-700 font-medium">
                             Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                           </div>
@@ -352,8 +394,17 @@ export default function AccountPlanPage() {
                           ))}
                         </ul>
                       </CardContent>
-                      <CardFooter>
-                        {isCurrent ? (
+                      <CardFooter className="flex-col gap-2">
+                        {isCurrent && isOnPaidTrialForThisPlan ? (
+                          <>
+                            <Button variant="outline" fullWidth disabled size="sm">Trial Active</Button>
+                            {effectiveSubscription.currentPeriodEnd && (
+                              <div className="w-full text-xs text-center bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-3 py-2 rounded">
+                                Card will be charged ${plan.annualPrice || plan.price} on {new Date(effectiveSubscription.currentPeriodEnd).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            )}
+                          </>
+                        ) : isCurrent ? (
                           <Button variant="outline" fullWidth disabled size="sm">Current Plan</Button>
                         ) : (
                           <Button

@@ -10,11 +10,19 @@ import { Loader2, CreditCard, Download } from 'lucide-react'
 
 type InvoiceRow = { id: string; number: string; date: string; amount: number; currency: string; status: string; pdfUrl?: string }
 type PaymentMethod = { brand: string; last4: string; expMonth: number; expYear: number } | null
+type Subscription = { plan: string; billing: string; status: string; currentPeriodEnd: string | null; trialEnd: string | null } | null
 
 function statusBadge(status: string) {
   if (status === 'paid') return <Badge variant="success" size="sm">Paid</Badge>
   if (status === 'open') return <Badge variant="destructive" size="sm">Past Due</Badge>
   return <Badge variant="secondary" size="sm">{status}</Badge>
+}
+
+const PLAN_NAMES: Record<string, string> = {
+  trial: 'Free Trial',
+  starter: 'Starter',
+  growth: 'Growth',
+  custom: 'Custom'
 }
 
 export default function BillingPage() {
@@ -25,16 +33,19 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [pageLoading, setPageLoading] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null)
+  const [subscription, setSubscription] = useState<Subscription>(null)
   const limit = 5
 
   useEffect(() => {
     let mounted = true
-    // Fetch payment method and first page of invoices in parallel
+    // Fetch subscription, payment method, and first page of invoices in parallel
     Promise.all([
+      apiService.getSubscription(),
       apiService.getPaymentMethod(),
       apiService.getInvoices(1, limit),
-    ]).then(([pmRes, invRes]) => {
+    ]).then(([subRes, pmRes, invRes]) => {
       if (!mounted) return
+      if (subRes.ok && subRes.data) setSubscription(subRes.data)
       if (pmRes.ok && pmRes.data) setPaymentMethod(pmRes.data)
       if (invRes.ok) {
         setInvoices(invRes.data.data || [])
@@ -105,6 +116,43 @@ export default function BillingPage() {
             <div className="max-w-6xl mx-auto">
               <h1 className="text-2xl font-semibold text-gray-900">Billing</h1>
               <p className="mt-2 text-sm text-gray-600">Manage your payment method and download invoices.</p>
+
+              {/* Paid Trial Banner */}
+              {subscription?.status === 'trialing' && subscription.plan !== 'trial' && subscription.currentPeriodEnd && (
+                <div className="mt-6 rounded-xl border-2 border-orange-400 bg-gradient-to-r from-orange-50 to-orange-100 px-6 py-5 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-6 h-6 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <div className="text-lg font-semibold text-gray-900">
+                        🎉 14-Day Free Trial Active: {PLAN_NAMES[subscription.plan]} Plan {subscription.billing === 'annual' ? '(Annual)' : '(Monthly)'}
+                      </div>
+                      {(() => {
+                        const chargeDate = new Date(subscription.currentPeriodEnd)
+                        const now = new Date()
+                        const daysLeft = Math.ceil((chargeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+                        return (
+                          <div className="text-sm text-gray-700 mt-1">
+                            <span className="font-medium text-orange-700">
+                              {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+                            </span>
+                            <span className="text-gray-600 mx-2">·</span>
+                            <span className="text-gray-700">
+                              Your card will be charged on <strong>{chargeDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+                            </span>
+                            <span className="text-gray-600 mx-2">·</span>
+                            <span className="text-gray-600">
+                              Cancel anytime before then to avoid charges
+                            </span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="border-2 border-gray-200 transition-all hover:shadow-md">
