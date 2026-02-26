@@ -121,8 +121,26 @@ export default function Navigation({ hideMenuItems = false, showGenerateNewApp =
   }
 
   useEffect(() => {
+    // Check auth on mount
     checkAuthStatus()
-  }, [])
+
+    // Re-check auth when window gains focus (user might have logged in elsewhere)
+    const handleFocus = () => checkAuthStatus()
+    window.addEventListener('focus', handleFocus)
+
+    // Listen for storage changes (login/logout in same or different tab)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'access_token' || e.key === 'user') {
+        checkAuthStatus()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [pathname])
 
   // Handle scrolling to section after navigation from another page
   useEffect(() => {

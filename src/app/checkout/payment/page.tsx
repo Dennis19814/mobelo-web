@@ -13,11 +13,135 @@ import { config } from '@/lib/config'
 import { apiService } from '@/lib/api-service'
 import { Loader2 } from 'lucide-react'
 
-function PaymentForm({ onBack, onSuccess, clientSecret }: { onBack: () => void; onSuccess: () => void; clientSecret: string }) {
+// Separate component for handling upgrade payments with 3DS (no Elements needed)
+function UpgradePaymentHandler({ clientSecret, stripePromise, onBack, onSuccess }: {
+  clientSecret: string
+  stripePromise: Promise<any> | null
+  onBack: () => void
+  onSuccess: () => void
+}) {
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!clientSecret || !stripePromise || processing) return
+
+    setProcessing(true)
+
+    stripePromise.then((stripe) => {
+      if (!stripe) {
+        setError('Stripe failed to initialize')
+        setProcessing(false)
+        return
+      }
+
+      // Confirm payment with saved payment method (3DS authentication)
+      stripe.confirmCardPayment(clientSecret).then(({ error, paymentIntent }: any) => {
+        if (error) {
+          setError(error.message || '3D Secure authentication failed')
+          setProcessing(false)
+        } else if (paymentIntent?.status === 'succeeded') {
+          onSuccess()
+        } else {
+          setError('Payment authentication incomplete')
+          setProcessing(false)
+        }
+      }).catch((err: any) => {
+        setError(err?.message || 'Payment authentication failed')
+        setProcessing(false)
+      })
+    })
+  }, [clientSecret, stripePromise, onSuccess, processing])
+
+  return (
+    <div className="space-y-4">
+      {processing && !error && (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+            <p className="text-sm text-gray-600 font-medium">3D Secure authentication required...</p>
+            <p className="text-xs text-gray-500">Please complete authentication in the pop-up window</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="space-y-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <Button variant="outline" onClick={onBack}>Back</Button>
+            <Button onClick={() => window.location.reload()} className="bg-green-600 hover:bg-green-700 text-white">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PaymentForm({ onBack, onSuccess, clientSecret, isUpgrade, stripePromise }: { onBack: () => void; onSuccess: () => void; clientSecret: string; isUpgrade?: boolean; stripePromise?: Promise<any> | null }) {
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
   const [elementReady, setElementReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [authenticating3DS, setAuthenticating3DS] = useState(false)
+
+  // If this is an upgrade with 3DS, handle it directly without PaymentElement
+  useEffect(() => {
+    if (isUpgrade && clientSecret && !authenticating3DS) {
+      setAuthenticating3DS(true)
+      setSubmitting(true)
+
+      // For upgrades, we need to load stripe directly if not available from context
+      const getStripe = async () => {
+        if (stripe) return stripe
+        if (stripePromise) return await stripePromise
+        return null
+      }
+
+      getStripe().then((stripeInstance) => {
+        if (!stripeInstance) {
+          setPaymentError('Stripe failed to initialize')
+          setSubmitting(false)
+          setAuthenticating3DS(false)
+          return
+        }
+
+        // Confirm payment with saved payment method (3DS authentication)
+        stripeInstance.confirmCardPayment(clientSecret).then(({ error, paymentIntent }) => {
+          if (error) {
+            setPaymentError(error.message || '3D Secure authentication failed')
+            setSubmitting(false)
+            setAuthenticating3DS(false)
+          } else if (paymentIntent?.status === 'succeeded') {
+            onSuccess()
+          }
+        }).catch((err) => {
+          setPaymentError(err?.message || 'Payment authentication failed')
+          setSubmitting(false)
+          setAuthenticating3DS(false)
+        })
+      })
+    }
+  }, [isUpgrade, clientSecret, stripe, stripePromise, authenticating3DS, onSuccess])
+
+  // Add timeout to detect if PaymentElement fails to load
+  useEffect(() => {
+    if (isUpgrade) return // Skip timeout for upgrades
+
+    const timeout = setTimeout(() => {
+      if (!elementReady) {
+        setLoadError('Payment form is taking longer than expected to load. Please refresh the page or contact support.')
+      }
+    }, 30000) // 30 second timeout
+
+    return () => clearTimeout(timeout)
+  }, [elementReady, isUpgrade])
 
   const handleSubmit = async () => {
     if (!stripe || !elements) return
@@ -30,7 +154,7 @@ function PaymentForm({ onBack, onSuccess, clientSecret }: { onBack: () => void; 
       if (isSetupIntent) {
         const { error, setupIntent } = await stripe.confirmSetup({ elements, redirect: 'if_required' })
         if (error) {
-          alert(error.message || 'Setup failed, please try again')
+          setPaymentError(error.message || 'Setup failed, please try again')
           setSubmitting(false)
           return
         }
@@ -48,7 +172,7 @@ function PaymentForm({ onBack, onSuccess, clientSecret }: { onBack: () => void; 
       } else {
         const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' })
         if (error) {
-          alert(error.message || 'Payment failed, please try again')
+          setPaymentError(error.message || 'Payment failed, please try again')
           setSubmitting(false)
           return
         }
@@ -60,28 +184,93 @@ function PaymentForm({ onBack, onSuccess, clientSecret }: { onBack: () => void; 
   }
 
   return (
-    <div className="space-y-4">
-      {!elementReady && (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
-            <p className="text-sm text-gray-600">Loading payment form...</p>
+    <>
+      <div className="space-y-4">
+        {/* Show 3DS authentication message for upgrades */}
+        {isUpgrade && authenticating3DS && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+              <p className="text-sm text-gray-600 font-medium">3D Secure authentication required...</p>
+              <p className="text-xs text-gray-500">Please complete authentication in the pop-up window</p>
+            </div>
+          </div>
+        )}
+
+        {/* Only show PaymentElement if it's NOT an upgrade */}
+        {!isUpgrade && (
+          <>
+            {loadError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{loadError}</p>
+              </div>
+            )}
+            {!elementReady && !loadError && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+                  <p className="text-sm text-gray-600">Loading payment form...</p>
+                </div>
+              </div>
+            )}
+            {/* Keep element in DOM but hide with opacity - allows Stripe to initialize */}
+            <div className={elementReady ? 'opacity-100 transition-opacity' : 'opacity-0 h-0 overflow-hidden'}>
+              <PaymentElement
+                options={{ layout: 'tabs' }}
+                onReady={() => {
+                  console.log('PaymentElement ready')
+                  setElementReady(true)
+                }}
+                onLoadError={(event) => {
+                  console.error('PaymentElement load error:', event)
+                  setLoadError('Failed to load payment form. Please check your internet connection and try again.')
+                }}
+              />
+            </div>
+            {elementReady && (
+              <div className="flex items-center justify-between">
+                <Button variant="outline" onClick={onBack}>Back</Button>
+                <Button onClick={handleSubmit} disabled={!stripe || submitting} className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:text-gray-500">{submitting ? 'Processing…' : 'Pay and Continue'}</Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Payment Error Modal */}
+      {paymentError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-200">
+            <div className="p-6">
+              <div className="flex items-start">
+                <div className="mr-3 mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+                    <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Payment Failed
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                    {paymentError}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPaymentError(null)}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-orange-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
-      <div className={elementReady ? '' : 'hidden'}>
-        <PaymentElement
-          options={{ layout: 'tabs' }}
-          onReady={() => setElementReady(true)}
-        />
-      </div>
-      {elementReady && (
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={onBack}>Back</Button>
-          <Button onClick={handleSubmit} disabled={!stripe || submitting} className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:text-gray-500">{submitting ? 'Processing…' : 'Pay and Continue'}</Button>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -99,6 +288,7 @@ function CheckoutPaymentContent() {
   const [error, setError] = useState<string | null>(null)
   const [checkingSubscription, setCheckingSubscription] = useState(false)
   const [prorationDetails, setProrationDetails] = useState<{ proratedAmount: number; currency: string; currentPlan: string; currentBilling: string; newPlan: string; newBilling: string; nextBillingDate: string; nextBillingAmount: number } | null>(null)
+  const [isUpgrade, setIsUpgrade] = useState(false)
   const [stripePromise] = useState(() => {
     if (!config.services.stripePublicKey) return null
     return loadStripe(config.services.stripePublicKey)
@@ -163,6 +353,7 @@ function CheckoutPaymentContent() {
             if (res.data.clientSecret) {
               setClientSecret(res.data.clientSecret)
               setProrationDetails(res.data.prorationDetails || null)
+              setIsUpgrade(res.data.isUpgrade || false)
               setError(null)
             } else {
               setError('Unable to initialize payment. Please try again.')
@@ -237,19 +428,46 @@ function CheckoutPaymentContent() {
                       </div>
                     )}
                     {clientSecret && stripePromise ? (
-                      <Elements options={{ clientSecret, appearance: { theme: 'flat' } }} stripe={stripePromise}>
-                        <PaymentForm onBack={handleBack} onSuccess={async () => {
-                          try {
-                            const sub = await apiService.getSubscription()
-                            const renewalParam = sub.ok && sub.data?.currentPeriodEnd
-                              ? `&renewalDate=${encodeURIComponent(sub.data.currentPeriodEnd)}`
-                              : ''
-                            router.push(`/checkout/done?plan=${plan}&billing=${billing}${renewalParam}`)
-                          } catch {
-                            router.push(`/checkout/done?plan=${plan}&billing=${billing}`)
-                          }
-                        }} clientSecret={clientSecret} />
-                      </Elements>
+                      isUpgrade ? (
+                        // For upgrades, use a simpler component without Elements
+                        <UpgradePaymentHandler
+                          clientSecret={clientSecret}
+                          stripePromise={stripePromise}
+                          onBack={handleBack}
+                          onSuccess={async () => {
+                            try {
+                              const sub = await apiService.getSubscription()
+                              const renewalParam = sub.ok && sub.data?.currentPeriodEnd
+                                ? `&renewalDate=${encodeURIComponent(sub.data.currentPeriodEnd)}`
+                                : ''
+                              router.push(`/checkout/done?plan=${plan}&billing=${billing}${renewalParam}`)
+                            } catch {
+                              router.push(`/checkout/done?plan=${plan}&billing=${billing}`)
+                            }
+                          }}
+                        />
+                      ) : (
+                        // For new subscriptions, use Elements with PaymentElement
+                        <Elements options={{ clientSecret, appearance: { theme: 'flat' } }} stripe={stripePromise}>
+                          <PaymentForm
+                            onBack={handleBack}
+                            onSuccess={async () => {
+                              try {
+                                const sub = await apiService.getSubscription()
+                                const renewalParam = sub.ok && sub.data?.currentPeriodEnd
+                                  ? `&renewalDate=${encodeURIComponent(sub.data.currentPeriodEnd)}`
+                                  : ''
+                                router.push(`/checkout/done?plan=${plan}&billing=${billing}${renewalParam}`)
+                              } catch {
+                                router.push(`/checkout/done?plan=${plan}&billing=${billing}`)
+                              }
+                            }}
+                            clientSecret={clientSecret}
+                            isUpgrade={false}
+                            stripePromise={stripePromise}
+                          />
+                        </Elements>
+                      )
                     ) : (
                       !error && (
                         <div className="flex items-center justify-center py-12">
