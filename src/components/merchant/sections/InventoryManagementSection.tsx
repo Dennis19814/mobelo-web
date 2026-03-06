@@ -1,6 +1,6 @@
 'use client'
 import { logger } from '@/lib/logger'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMerchantAuth } from '@/hooks'
 import Image from 'next/image'
@@ -61,6 +61,16 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
   // Location quantities for editing
   const [locationQuantities, setLocationQuantities] = useState<Record<number, number>>({})
   const [originalLocationQuantities, setOriginalLocationQuantities] = useState<Record<number, number>>({})
+
+  // Skip the next location-inventory fetch after a save so we don't overwrite UI with stale API response
+  const skipNextLocationFetchRef = useRef(false)
+  // Ref for polling to skip refresh while user is editing
+  const isEditingRef = useRef(false)
+
+  // Keep isEditingRef in sync so polling can skip when user is editing
+  useEffect(() => {
+    isEditingRef.current = isEditing
+  }, [isEditing])
 
   // Fetch product data
   useEffect(() => {
@@ -157,6 +167,12 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
 
   // Fetch location-based inventory when product or variant changes
   useEffect(() => {
+    // After save we already updated locations state; skip fetch so we don't overwrite with stale API data
+    if (skipNextLocationFetchRef.current) {
+      skipNextLocationFetchRef.current = false
+      return
+    }
+
     const loadLocationInventory = async () => {
       if (!product) {
         console.log('[InventoryManagementSection] loadLocationInventory - No product, skipping')
@@ -248,6 +264,47 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
 
     loadLocationInventory()
   }, [product, selectedVariant])
+
+  // Auto-refresh inventory while user is on this product page (so available count updates from other tabs/devices)
+  const POLL_INTERVAL_MS = 30_000 // 30 seconds
+  useEffect(() => {
+    if (!productId || !product) return
+
+    const refreshInventory = async () => {
+      if (isEditingRef.current) return
+      if (typeof document !== 'undefined' && document.hidden) return
+
+      try {
+        const response = await apiService.getProduct(productId)
+        if (!response.ok || !response.data) return
+        const updatedProduct = response.data
+        setProduct(updatedProduct)
+        if (selectedVariant && updatedProduct.variants?.length) {
+          const refreshedVariant = updatedProduct.variants.find((v: ProductVariant) => v.id === selectedVariant.id)
+          if (refreshedVariant) {
+            setSelectedVariant(refreshedVariant)
+            setInventoryQuantity(refreshedVariant.inventoryQuantity ?? 0)
+            setOriginalQuantity(refreshedVariant.inventoryQuantity ?? 0)
+          }
+        } else if (!updatedProduct.variants?.length) {
+          setInventoryQuantity(updatedProduct.inventoryQuantity ?? 0)
+          setOriginalQuantity(updatedProduct.inventoryQuantity ?? 0)
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }
+
+    const intervalId = setInterval(refreshInventory, POLL_INTERVAL_MS)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isEditingRef.current) refreshInventory()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [productId, product?.id, selectedVariant?.id])
 
   // Get option names dynamically from variants
   const optionNames = useMemo(() => {
@@ -401,6 +458,9 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
       setLocations(updatedLocations)
       setOriginalLocationQuantities(locationQuantities)
 
+      // Skip the next location-inventory effect run so it doesn't overwrite with a stale API response
+      skipNextLocationFetchRef.current = true
+
       // Refetch product data to get updated inventoryQuantity totals
       console.log('[handleSave] Refetching product data to get updated totals...')
       const productResponse = await apiService.getProduct(product.id)
@@ -411,8 +471,8 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
         })
         setProduct(updatedProduct)
 
-        // Update selected variant with refreshed data
-        if (selectedVariant && updatedProduct.variants) {
+        // Update selected variant with refreshed data so UI shows new totals without page refresh
+        if (selectedVariant && updatedProduct.variants?.length) {
           const refreshedVariant = updatedProduct.variants.find((v: ProductVariant) => v.id === selectedVariant.id)
           if (refreshedVariant) {
             console.log('[handleSave] Updated selected variant inventory:', {
@@ -424,12 +484,13 @@ export default function InventoryManagementSection({ appId, apiKey, appSecretKey
             setInventoryQuantity(refreshedVariant.inventoryQuantity || 0)
             setOriginalQuantity(refreshedVariant.inventoryQuantity || 0)
           }
+        } else if (!updatedProduct.variants?.length) {
+          // Product without variants: update totals from refetched product
+          setInventoryQuantity(updatedProduct.inventoryQuantity || 0)
+          setOriginalQuantity(updatedProduct.inventoryQuantity || 0)
         }
       }
 
-      // Location inventories have been updated and product data has been refetched
-      // The backend automatically calculates variant totals, so no need to update again
-      setOriginalQuantity(inventoryQuantity)
       setIsEditing(false)
     } catch (err) {
       logger.error('Failed to save inventory:', { error: err instanceof Error ? err.message : String(err) })
