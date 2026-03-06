@@ -95,7 +95,38 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
         }
 
         const productsWithReviews = productsData.filter((p: Product) => p.totalReviews && p.totalReviews > 0)
-        setProducts(productsWithReviews)
+
+        // Ensure we have accurate review counts by fetching meta.total from reviews API
+        const productsWithAccurateCounts: ProductWithReviewSummary[] = await Promise.all(
+          productsWithReviews.map(async (product: ProductWithReviewSummary) => {
+            try {
+              const reviewsResp = await apiService.getProductReviews(product.id, {
+                page: 1,
+                limit: 1,
+                sortBy: 'createdAt',
+                sortOrder: 'DESC',
+              })
+
+              const apiTotal =
+                reviewsResp.ok && reviewsResp.data && reviewsResp.data.meta && typeof reviewsResp.data.meta.total === 'number'
+                  ? reviewsResp.data.meta.total
+                  : undefined
+
+              if (apiTotal !== undefined && apiTotal !== product.totalReviews) {
+                return {
+                  ...product,
+                  totalReviews: apiTotal,
+                }
+              }
+            } catch {
+              // Ignore errors here and fall back to original product data
+            }
+
+            return product
+          })
+        )
+
+        setProducts(productsWithAccurateCounts)
         return
       }
 
@@ -119,7 +150,37 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
             totalReviews: mp.reviewCount ?? 0,
           }))
           const withReviews = mapped.filter(p => (p.totalReviews || 0) > 0)
-          setProducts(withReviews)
+
+          const withAccurateCounts: ProductWithReviewSummary[] = await Promise.all(
+            withReviews.map(async (product: ProductWithReviewSummary) => {
+              try {
+                const reviewsResp = await apiService.getProductReviews(product.id, {
+                  page: 1,
+                  limit: 1,
+                  sortBy: 'createdAt',
+                  sortOrder: 'DESC',
+                })
+
+                const apiTotal =
+                  reviewsResp.ok && reviewsResp.data && reviewsResp.data.meta && typeof reviewsResp.data.meta.total === 'number'
+                    ? reviewsResp.data.meta.total
+                    : undefined
+
+                if (apiTotal !== undefined && apiTotal !== product.totalReviews) {
+                  return {
+                    ...product,
+                    totalReviews: apiTotal,
+                  }
+                }
+              } catch {
+                // Ignore errors here and fall back to original product data
+              }
+
+              return product
+            })
+          )
+
+          setProducts(withAccurateCounts)
           return
         }
         throw new Error('Mobile fallback returned no products')
@@ -210,6 +271,7 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
     setRatingFilter(null)
     setHasResponseFilter(null)
     setCurrentPage(1)
+    setTotalReviews(product.totalReviews || 0)
     // Fetch reviews for the selected product
     fetchProductReviews(product)
   }, [fetchProductReviews])
@@ -329,7 +391,7 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
                         <div className="mt-1 flex items-center space-x-4">
                           <StarRating 
                             rating={product.averageRating || 0} 
-                            totalReviews={product.totalReviews || 0} 
+                            totalReviews={product.ratingSummary?.totalReviews ?? product.totalReviews ?? 0} 
                             size="sm"
                           />
                         </div>
@@ -400,7 +462,7 @@ const ReviewsSectionComponent = ({ appId, apiKey, appSecretKey }: ReviewsSection
                   <div className="mt-2">
                     <StarRating 
                       rating={selectedProduct.averageRating || 0} 
-                      totalReviews={selectedProduct.totalReviews || 0} 
+                      totalReviews={totalReviews || selectedProduct.totalReviews || 0} 
                       size="md"
                     />
                   </div>
