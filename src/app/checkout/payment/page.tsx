@@ -9,7 +9,7 @@ import Input from '@/components/ui/Input'
 import { PLAN_NAMES, getMonthlyPrice, formatPriceUSD, normalizePlan, normalizeBilling, type BillingCycle, type PlanKey } from '@/lib/plans'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import { config } from '@/lib/config'
+import { config, getStripePublicKey } from '@/lib/config'
 import { apiService } from '@/lib/api-service'
 import { Loader2 } from 'lucide-react'
 
@@ -113,7 +113,7 @@ function PaymentForm({ onBack, onSuccess, clientSecret, isUpgrade, stripePromise
         }
 
         // Confirm payment with saved payment method (3DS authentication)
-        stripeInstance.confirmCardPayment(clientSecret).then(({ error, paymentIntent }) => {
+        stripeInstance.confirmCardPayment(clientSecret).then(({ error, paymentIntent }: { error?: any; paymentIntent?: any }) => {
           if (error) {
             setPaymentError(error.message || '3D Secure authentication failed')
             setSubmitting(false)
@@ -121,7 +121,7 @@ function PaymentForm({ onBack, onSuccess, clientSecret, isUpgrade, stripePromise
           } else if (paymentIntent?.status === 'succeeded') {
             onSuccess()
           }
-        }).catch((err) => {
+        }).catch((err: any) => {
           setPaymentError(err?.message || 'Payment authentication failed')
           setSubmitting(false)
           setAuthenticating3DS(false)
@@ -290,8 +290,9 @@ function CheckoutPaymentContent() {
   const [prorationDetails, setProrationDetails] = useState<{ proratedAmount: number; currency: string; currentPlan: string; currentBilling: string; newPlan: string; newBilling: string; nextBillingDate: string; nextBillingAmount: number } | null>(null)
   const [isUpgrade, setIsUpgrade] = useState(false)
   const [stripePromise] = useState(() => {
-    if (!config.services.stripePublicKey) return null
-    return loadStripe(config.services.stripePublicKey)
+    const stripeKey = getStripePublicKey()
+    if (!stripeKey) return null
+    return loadStripe(stripeKey)
   })
 
   useEffect(() => {
@@ -422,7 +423,7 @@ function CheckoutPaymentContent() {
                     {error && (
                       <div className="text-sm text-red-600">
                         {error}
-                        {!config.services.stripePublicKey && (
+                        {!getStripePublicKey() && (
                           <div className="mt-1 text-xs text-gray-600">Stripe key missing. Set NEXT_PUBLIC_STRIPE_PUBLIC_KEY and reload.</div>
                         )}
                       </div>

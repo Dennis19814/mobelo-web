@@ -736,6 +736,27 @@ function AppBuilderContent() {
           })
           .catch((error) => {
             logger.error('[AppBuilder] Error creating app:', { error })
+
+            // Check if it's a subscription/trial error (403)
+            if (error.response?.status === 403) {
+              const message = error.response?.data?.message || ''
+
+              if (message.toLowerCase().includes('trial') || message.toLowerCase().includes('subscription')) {
+                // Show upgrade toast instead of generic error
+                toast.error(
+                  'Your trial has expired. Please upgrade to continue creating apps.',
+                  {
+                    duration: 6000,
+                    icon: '⏰',
+                  }
+                )
+                // Redirect to billing page
+                router.push('/settings/billing')
+                return
+              }
+            }
+
+            // Generic error fallback
             toast.error('Failed to create app. Please try again.')
             router.push('/')
           })

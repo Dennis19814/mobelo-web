@@ -73,6 +73,8 @@ export const config = {
     sentryDsn: getEnvVar('NEXT_PUBLIC_SENTRY_DSN', ''),
     // IMPORTANT: Must use direct access (not getEnvVar) for webpack replacement to work
     stripePublicKey: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || '',
+    stripeTestPublicKey: process.env.NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY || '',
+    stripeTestMode: getBooleanEnvVar('NEXT_PUBLIC_STRIPE_TEST_MODE', false),
   },
 
   // File Upload Configuration
@@ -111,6 +113,14 @@ export const isDevelopment = () => config.app.environment === 'development'
 export const isProduction = () => config.app.environment === 'production'
 export const isDebugMode = () => config.development.debugMode && isDevelopment()
 export const isMockDataEnabled = () => config.features.enableMockData
+
+// Get the active Stripe public key based on test mode
+export const getStripePublicKey = (): string => {
+  if (config.services.stripeTestMode) {
+    return config.services.stripeTestPublicKey
+  }
+  return config.services.stripePublicKey
+}
 
 // Validate required configuration on startup
 export function validateConfig(): void {
