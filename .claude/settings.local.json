@@ -8,7 +8,11 @@
       "Bash(pkill:*)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "WebFetch(domain:play.gumlet.io)"
+      "WebFetch(domain:play.gumlet.io)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(git stash)",
+      "Bash(git stash pop)",
+      "Bash(git push origin main)"
     ],
     "deny": [],
     "ask": []
