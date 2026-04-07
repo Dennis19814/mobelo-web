@@ -187,30 +187,9 @@ export function useOrders(options: UseOrdersOptions = {}): UseOrdersReturn {
 
           setOrders(ordersList);
 
-          // Fetch all orders with ONLY date filters for accurate stats
-          const statsFilters: OrderFilters = {
-            dateFrom: filters.dateFrom,
-            dateTo: filters.dateTo,
-            limit: 10000, // High limit to get all orders for stats
-          };
-
-          const statsResponse = await apiService.getOrders(statsFilters);
-
-          if (statsResponse.ok && statsResponse.data) {
-            let allOrders: Order[] = [];
-
-            if (statsResponse.data.data) {
-              allOrders = statsResponse.data.data;
-            } else if (Array.isArray(statsResponse.data)) {
-              allOrders = statsResponse.data;
-            }
-
-            // Calculate stats from ALL orders in the date range
-            setStats(calculateStats(allOrders));
-          } else {
-            // Fallback to filtered orders if stats fetch fails
-            setStats(calculateStats(ordersList));
-          }
+          // Compute stats from the already-fetched result set to avoid
+          // a second large request on every filter/sort/page change.
+          setStats(calculateStats(ordersList));
         } else {
           throw new Error(response.data?.message || 'Failed to fetch orders');
         }

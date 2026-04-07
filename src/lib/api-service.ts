@@ -70,6 +70,19 @@ class ApiService {
     const response = await httpClient.get('/v1/billing/payment-method')
     return { ok: response.ok, status: response.status, data: response.data }
   }
+
+  // Subscription Status
+  async getSubscriptionStatus(): Promise<ApiResponse<{
+    hasAccess: boolean;
+    trialActive: boolean;
+    trialEndDate: string;
+    daysRemainingInTrial: number | null;
+    subscription: { plan: string; status: string } | null;
+  }>> {
+    const response = await httpClient.get('/v1/platform/users/subscription-status');
+    return { ok: response.ok, status: response.status, data: response.data };
+  }
+
   // Authentication
   async login(email: string): Promise<ApiResponse> {
     const response = await httpClient.post('/v1/platform/auth/login', { email });

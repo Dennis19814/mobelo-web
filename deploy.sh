@@ -90,8 +90,11 @@ build_web_on_server() {
 
         # Copy static assets for standalone build
         echo "[SERVER] Copying static assets for standalone build..."
-        cp -r public .next/standalone/
-        cp -r .next/static .next/standalone/.next/
+        # Copy public directory to standalone root
+        cp -r public .next/standalone/public
+        # Copy .next/static to standalone/.next/static
+        mkdir -p .next/standalone/.next
+        cp -r .next/static .next/standalone/.next/static
 
         echo "[SERVER] ✓ Next.js app built successfully on server"
 ENDSSH
@@ -166,8 +169,13 @@ NEXT_PUBLIC_DEBUG_MODE="false"
 NEXT_PUBLIC_SHOW_PERFORMANCE_METRICS="false"
 NEXT_PUBLIC_DISABLE_DIRECT_API_IN_DEV="false"
 
-# Stripe Configuration (update with your keys)
-NEXT_PUBLIC_STRIPE_PUBLIC_KEY=your_stripe_public_key_here
+# Stripe Configuration
+# Test mode: Set to true to use test keys, false for live keys (default: false for production)
+NEXT_PUBLIC_STRIPE_TEST_MODE="false"
+
+# Stripe Keys
+NEXT_PUBLIC_STRIPE_PUBLIC_KEY="pk_live_51RcOvcLitfzdebVbZ6cZnSfFhpzPToSDWjeXNChmtPHbhwchzy2GRtoMfy3zKv2MEcQmDlMV1bjf8qf5iNBKHNEs00RHC8EW47"
+NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY="pk_test_51RcOvlQ6P1OrT1s7xLMPOAn3IIUs16ok4DpQiSCDEzv0oYTZD0CldEeCd5P024Gf7LuKCCriZhQxsMb1ctqmZwEr00exK9ASNt"
 
 # Add other required environment variables here
 EOF
@@ -209,6 +217,25 @@ EOF
             sed -i 's/NEXT_PUBLIC_DEBUG_MODE=.*/NEXT_PUBLIC_DEBUG_MODE="false"/' .env
             sed -i 's/NEXT_PUBLIC_ENABLE_MOCK_DATA=.*/NEXT_PUBLIC_ENABLE_MOCK_DATA="false"/' .env
 
+            # Update Stripe configuration
+            if grep -q "^NEXT_PUBLIC_STRIPE_TEST_MODE=" .env; then
+                sed -i 's/NEXT_PUBLIC_STRIPE_TEST_MODE=.*/NEXT_PUBLIC_STRIPE_TEST_MODE="false"/' .env
+            else
+                echo 'NEXT_PUBLIC_STRIPE_TEST_MODE="false"' >> .env
+            fi
+
+            if grep -q "^NEXT_PUBLIC_STRIPE_PUBLIC_KEY=" .env; then
+                sed -i 's|NEXT_PUBLIC_STRIPE_PUBLIC_KEY=.*|NEXT_PUBLIC_STRIPE_PUBLIC_KEY="pk_live_51RcOvcLitfzdebVbZ6cZnSfFhpzPToSDWjeXNChmtPHbhwchzy2GRtoMfy3zKv2MEcQmDlMV1bjf8qf5iNBKHNEs00RHC8EW47"|' .env
+            else
+                echo 'NEXT_PUBLIC_STRIPE_PUBLIC_KEY="pk_live_51RcOvcLitfzdebVbZ6cZnSfFhpzPToSDWjeXNChmtPHbhwchzy2GRtoMfy3zKv2MEcQmDlMV1bjf8qf5iNBKHNEs00RHC8EW47"' >> .env
+            fi
+
+            if grep -q "^NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY=" .env; then
+                sed -i 's|NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY=.*|NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY="pk_test_51RcOvlQ6P1OrT1s7xLMPOAn3IIUs16ok4DpQiSCDEzv0oYTZD0CldEeCd5P024Gf7LuKCCriZhQxsMb1ctqmZwEr00exK9ASNt"|' .env
+            else
+                echo 'NEXT_PUBLIC_STRIPE_TEST_PUBLIC_KEY="pk_test_51RcOvlQ6P1OrT1s7xLMPOAn3IIUs16ok4DpQiSCDEzv0oYTZD0CldEeCd5P024Gf7LuKCCriZhQxsMb1ctqmZwEr00exK9ASNt"' >> .env
+            fi
+
             echo "[SERVER] ✓ .env updated for production"
         fi
 
@@ -237,7 +264,7 @@ restart_services() {
         # Stop and delete existing process
         pm2 delete mobelo-web 2>/dev/null || true
 
-        # Start new process from standalone build
+        # Start new process from standalone build (port 3001 to match nginx config)
         cd .next/standalone
         NODE_ENV=production PORT=3001 pm2 start server.js --name "mobelo-web" --update-env
         cd ../..
